@@ -48,7 +48,7 @@
     
     CGRect frame = self.frame;
     CGSize contentSize = self.bounds.size;
-    contentSize.width
+    
 }
 
 - (void)scrollViewDidScroll
