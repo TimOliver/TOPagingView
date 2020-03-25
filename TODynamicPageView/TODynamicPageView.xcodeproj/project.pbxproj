@@ -7,11 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22ADED23242B2ADD004A7854 /* TOTestPageView.m */; };
 		22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3161F242899AA0063F6A6 /* TOAppDelegate.m */; };
 		22C31626242899AA0063F6A6 /* TOViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31625242899AA0063F6A6 /* TOViewController.m */; };
 		22C3162E242899AB0063F6A6 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 22C3162C242899AB0063F6A6 /* LaunchScreen.storyboard */; };
 		22C31631242899AB0063F6A6 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31630242899AB0063F6A6 /* main.m */; };
 		22C3163B242899AB0063F6A6 /* TODynamicPageViewTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */; };
+		22C3167F242A40F80063F6A6 /* TODynamicPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3167E242A40F80063F6A6 /* TODynamicPageView.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,6 +27,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		22ADED22242B2ADD004A7854 /* TOTestPageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOTestPageView.h; sourceTree = "<group>"; };
+		22ADED23242B2ADD004A7854 /* TOTestPageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOTestPageView.m; sourceTree = "<group>"; };
 		22C3161B242899AA0063F6A6 /* TODynamicPageViewExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TODynamicPageViewExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		22C3161E242899AA0063F6A6 /* TOAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOAppDelegate.h; sourceTree = "<group>"; };
 		22C3161F242899AA0063F6A6 /* TOAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOAppDelegate.m; sourceTree = "<group>"; };
@@ -36,6 +40,8 @@
 		22C31636242899AB0063F6A6 /* TODynamicPageViewTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TODynamicPageViewTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TODynamicPageViewTests.m; sourceTree = "<group>"; };
 		22C3163C242899AB0063F6A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		22C3167D242A40F80063F6A6 /* TODynamicPageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TODynamicPageView.h; sourceTree = "<group>"; };
+		22C3167E242A40F80063F6A6 /* TODynamicPageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TODynamicPageView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,6 +65,7 @@
 		22C31612242899AA0063F6A6 = {
 			isa = PBXGroup;
 			children = (
+				22C3167C242A3C460063F6A6 /* TODynamicPageView */,
 				22C3161D242899AA0063F6A6 /* TODynamicPageViewExample */,
 				22C31639242899AB0063F6A6 /* TODynamicPageViewTests */,
 				22C3161C242899AA0063F6A6 /* Products */,
@@ -81,6 +88,8 @@
 				22C3161F242899AA0063F6A6 /* TOAppDelegate.m */,
 				22C31624242899AA0063F6A6 /* TOViewController.h */,
 				22C31625242899AA0063F6A6 /* TOViewController.m */,
+				22ADED22242B2ADD004A7854 /* TOTestPageView.h */,
+				22ADED23242B2ADD004A7854 /* TOTestPageView.m */,
 				22C3162C242899AB0063F6A6 /* LaunchScreen.storyboard */,
 				22C3162F242899AB0063F6A6 /* Info.plist */,
 				22C31630242899AB0063F6A6 /* main.m */,
@@ -95,6 +104,15 @@
 				22C3163C242899AB0063F6A6 /* Info.plist */,
 			);
 			path = TODynamicPageViewTests;
+			sourceTree = "<group>";
+		};
+		22C3167C242A3C460063F6A6 /* TODynamicPageView */ = {
+			isa = PBXGroup;
+			children = (
+				22C3167D242A40F80063F6A6 /* TODynamicPageView.h */,
+				22C3167E242A40F80063F6A6 /* TODynamicPageView.m */,
+			);
+			path = TODynamicPageView;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -197,6 +215,8 @@
 			files = (
 				22C31626242899AA0063F6A6 /* TOViewController.m in Sources */,
 				22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */,
+				22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */,
+				22C3167F242A40F80063F6A6 /* TODynamicPageView.m in Sources */,
 				22C31631242899AB0063F6A6 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
