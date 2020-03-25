@@ -19,6 +19,13 @@ typedef enum {
     TODynamicPageViewDirectionRightToLeft = 1 /** Pages ascend from the right, to the left */
 } TODynamicPageViewDirection;
 
+/** An enumeration for identifying the types of pages in their specific order. */
+typedef enum {
+    TODynamicPageViewPageOrderCurrent, /** Pages ascend from the left, to the right */
+    TODynamicPageViewPageOrderNext,
+    TODynamicPageViewPageOrderPrevious/** Pages ascend from the right, to the left */
+} TODynamicPageViewPageOrder;
+
 //-------------------------------------------------------------------
 
 /** Optional protocol that page views may implement. */
@@ -27,20 +34,28 @@ typedef enum {
 @optional
 
 /**
- A unique string value that can be used to differentiate
- separate view subclasses managed and displayed by the pager view.
+ A unique string value that can be used to let the pager view
+ dequeue pre-made objects with the same identifier, or if pre-registered,
+ create new instances automatically on request.
+ 
+ If this property is not overridden, the page will be treated as the default
+ type that will be returned whenever the identifier is nil.
  */
 + (NSString *)pageIdentifier;
 
 /**
- A globally unique identifier that can be used to identify and re-retrieve
- specific page object instances from the page view.
+ A globally unique identifier that can be used to uniquely tag this specific
+ page object. This can be used to retrieve the page from the pager view at a later
+ time.
  */
 - (NSString *)uniqueIdentifier;
 
 /**
- Called just before the page object is
- dequeued for re-use by the data source
+ Called just before the page object is removed from the visible page set,
+ and re-enqueud by the data source.
+ 
+ Use this method to return the page to a default state, and to clear out any
+ references to memory-heavy objects like images.
  */
 - (void)prepareForReuse;
 
@@ -95,23 +110,31 @@ typedef enum {
 /* All of the page view objects currently placed in the scroll view. */
 @property (nonatomic, readonly) NSArray<UIView *> *visiblePages;
 
-/** Reload the view from scratch and re-layout all pages */
-- (void)reloadPageScrollView;
-
-/** Registers a page view class that can be automatically instantiated as needed. */
+/**
+ Registers a page view class that can be automatically instantiated as needed.
+ If the class overrides `pageIdentifier`, new instances may automatically be created
+ when needed. Any classes that do not override that property will become the default
+ page class.
+ */
 - (void)registerPageViewClass:(Class)pageViewClass;
 
-/** Returns a recycled page view from the default pool, ready for re-use. */
+/** Reload the view from scratch and re-layout all pages. */
+- (void)reload;
+
+/** Returns a page view from the default queue of pages, ready for re-use. */
 - (nullable __kindof UIView *)dequeueReusablePageView;
 
-/** Returns a recycled page view from the pool matching the provided identifier string. */
+/** Returns a page view from the specific queue matching the provided identifier string. */
 - (nullable __kindof UIView *)dequeueReusablePageViewForIdentifier:(NSString *)identifier;
 
-/** The currently visible primary view on screen. Can be a page or accessories. */
-- (nullable __kindof UIView *)visibleView;
+/** The currently visible primary page view on screen. */
+- (nullable __kindof UIView *)currentPageView;
 
-/** The currently visible primary page view on screen. Will be nil if an acessory is visible. */
-- (nullable __kindof UIView *)visiblePageView;
+/** The next page after the currently visible page on the screen. */
+- (nullable __kindof UIView *)nextPageView;
+
+/** The previous page before the currently visible page on the screen. */
+- (nullable __kindof UIView *)previousPageView;
 
 /** Returns the visible page view for the supplied unique identifier, or nil otherwise. */
 - (nullable __kindof UIView *)pageViewForUniqueIdentifier:(NSString *)identifier;
