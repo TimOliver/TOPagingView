@@ -68,15 +68,15 @@ typedef enum {
 @required
 
 /** Called once upon each reload, the initial page view that will be displayed intially. */
-- (nullable UIView *)initialPageViewForDynamicPageView:(TODynamicPageView *)pageView;
+- (nullable __kindof UIView *)initialPageViewForDynamicPageView:(TODynamicPageView *)dynamicPageView;
 
 /** Using the current page, fetch and return the next page view that will be displayed after it. */
-- (nullable UIView *)dynamicPageView:(TODynamicPageView *)pageView
-           nextPageViewAfterPageView:(UIView *)previousPageView;
+- (nullable __kindof  UIView *)dynamicPageView:(TODynamicPageView *)dynamicPageView
+           nextPageViewAfterPageView:(__kindof UIView *)currentPageView;
 
 /** Using the current page, fetch and return the previous page view that will be  */
-- (nullable UIView *)dynamicPageView:(TODynamicPageView *)pageView
-      previousPageViewBeforePageView:(UIView *)nextPageView;
+- (nullable __kindof  UIView *)dynamicPageView:(TODynamicPageView *)dynamicPageView
+      previousPageViewBeforePageView:(__kindof UIView *)currentPageView;
 
 @end
 
@@ -121,11 +121,14 @@ typedef enum {
 /** Reload the view from scratch and re-layout all pages. */
 - (void)reload;
 
+/** Perform a chcek in needing to add a previous or next page that didn't previously exist. */
+- (void)setNeedsPageUpdate;
+
 /** Returns a page view from the default queue of pages, ready for re-use. */
 - (nullable __kindof UIView *)dequeueReusablePageView;
 
 /** Returns a page view from the specific queue matching the provided identifier string. */
-- (nullable __kindof UIView *)dequeueReusablePageViewForIdentifier:(NSString *)identifier;
+- (nullable __kindof UIView *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier;
 
 /** The currently visible primary page view on screen. */
 - (nullable __kindof UIView *)currentPageView;
