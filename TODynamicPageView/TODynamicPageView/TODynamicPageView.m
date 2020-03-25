@@ -34,6 +34,9 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 /** A dictionary that holds references to any pages with unique identifiers. */
 @property (nonatomic, strong) NSMutableDictionary<NSString *, UIView *> *uniqueIdentifierPages;
 
+/** Work out the size of each segment in the scroll view */
+@property (nonatomic, readonly) CGFloat scrollViewPageWidth;
+
 @end
 
 @implementation TODynamicPageView
@@ -274,10 +277,10 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 
 - (void)transitionOverToNextPage
 {
-    // Don't bother if we've established there is no next page
+    // Don't start churning if we already confirmed there is no page after this.
     if (!_hasNextPage) { return; }
     
-    // Query the data source for the next page, and exit out if we don't
+    // Query the data source for the next page, and exit out if there is no more page data
     UIView *nextPage = [self.dataSource dynamicPageView:self
                               nextPageViewAfterPageView:self.nextPageView];
     if (nextPage == nil) {
@@ -285,11 +288,61 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
         return;
     }
     
+    // Insert the new page object
+    [self insertPageView:nextPage];
+    
+    // Shift all of the content over to make room for the new page
+    nextPage.frame = self.nextPageView.frame;
+    self.nextPageView.frame = self.currentPageView.frame;
+    self.currentPageView.frame = self.previousPageView.frame;
+    
+    // Remove the previous view
+    [self reclaimPageView:self.previousPageView];
+    
+    // Update all of the references
+    self.previousPageView = self.currentPageView;
+    self.currentPageView = self.nextPageView;
+    self.nextPageView = nextPage;
+    
+    // Move the scroll view back one segment
+    CGPoint contentOffset = self.scrollView.contentOffset;
+    contentOffset.x -= self.scrollViewPageWidth;
+    self.scrollView.contentOffset = contentOffset;
 }
 
 - (void)transitionOverToPreviousPage
 {
+    // Don't start churning if we already confirmed there is no page before this.
+    if (!_hasPreviousPage) { return; }
     
+    // Query the data source for the previous page, and exit out if there is no more page data
+    UIView *previousPage = [self.dataSource dynamicPageView:self
+                             previousPageViewBeforePageView:self.previousPageView];
+    if (previousPage == nil) {
+        _hasPreviousPage = NO;
+        return;
+    }
+    
+    // Insert the new page object
+    [self insertPageView:previousPage];
+    
+    // Shift all of the content over to make room for the new page
+    previousPage.frame = self.previousPageView.frame;
+    self.previousPageView.frame = self.currentPageView.frame;
+    self.currentPageView.frame = self.nextPageView.frame;
+    
+    // Remove the next view that has been moved out
+    [self reclaimPageView:self.nextPageView];
+    
+    // Update all of the references
+    self.nextPageView = self.currentPageView;
+    self.currentPageView = self.previousPageView;
+    self.previousPageView = previousPage;
+    
+    // Move the scroll view forward one segment
+    CGPoint contentOffset = self.scrollView.contentOffset;
+    contentOffset.x += self.scrollViewPageWidth;
+    self.scrollView.contentOffset = contentOffset;
 }
 
 - (void)performInitialLayout
@@ -309,14 +362,14 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
                       nextPageViewAfterPageView:self.currentPageView];
     _hasNextPage = (pageView != nil);
     _nextPageView = pageView;
-    [self.scrollView addSubview:pageView];
+    [self insertPageView:pageView];
     
     // Add the previous page
     pageView = [self.dataSource dynamicPageView:self
                  previousPageViewBeforePageView:self.currentPageView];
     _hasPreviousPage = (pageView != nil);
     _previousPageView = pageView;
-    [self.scrollView addSubview:pageView];
+    [self insertPageView:pageView];
     
     // Update the content size for the scroll view
     [self updateContentSize];
@@ -334,9 +387,26 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     
     [self.scrollView addSubview:pageView];
     
-    // Find the queue this page view was from and remove it
+    // Remove it from the pool of recycled pages
     NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
-    [(NSMutableSet *)self.queuedPages[pageIdentifier] removeObject:pageView];
+    [self.queuedPages[pageIdentifier] removeObject:pageView];
+}
+
+- (void)reclaimPageView:(UIView *)pageView
+{
+    if (pageView == nil) { return; }
+    
+    // Re-add it to the recycled pages pool
+    NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
+    [self.queuedPages[pageIdentifier] addObject:pageView];
+    
+    // If the class supports it, clean it up
+    if ([pageView respondsToSelector:@selector(prepareForReuse)]) {
+        [(id)pageView prepareForReuse];
+    }
+    
+    // Pull it out of the scroll view
+    [pageView removeFromSuperview];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath
@@ -356,6 +426,11 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     if (self.currentPageView) { [visiblePages addObject:self.currentPageView]; }
     if (self.nextPageView) { [visiblePages addObject:self.nextPageView]; }
     return [NSArray arrayWithArray:visiblePages];
+}
+
+- (CGFloat)scrollViewPageWidth
+{
+    return self.bounds.size.width + _pageSpacing;
 }
 
 @end
