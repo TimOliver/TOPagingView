@@ -7,6 +7,7 @@
 //
 
 #import "TOViewController.h"
+#import "TODynamicPageView.h"
 
 @interface TOViewController ()
 
@@ -18,6 +19,10 @@
     [super viewDidLoad];
     
     self.view.backgroundColor = [UIColor blackColor];
+    
+    TODynamicPageView *pageView = [[TODynamicPageView alloc] initWithFrame:self.view.bounds];
+    pageView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view addSubview:pageView];
 }
 
 - (UIStatusBarStyle)preferredStatusBarStyle
