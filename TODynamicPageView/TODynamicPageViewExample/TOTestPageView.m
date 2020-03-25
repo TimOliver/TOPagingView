@@ -47,4 +47,11 @@
     return @"TestApp.TestPage";
 }
 
+- (void)setNumber:(NSInteger)number
+{
+    _number = number;
+    self.numberLabel.text = [NSString stringWithFormat:@"%ld", number];
+    [self setNeedsLayout];
+}
+
 @end
