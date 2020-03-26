@@ -28,6 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		22ACEAD9242C5A8F0071346F /* RevealServer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = RevealServer.framework; sourceTree = SOURCE_ROOT; };
 		22ADED22242B2ADD004A7854 /* TOTestPageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOTestPageView.h; sourceTree = "<group>"; };
 		22ADED23242B2ADD004A7854 /* TOTestPageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOTestPageView.m; sourceTree = "<group>"; };
 		22ADED25242C5822004A7854 /* RevealServer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = RevealServer.framework; sourceTree = "<group>"; };
@@ -72,6 +73,7 @@
 				22C3161D242899AA0063F6A6 /* TODynamicPageViewExample */,
 				22C31639242899AB0063F6A6 /* TODynamicPageViewTests */,
 				22C3161C242899AA0063F6A6 /* Products */,
+				22ACEAD9242C5A8F0071346F /* RevealServer.framework */,
 			);
 			sourceTree = "<group>";
 		};
