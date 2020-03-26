@@ -34,8 +34,11 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 /** A dictionary that holds references to any pages with unique identifiers. */
 @property (nonatomic, strong) NSMutableDictionary<NSString *, UIView *> *uniqueIdentifierPages;
 
-/** Work out the size of each segment in the scroll view */
+/** The absolute size of each segment of the scroll view as it is paging.*/
 @property (nonatomic, readonly) CGFloat scrollViewPageWidth;
+
+/** A convenience accessor for checking if we are reversed. */
+@property (nonatomic, readonly) BOOL isDirectionReversed;
 
 @end
 
@@ -64,7 +67,7 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     _queuedPages = [NSMutableDictionary dictionary];
     
     // Configure the main properties of this view
-    self.clipsToBounds = YES; // The scroll view intentionally overlaps, so this view MUST clip.
+    //self.clipsToBounds = YES; // The scroll view intentionally overlaps, so this view MUST clip.
     self.backgroundColor = [UIColor clearColor];
     
     // Create and configure the scroll view
@@ -115,9 +118,15 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 {
     CGRect bounds = self.bounds;
     
+    // Flip the array if we have reversed the page direction
+    NSArray *visiblePages = self.visiblePages;
+    if (self.pageScrollDirection == TODynamicPageViewDirectionRightToLeft) {
+        visiblePages = [[visiblePages reverseObjectEnumerator] allObjects];
+    }
+    
     // Re-size each page view currently in the scroll view
     CGFloat offset = (_pageSpacing * 0.5f);
-    for (UIView *pageView in self.visiblePages) {
+    for (UIView *pageView in visiblePages) {
         // Center each page view in each scroll content slot
         CGRect frame = pageView.frame;
         frame.origin.x = offset;
@@ -254,23 +263,37 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
         return;
     }
     
+    BOOL isReversed = self.isDirectionReversed;
     CGRect bounds = self.bounds;
     
     CGFloat halfWidth = bounds.size.width * 0.5f;
     CGPoint offset = scrollView.contentOffset;
     
-    // Check if we over-stepped to the next page
-    CGFloat nextPageThreshold = CGRectGetMaxX(self.currentPageView.frame)
-                                                        - (halfWidth);
-    if (offset.x > nextPageThreshold) {
+    // Configure two blocks we can dynamically call depending on direction
+    void (^goToNextPageBlock)(void) = ^{
         [self transitionOverToNextPage];
+        self.hasPreviousPage = YES;
+    };
+    
+    void (^goToPreviousPageBlock)(void) = ^{
+        [self transitionOverToPreviousPage];
+        self.hasNextPage = YES;
+    };
+    
+    // Check if we over-stepped to the next page
+    CGFloat rightPageThreshold = CGRectGetMaxX(self.currentPageView.frame)
+                                                        - (halfWidth);
+    if (offset.x > rightPageThreshold) {
+        if (isReversed) { goToPreviousPageBlock(); }
+        else { goToNextPageBlock(); }
         return;
     }
     
-    CGFloat previousPageThreshold = CGRectGetMinX(self.currentPageView.frame)
-                                                                - (halfWidth + _pageSpacing);
-    if (offset.x < previousPageThreshold) {
-        [self transitionOverToPreviousPage];
+    CGFloat leftPageThreshold = CGRectGetMinX(self.currentPageView.frame)
+                                            - (halfWidth + _pageSpacing);
+    if (offset.x < leftPageThreshold) {
+        if (isReversed) { goToNextPageBlock(); }
+        else { goToPreviousPageBlock(); }
         return;
     }
 }
@@ -306,7 +329,8 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     
     // Move the scroll view back one segment
     CGPoint contentOffset = self.scrollView.contentOffset;
-    contentOffset.x -= self.scrollViewPageWidth;
+    if (self.isDirectionReversed) { contentOffset.x += self.scrollViewPageWidth; }
+    else { contentOffset.x -= self.scrollViewPageWidth; }
     self.scrollView.contentOffset = contentOffset;
 }
 
@@ -341,7 +365,8 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     
     // Move the scroll view forward one segment
     CGPoint contentOffset = self.scrollView.contentOffset;
-    contentOffset.x += self.scrollViewPageWidth;
+    if (self.isDirectionReversed) { contentOffset.x -= self.scrollViewPageWidth; }
+    else { contentOffset.x += self.scrollViewPageWidth; }
     self.scrollView.contentOffset = contentOffset;
 }
 
@@ -379,6 +404,56 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     
     // Set the initial scroll point to the current page
     [self resetContentOffset];
+}
+
+- (void)rearrangePagesForScrollDirection:(TODynamicPageViewDirection)direction
+{
+    // Left is for Eastern type layouts
+    BOOL leftDirection = (direction == TODynamicPageViewDirectionRightToLeft);
+    
+    CGFloat segmentWidth = self.scrollViewPageWidth;
+    CGFloat halfSegment = segmentWidth * 0.5f;
+    CGFloat contentWidth = self.scrollView.contentSize.width;
+    CGFloat halfSpacing = self.pageSpacing * 0.5f;
+    
+    // Move the next page to the left if direction is left, or vice versa
+    if (self.nextPageView) {
+        CGRect frame = self.nextPageView.frame;
+        if (leftDirection) { frame.origin.x = halfSpacing; }
+        else { frame.origin.x = (contentWidth - segmentWidth) + halfSpacing; }
+        self.nextPageView.frame = frame;
+    }
+    
+    // Move the previous page to the right if direction is left, or vice versa
+    if (self.previousPageView) {
+        CGRect frame = self.previousPageView.frame;
+        if (leftDirection) { frame.origin.x = (contentWidth - segmentWidth) + halfSpacing; }
+        else { frame.origin.x = halfSpacing; }
+        self.previousPageView.frame = frame;
+    }
+    
+    // Move the current page to be adjacent to whichever view is visible
+    CGRect frame = self.currentPageView.frame;
+    if (self.nextPageView) {
+        CGRect nextFrame = self.nextPageView.frame;
+        if (leftDirection) { frame.origin.x = segmentWidth + halfSpacing; }
+        else { frame.origin.x = CGRectGetMinX(nextFrame) - segmentWidth; }
+    }
+    else if (self.previousPageView) {
+        CGRect previousFrame = self.previousPageView.frame;
+        if (leftDirection) { frame.origin.x = CGRectGetMinX(previousFrame) - segmentWidth; }
+        else { frame.origin.x = segmentWidth + halfSpacing; }
+    }
+    self.currentPageView.frame = frame;
+    
+    // Flip the current scroll position, based off the middle of the scrolling region
+    CGFloat contentMiddle = contentWidth * 0.5f;
+    CGFloat contentOffset = self.scrollView.contentOffset.x + (segmentWidth * 0.5f);
+    CGFloat distance = contentOffset - contentMiddle;
+    
+    CGPoint newOffset = self.scrollView.contentOffset;
+    newOffset.x = (contentMiddle - distance) - halfSegment;
+    self.scrollView.contentOffset = newOffset;
 }
 
 - (void)insertPageView:(UIView *)pageView
@@ -431,6 +506,18 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 - (CGFloat)scrollViewPageWidth
 {
     return self.bounds.size.width + _pageSpacing;
+}
+
+- (void)setPageScrollDirection:(TODynamicPageViewDirection)pageScrollDirection
+{
+    if (_pageScrollDirection == pageScrollDirection) { return; }
+    _pageScrollDirection = pageScrollDirection;
+    [self rearrangePagesForScrollDirection:_pageScrollDirection];
+}
+
+- (BOOL)isDirectionReversed
+{
+    return (self.pageScrollDirection == TODynamicPageViewDirectionRightToLeft);
 }
 
 @end
