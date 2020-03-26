@@ -52,8 +52,6 @@
 
 - (UIView *)dynamicPageView:(TODynamicPageView *)dynamicPageView previousPageViewBeforePageView:(TOTestPageView *)currentPageView
 {
-    if (currentPageView.number <= -10) { return nil; }
-    
     TOTestPageView *pageView = [dynamicPageView dequeueReusablePageView];
     pageView.number = currentPageView.number - 1;
     return pageView;
@@ -61,8 +59,6 @@
 
 - (UIView *)dynamicPageView:(TODynamicPageView *)dynamicPageView nextPageViewAfterPageView:(TOTestPageView *)currentPageView
 {
-    if (currentPageView.number >= 10) { return nil; }
-    
     TOTestPageView *pageView = [dynamicPageView dequeueReusablePageView];
     pageView.number = currentPageView.number + 1;
     return pageView;
