@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22ADED23242B2ADD004A7854 /* TOTestPageView.m */; };
-		22ADED26242C5822004A7854 /* RevealServer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 22ADED25242C5822004A7854 /* RevealServer.framework */; };
 		22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3161F242899AA0063F6A6 /* TOAppDelegate.m */; };
 		22C31626242899AA0063F6A6 /* TOViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31625242899AA0063F6A6 /* TOViewController.m */; };
 		22C3162E242899AB0063F6A6 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 22C3162C242899AB0063F6A6 /* LaunchScreen.storyboard */; };
@@ -31,7 +30,6 @@
 		22ACEAD9242C5A8F0071346F /* RevealServer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = RevealServer.framework; sourceTree = SOURCE_ROOT; };
 		22ADED22242B2ADD004A7854 /* TOTestPageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOTestPageView.h; sourceTree = "<group>"; };
 		22ADED23242B2ADD004A7854 /* TOTestPageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOTestPageView.m; sourceTree = "<group>"; };
-		22ADED25242C5822004A7854 /* RevealServer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = RevealServer.framework; sourceTree = "<group>"; };
 		22C3161B242899AA0063F6A6 /* TODynamicPageViewExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TODynamicPageViewExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		22C3161E242899AA0063F6A6 /* TOAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOAppDelegate.h; sourceTree = "<group>"; };
 		22C3161F242899AA0063F6A6 /* TOAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOAppDelegate.m; sourceTree = "<group>"; };
@@ -52,7 +50,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				22ADED26242C5822004A7854 /* RevealServer.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -98,7 +95,6 @@
 				22C3162C242899AB0063F6A6 /* LaunchScreen.storyboard */,
 				22C3162F242899AB0063F6A6 /* Info.plist */,
 				22C31630242899AB0063F6A6 /* main.m */,
-				22ADED25242C5822004A7854 /* RevealServer.framework */,
 			);
 			path = TODynamicPageViewExample;
 			sourceTree = "<group>";
