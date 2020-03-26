@@ -142,9 +142,11 @@ typedef enum {
 /** Returns the visible page view for the supplied unique identifier, or nil otherwise. */
 - (nullable __kindof UIView *)pageViewForUniqueIdentifier:(NSString *)identifier;
 
-/** Advance/Retreat the page by one. */
-- (void)turnToNextPageAnimated:(BOOL)animated;
-- (void)turnToPreviousPageAnimated:(BOOL)animated;
+/** Advance one page to the left (Regardless of current scroll direction) */
+- (void)turnToLeftPageAnimated:(BOOL)animated;
+
+/** Advance one page to the right (Regardless of current scroll direction) */
+- (void)turnToRightPageAnimated:(BOOL)animated;
 
 @end
 
