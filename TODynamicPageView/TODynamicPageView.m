@@ -31,6 +31,9 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 @property (nonatomic, assign) BOOL hasNextPage;
 @property (nonatomic, assign) BOOL hasPreviousPage;
 
+/** Disable automatic layout when manually laying out content. */
+@property (nonatomic ,assign) BOOL disableLayout;
+
 /** A dictionary that holds references to any pages with unique identifiers. */
 @property (nonatomic, strong) NSMutableDictionary<NSString *, UIView *> *uniqueIdentifierPages;
 
@@ -103,12 +106,30 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     
     CGRect bounds = self.bounds;
     
+    // Disable the observer while we update the scroll view
+    self.disableLayout = YES;
+    
     // Lay-out the scroll view.
     // In order to allow spaces between the pages, the scroll
     // view needs to be slightly wider than this container view.
     self.scrollView.frame = CGRectIntegral(CGRectInset(bounds,
                                                        -(_pageSpacing * 0.5f),
                                                        0.0f));
+    
+    // In case the width changed, re-set the content size and offset to match
+    CGFloat oldContentWidth = self.scrollView.contentSize.width;
+    CGFloat oldOffset = self.scrollView.contentOffset.x;
+    
+    // Update the content size of the scroll view
+    CGFloat contentWidth = self.visiblePages.count * self.scrollViewPageWidth;
+    self.scrollView.contentSize = (CGSize){contentWidth, bounds.size.height };
+    
+    // Update the content offset to match the amount that the width changed
+    CGFloat contentOffset = oldOffset * (contentWidth / oldContentWidth);
+    self.scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
+    
+    // Re-enable the observer
+    self.disableLayout = NO;
     
     // Layout the page subviews
     [self layoutPageSubviews];
@@ -250,9 +271,56 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     [self layoutPages];
 }
 
+- (void)insertPageView:(UIView *)pageView
+{
+    if (pageView == nil) { return; }
+    
+    // Add the view to the scroll view
+    [self.scrollView addSubview:pageView];
+    
+    // If it has a unique identifier, store it so we can refer to it easily
+    if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
+        NSString *uniqueIdentifier = [(id)pageView uniqueIdentifier];
+        
+        // Lazily create the dictionary as needed
+        if (self.uniqueIdentifierPages == nil) {
+            self.uniqueIdentifierPages = [NSMutableDictionary dictionary];
+        }
+        
+        // Add to the dictionary
+        self.uniqueIdentifierPages[uniqueIdentifier] = pageView;
+    }
+    
+    // Remove it from the pool of recycled pages
+    NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
+    [self.queuedPages[pageIdentifier] removeObject:pageView];
+}
+
+- (void)reclaimPageView:(UIView *)pageView
+{
+    if (pageView == nil) { return; }
+    
+    // Re-add it to the recycled pages pool
+    NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
+    [self.queuedPages[pageIdentifier] addObject:pageView];
+    
+    // If the page has a unique identifier, remove it from the dictionary
+    if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
+        [self.uniqueIdentifierPages removeObjectForKey:[(id)pageView uniqueIdentifier]];
+    }
+    
+    // If the class supports the clean up method, clean it up now
+    if ([pageView respondsToSelector:@selector(prepareForReuse)]) {
+        [(id)pageView prepareForReuse];
+    }
+    
+    // Pull it out of the scroll view
+    [pageView removeFromSuperview];
+}
+
 - (void)layoutPages
 {
-    if (self.dataSource == nil) { return; }
+    if (self.dataSource == nil || self.disableLayout) { return; }
     
     UIScrollView *scrollView = self.scrollView;
     CGSize contentSize = scrollView.contentSize;
@@ -268,6 +336,7 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     
     CGFloat halfWidth = bounds.size.width * 0.5f;
     CGPoint offset = scrollView.contentOffset;
+    CGFloat segmentWidth = self.scrollViewPageWidth;
     
     // Configure two blocks we can dynamically call depending on direction
     void (^goToNextPageBlock)(void) = ^{
@@ -281,21 +350,61 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     };
     
     // Check if we over-stepped to the next page
-    CGFloat rightPageThreshold = CGRectGetMaxX(self.currentPageView.frame)
-                                                        - (halfWidth);
+    CGFloat rightPageThreshold = contentSize.width - (segmentWidth * 1.5f);
     if (offset.x > rightPageThreshold) {
         if (isReversed) { goToPreviousPageBlock(); }
         else { goToNextPageBlock(); }
         return;
     }
     
-    CGFloat leftPageThreshold = CGRectGetMinX(self.currentPageView.frame)
-                                            - (halfWidth + _pageSpacing);
+    CGFloat leftPageThreshold = segmentWidth * 0.5f;
     if (offset.x < leftPageThreshold) {
         if (isReversed) { goToNextPageBlock(); }
         else { goToPreviousPageBlock(); }
         return;
     }
+}
+
+- (void)performInitialLayout
+{
+    // Set these back to true for now, since we'll perform the check in here
+    _hasNextPage = YES;
+    _hasPreviousPage = YES;
+    
+    // Add the initial page
+    UIView *pageView = [self.dataSource initialPageViewForDynamicPageView:self];
+    if (pageView == nil) { return; }
+    [self insertPageView:pageView];
+    self.currentPageView = pageView;
+    
+    // Add the next page
+    pageView = [self.dataSource dynamicPageView:self
+                      nextPageViewAfterPageView:self.currentPageView];
+    _hasNextPage = (pageView != nil);
+    _nextPageView = pageView;
+    [self insertPageView:pageView];
+    
+    // Add the previous page
+    pageView = [self.dataSource dynamicPageView:self
+                 previousPageViewBeforePageView:self.currentPageView];
+    _hasPreviousPage = (pageView != nil);
+    _previousPageView = pageView;
+    [self insertPageView:pageView];
+    
+    // Disable the observer while we manually place all elements
+    self.disableLayout = YES;
+    
+    // Update the content size for the scroll view
+    [self updateContentSize];
+    
+    // Layout all of the pages
+    [self layoutPageSubviews];
+    
+    // Set the initial scroll point to the current page
+    [self resetContentOffset];
+    
+    // Re-enable the observer
+    self.disableLayout = YES;
 }
 
 - (void)transitionOverToNextPage
@@ -370,42 +479,6 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     self.scrollView.contentOffset = contentOffset;
 }
 
-- (void)performInitialLayout
-{
-    // Set these back to true for now, since we'll perform the check in here
-    _hasNextPage = YES;
-    _hasPreviousPage = YES;
-    
-    // Add the initial page
-    UIView *pageView = [self.dataSource initialPageViewForDynamicPageView:self];
-    if (pageView == nil) { return; }
-    [self insertPageView:pageView];
-    self.currentPageView = pageView;
-    
-    // Add the next page
-    pageView = [self.dataSource dynamicPageView:self
-                      nextPageViewAfterPageView:self.currentPageView];
-    _hasNextPage = (pageView != nil);
-    _nextPageView = pageView;
-    [self insertPageView:pageView];
-    
-    // Add the previous page
-    pageView = [self.dataSource dynamicPageView:self
-                 previousPageViewBeforePageView:self.currentPageView];
-    _hasPreviousPage = (pageView != nil);
-    _previousPageView = pageView;
-    [self insertPageView:pageView];
-    
-    // Update the content size for the scroll view
-    [self updateContentSize];
-    
-    // Layout all of the pages
-    [self layoutPageSubviews];
-    
-    // Set the initial scroll point to the current page
-    [self resetContentOffset];
-}
-
 - (void)rearrangePagesForScrollDirection:(TODynamicPageViewDirection)direction
 {
     // Left is for Eastern type layouts
@@ -456,52 +529,58 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     self.scrollView.contentOffset = newOffset;
 }
 
-- (void)insertPageView:(UIView *)pageView
+#pragma mark - External Page Control -
+
+- (void)turnToPageAtContentXOffset:(CGFloat)offset animated:(BOOL)animated
 {
-    if (pageView == nil) { return; }
-    
-    // Add the view to the scroll view
-    [self.scrollView addSubview:pageView];
-    
-    // If it has a unique identifier, store it so we can refer to it easily
-    if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
-        NSString *uniqueIdentifier = [(id)pageView uniqueIdentifier];
-        
-        // Lazily create the dictionary as needed
-        if (self.uniqueIdentifierPages == nil) {
-            self.uniqueIdentifierPages = [NSMutableDictionary dictionary];
-        }
-        
-        // Add to the dictionary
-        self.uniqueIdentifierPages[uniqueIdentifier] = pageView;
+    if (animated == NO) {
+        self.disableLayout = NO;
+        self.scrollView.contentOffset = (CGPoint){offset, 0.0f};
+        return;
     }
     
-    // Remove it from the pool of recycled pages
-    NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
-    [self.queuedPages[pageIdentifier] removeObject:pageView];
+    // If we're already in an animation, cancel it out
+    // and reset all of the content as if the animation completed
+    if (self.scrollView.layer.animationKeys.count) {
+        [self.scrollView.layer removeAllAnimations];
+        self.disableLayout = NO;
+        [self layoutPages];
+    }
+    
+    // Disable layout during this animation as we're controlling the whole stack
+    self.disableLayout = YES;
+
+    // Perform the animation
+    [UIView animateWithDuration:0.45f
+                          delay:0.0f
+         usingSpringWithDamping:1.0f
+          initialSpringVelocity:2.5f
+                        options:UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.scrollView.contentOffset = (CGPoint){offset, 0.0f};
+    } completion:^(BOOL finished) {
+        // If we canceled this animation,
+        // disregard since we'll manually restore after
+        if (!finished) { return; }
+        self.disableLayout = NO;
+        [self layoutPages];
+    }];
 }
 
-- (void)reclaimPageView:(UIView *)pageView
+- (void)turnToLeftPageAnimated:(BOOL)animated
 {
-    if (pageView == nil) { return; }
-    
-    // Re-add it to the recycled pages pool
-    NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
-    [self.queuedPages[pageIdentifier] addObject:pageView];
-    
-    // If the page has a unique identifier, remove it from the dictionary
-    if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
-        [self.uniqueIdentifierPages removeObjectForKey:[(id)pageView uniqueIdentifier]];
-    }
-    
-    // If the class supports the clean up method, clean it up now
-    if ([pageView respondsToSelector:@selector(prepareForReuse)]) {
-        [(id)pageView prepareForReuse];
-    }
-    
-    // Pull it out of the scroll view
-    [pageView removeFromSuperview];
+    if (self.isDirectionReversed && !self.hasNextPage) { return; }
+    [self turnToPageAtContentXOffset:0.0f animated:animated];
 }
+
+- (void)turnToRightPageAnimated:(BOOL)animated
+{
+    if (!self.isDirectionReversed && !self.hasNextPage) { return; }
+    [self turnToPageAtContentXOffset:self.scrollView.contentSize.width - self.scrollViewPageWidth
+                            animated:animated];
+}
+
+#pragma mark - Scroll View Observing -
 
 - (void)observeValueForKeyPath:(NSString *)keyPath
                       ofObject:(id)object
