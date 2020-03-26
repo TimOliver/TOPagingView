@@ -260,25 +260,38 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
         return;
     }
     
+    BOOL isLeftDirection = (self.pageScrollDirection == TODynamicPageViewDirectionRightToLeft);
+    
     CGRect bounds = self.bounds;
     
     CGFloat halfWidth = bounds.size.width * 0.5f;
     CGPoint offset = scrollView.contentOffset;
     
-    // Check if we over-stepped to the next page
-    CGFloat nextPageThreshold = CGRectGetMaxX(self.currentPageView.frame)
-                                                        - (halfWidth);
-    if (offset.x > nextPageThreshold) {
+    // Configure two blocks we can dynamically call depending on direction
+    void (^goToNextPageBlock)(void) = ^{
         [self transitionOverToNextPage];
         self.hasPreviousPage = YES;
+    };
+    
+    void (^goToPreviousPageBlock)(void) = ^{
+        [self transitionOverToPreviousPage];
+        self.hasNextPage = YES;
+    };
+    
+    // Check if we over-stepped to the next page
+    CGFloat rightPageThreshold = CGRectGetMaxX(self.currentPageView.frame)
+                                                        - (halfWidth);
+    if (offset.x > rightPageThreshold) {
+        if (isLeftDirection) { goToPreviousPageBlock(); }
+        else { goToNextPageBlock(); }
         return;
     }
     
-    CGFloat previousPageThreshold = CGRectGetMinX(self.currentPageView.frame)
-                                                                - (halfWidth + _pageSpacing);
-    if (offset.x < previousPageThreshold) {
-        [self transitionOverToPreviousPage];
-        self.hasNextPage = YES;
+    CGFloat leftPageThreshold = CGRectGetMinX(self.currentPageView.frame)
+                                            - (halfWidth + _pageSpacing);
+    if (offset.x < leftPageThreshold) {
+        if (isLeftDirection) { goToNextPageBlock(); }
+        else { goToPreviousPageBlock(); }
         return;
     }
 }
