@@ -460,7 +460,21 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 {
     if (pageView == nil) { return; }
     
+    // Add the view to the scroll view
     [self.scrollView addSubview:pageView];
+    
+    // If it has a unique identifier, store it so we can refer to it easily
+    if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
+        NSString *uniqueIdentifier = [(id)pageView uniqueIdentifier];
+        
+        // Lazily create the dictionary as needed
+        if (self.uniqueIdentifierPages == nil) {
+            self.uniqueIdentifierPages = [NSMutableDictionary dictionary];
+        }
+        
+        // Add to the dictionary
+        self.uniqueIdentifierPages[uniqueIdentifier] = pageView;
+    }
     
     // Remove it from the pool of recycled pages
     NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
@@ -475,7 +489,12 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
     [self.queuedPages[pageIdentifier] addObject:pageView];
     
-    // If the class supports it, clean it up
+    // If the page has a unique identifier, remove it from the dictionary
+    if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
+        [self.uniqueIdentifierPages removeObjectForKey:[(id)pageView uniqueIdentifier]];
+    }
+    
+    // If the class supports the clean up method, clean it up now
     if ([pageView respondsToSelector:@selector(prepareForReuse)]) {
         [(id)pageView prepareForReuse];
     }
@@ -493,6 +512,11 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 }
 
 #pragma mark - Accessors -
+
+- (nullable __kindof UIView *)pageViewForUniqueIdentifier:(NSString *)identifier
+{
+    return self.uniqueIdentifierPages[identifier];
+}
 
 - (NSArray<UIView *> *)visiblePages
 {
