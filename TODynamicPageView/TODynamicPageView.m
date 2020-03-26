@@ -332,9 +332,6 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     }
     
     BOOL isReversed = self.isDirectionReversed;
-    CGRect bounds = self.bounds;
-    
-    CGFloat halfWidth = bounds.size.width * 0.5f;
     CGPoint offset = scrollView.contentOffset;
     CGFloat segmentWidth = self.scrollViewPageWidth;
     
@@ -578,6 +575,33 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     if (!self.isDirectionReversed && !self.hasNextPage) { return; }
     [self turnToPageAtContentXOffset:self.scrollView.contentSize.width - self.scrollViewPageWidth
                             animated:animated];
+}
+
+#pragma mark - Keyboard Control -
+
+- (BOOL)canBecomeFirstResponder { return YES; }
+
+- (NSArray<UIKeyCommand *> *)keyCommands
+{
+    SEL selector = @selector(arrowKeyPressed:);
+    UIKeyCommand *leftArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow
+                                                         modifierFlags:0
+                                                                action:selector];
+    UIKeyCommand *rightArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow
+                                                          modifierFlags:0
+                                                                 action:selector];
+    
+    return @[leftArrowCommand, rightArrowCommand];
+}
+
+- (void)arrowKeyPressed:(UIKeyCommand *)command
+{
+    if ([command.input isEqualToString:UIKeyInputLeftArrow]) {
+        [self turnToLeftPageAnimated:YES];
+    }
+    else if ([command.input isEqualToString:UIKeyInputRightArrow]) {
+        [self turnToRightPageAnimated:YES];
+    }
 }
 
 #pragma mark - Scroll View Observing -
