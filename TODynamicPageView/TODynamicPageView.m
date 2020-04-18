@@ -526,56 +526,34 @@ static CGFloat const kTODynamicPageViewPageSlotCount = 3.0f;
     BOOL leftDirection = (direction == TODynamicPageViewDirectionRightToLeft);
     
     CGFloat segmentWidth = self.scrollViewPageWidth;
-    CGFloat halfSegment = segmentWidth * 0.5f;
     CGFloat contentWidth = self.scrollView.contentSize.width;
     CGFloat halfSpacing = self.pageSpacing * 0.5f;
-    CGPoint contentOffset = self.scrollView.contentOffset;
+    CGFloat rightOffset = (contentWidth - segmentWidth) + halfSpacing;
     
     // Move the next page to the left if direction is left, or vice versa
     if (self.nextPageView) {
         CGRect frame = self.nextPageView.frame;
         if (leftDirection) { frame.origin.x = halfSpacing; }
-        else { frame.origin.x = (contentWidth - segmentWidth) + halfSpacing; }
+        else { frame.origin.x = rightOffset; }
         self.nextPageView.frame = frame;
     }
     
     // Move the previous page to the right if direction is left, or vice versa
     if (self.previousPageView) {
         CGRect frame = self.previousPageView.frame;
-        if (leftDirection) { frame.origin.x = (contentWidth - segmentWidth) + halfSpacing; }
+        if (leftDirection) { frame.origin.x = rightOffset; }
         else { frame.origin.x = halfSpacing; }
         self.previousPageView.frame = frame;
     }
     
-//    // Move the current page to be adjacent to whichever view is visible
-//    CGRect frame = self.currentPageView.frame;
-//    if (self.nextPageView) {
-//        CGRect nextFrame = self.nextPageView.frame;
-//        if (leftDirection) { frame.origin.x = segmentWidth + halfSpacing; }
-//        else { frame.origin.x = CGRectGetMinX(nextFrame) - segmentWidth; }
-//    }
-//    else if (self.previousPageView) {
-//        CGRect previousFrame = self.previousPageView.frame;
-//        if (leftDirection) { frame.origin.x = CGRectGetMinX(previousFrame) - segmentWidth; }
-//        else { frame.origin.x = segmentWidth + halfSpacing; }
-//    }
-//    self.currentPageView.frame = frame;
-    
     // Flip the content insets if we were potentially at the end of the scroll view
-//    UIEdgeInsets insets = self.scrollView.contentInset;
-//    CGFloat leftInset = insets.left;
-//    insets.left = insets.right;
-//    insets.right = leftInset;
-//    self.scrollView.contentInset = insets;
-    
-    // Flip the current scroll position, based off the middle of the scrolling region
-//    CGFloat contentMiddle = contentWidth * 0.5f;
-//    CGFloat contentMidOffset = contentOffset.x + (segmentWidth * 0.5f);
-//    CGFloat distance = contentMidOffset - contentMiddle;
-//    
-//    CGPoint newOffset = self.scrollView.contentOffset;
-//    newOffset.x = (contentMiddle - distance) - halfSegment;
-//    self.scrollView.contentOffset = newOffset;
+    UIEdgeInsets insets = self.scrollView.contentInset;
+    CGFloat leftInset = insets.left;
+    insets.left = insets.right;
+    insets.right = leftInset;
+    [self performWithoutLayout:^{
+        self.scrollView.contentInset = insets;
+    }];
 }
 
 - (void)setNextPageEnabled:(BOOL)enabled
