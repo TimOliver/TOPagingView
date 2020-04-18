@@ -25,6 +25,9 @@
 /** For pages that don't specify an identifier, this string will be used. */
 static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageView.DefaultPageIdentifier";
 
+/** There are always 3 slots, with content insetting used to block pages on either side. */
+static CGFloat const kTODynamicPageViewPageSlotCount = 3.0f;
+
 @interface TODynamicPageView ()
 
 /** The scroll view managed by this container */
@@ -40,6 +43,11 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 @property (nonatomic, weak, readwrite) UIView *currentPageView;
 @property (nonatomic, weak, readwrite) UIView *nextPageView;
 @property (nonatomic, weak, readwrite) UIView *previousPageView;
+
+/** The logical frame values for laying out each of the frames. */
+@property (nonatomic, readonly) CGRect currentPageViewFrame;
+@property (nonatomic, readonly) CGRect nextPageViewFrame;
+@property (nonatomic, readonly) CGRect previousPageViewFrame;
 
 /** Once checked, if a next/previous page isn't forth-coming, hold a flag so we don't pummel the data source. */
 @property (nonatomic, assign) BOOL hasNextPage;
@@ -119,6 +127,7 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     [super layoutSubviews];
     
     CGRect bounds = self.bounds;
+    UIScrollView *scrollView = self.scrollView;
     
     // Disable the observer while we update the scroll view
     self.disableLayout = YES;
@@ -126,21 +135,20 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     // Lay-out the scroll view.
     // In order to allow spaces between the pages, the scroll
     // view needs to be slightly wider than this container view.
-    self.scrollView.frame = CGRectIntegral(CGRectInset(bounds,
+    scrollView.frame = CGRectIntegral(CGRectInset(bounds,
                                                        -(_pageSpacing * 0.5f),
                                                        0.0f));
     
     // In case the width changed, re-set the content size and offset to match
-    CGFloat oldContentWidth = self.scrollView.contentSize.width;
-    CGFloat oldOffset = self.scrollView.contentOffset.x;
+    CGFloat oldContentWidth = scrollView.contentSize.width;
+    CGFloat oldOffset       = scrollView.contentOffset.x;
     
     // Update the content size of the scroll view
-    CGFloat contentWidth = self.visiblePages.count * self.scrollViewPageWidth;
-    self.scrollView.contentSize = (CGSize){contentWidth, bounds.size.height };
+    [self updateContentSize];
     
     // Update the content offset to match the amount that the width changed
-    CGFloat contentOffset = oldOffset * (contentWidth / oldContentWidth);
-    self.scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
+    CGFloat contentOffset = oldOffset * (scrollView.contentSize.width / oldContentWidth);
+    scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
     
     // Re-enable the observer
     self.disableLayout = NO;
@@ -184,7 +192,7 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 {
     // With the up-to-three pages set, calculate the scrolling content size
     CGSize contentSize = self.bounds.size;
-    contentSize.width = (contentSize.width + _pageSpacing) * self.visiblePages.count;
+    contentSize.width = self.scrollViewPageWidth * kTODynamicPageViewPageSlotCount;
     self.scrollView.contentSize = contentSize;
 }
 
@@ -352,12 +360,10 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     // Configure two blocks we can dynamically call depending on direction
     void (^goToNextPageBlock)(void) = ^{
         [self transitionOverToNextPage];
-        self.hasPreviousPage = YES;
     };
     
     void (^goToPreviousPageBlock)(void) = ^{
         [self transitionOverToPreviousPage];
-        self.hasNextPage = YES;
     };
     
     // Check if we over-stepped to the next page
@@ -420,74 +426,98 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 
 - (void)transitionOverToNextPage
 {
+    // If we moved over to the threshold of the next page,
+    // re-enable the previous page
+    if (!self.hasPreviousPage) {
+        self.hasPreviousPage = YES;
+        [self setPreviousPageEnabled:YES];
+    }
+    
     // Don't start churning if we already confirmed there is no page after this.
     if (!_hasNextPage) { return; }
     
-    // Query the data source for the next page, and exit out if there is no more page data
+    // Query the data source for the next page
     UIView *nextPage = [self.dataSource dynamicPageView:self
                               nextPageViewAfterPageView:self.nextPageView];
-    if (nextPage == nil) {
-        _hasNextPage = NO;
-        return;
-    }
     
-    // Insert the new page object
+    // Insert the new page object (Will fall through if nil)
     [self insertPageView:nextPage];
     
-    // Shift all of the content over to make room for the new page
-    nextPage.frame = self.nextPageView.frame;
-    self.nextPageView.frame = self.currentPageView.frame;
-    self.currentPageView.frame = self.previousPageView.frame;
-    
-    // Remove the previous view
+    // Reclaim the previous view
     [self reclaimPageView:self.previousPageView];
     
-    // Update all of the references
+    // Update all of the references by pushing each view back
     self.previousPageView = self.currentPageView;
     self.currentPageView = self.nextPageView;
     self.nextPageView = nextPage;
+    
+    // Re-position every view into the appropriate slot
+    self.nextPageView.frame = self.nextPageViewFrame;
+    self.currentPageView.frame = self.currentPageViewFrame;
+    self.previousPageView.frame = self.previousPageViewFrame;
     
     // Move the scroll view back one segment
     CGPoint contentOffset = self.scrollView.contentOffset;
     if (self.isDirectionReversed) { contentOffset.x += self.scrollViewPageWidth; }
     else { contentOffset.x -= self.scrollViewPageWidth; }
-    self.scrollView.contentOffset = contentOffset;
+    [self performWithoutLayout:^{
+        self.scrollView.contentOffset = contentOffset;
+    }];
+    
+    // If the next page ended up being nil,
+    // set a flag to prevent churning, and inset the scroll inset
+    if (nextPage == nil) {
+        self.hasNextPage = NO;
+        [self setNextPageEnabled:NO];
+    }
 }
 
 - (void)transitionOverToPreviousPage
 {
+    // If we confirmed we moved away from the next page, re-enable
+    // so we can query again next time
+    if (!self.hasNextPage) {
+        self.hasNextPage = YES;
+        [self setNextPageEnabled:YES];
+    }
+        
     // Don't start churning if we already confirmed there is no page before this.
     if (!_hasPreviousPage) { return; }
     
     // Query the data source for the previous page, and exit out if there is no more page data
     UIView *previousPage = [self.dataSource dynamicPageView:self
                              previousPageViewBeforePageView:self.previousPageView];
-    if (previousPage == nil) {
-        _hasPreviousPage = NO;
-        return;
-    }
     
-    // Insert the new page object
+    // Insert the new page object (Will fall through if nil)
     [self insertPageView:previousPage];
     
-    // Shift all of the content over to make room for the new page
-    previousPage.frame = self.previousPageView.frame;
-    self.previousPageView.frame = self.currentPageView.frame;
-    self.currentPageView.frame = self.nextPageView.frame;
-    
-    // Remove the next view that has been moved out
+    // Reclaim the previous view
     [self reclaimPageView:self.nextPageView];
-    
-    // Update all of the references
+  
+    // Update all of the references by pushing each view forward
     self.nextPageView = self.currentPageView;
     self.currentPageView = self.previousPageView;
     self.previousPageView = previousPage;
+    
+    // Re-position every view into the appropriate slot
+    self.previousPageView.frame = self.previousPageViewFrame;
+    self.currentPageView.frame = self.currentPageViewFrame;
+    self.nextPageView.frame = self.nextPageViewFrame;
     
     // Move the scroll view forward one segment
     CGPoint contentOffset = self.scrollView.contentOffset;
     if (self.isDirectionReversed) { contentOffset.x -= self.scrollViewPageWidth; }
     else { contentOffset.x += self.scrollViewPageWidth; }
-    self.scrollView.contentOffset = contentOffset;
+    [self performWithoutLayout:^{
+        self.scrollView.contentOffset = contentOffset;
+    }];
+    
+    // If the previous page ended up being nil,
+    // set a flag to prevent churning, and inset the scroll inset
+    if (previousPage == nil) {
+        self.hasPreviousPage = NO;
+        [self setPreviousPageEnabled:NO];
+    }
 }
 
 - (void)rearrangePagesForScrollDirection:(TODynamicPageViewDirection)direction
@@ -499,6 +529,7 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
     CGFloat halfSegment = segmentWidth * 0.5f;
     CGFloat contentWidth = self.scrollView.contentSize.width;
     CGFloat halfSpacing = self.pageSpacing * 0.5f;
+    CGPoint contentOffset = self.scrollView.contentOffset;
     
     // Move the next page to the left if direction is left, or vice versa
     if (self.nextPageView) {
@@ -516,28 +547,75 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
         self.previousPageView.frame = frame;
     }
     
-    // Move the current page to be adjacent to whichever view is visible
-    CGRect frame = self.currentPageView.frame;
-    if (self.nextPageView) {
-        CGRect nextFrame = self.nextPageView.frame;
-        if (leftDirection) { frame.origin.x = segmentWidth + halfSpacing; }
-        else { frame.origin.x = CGRectGetMinX(nextFrame) - segmentWidth; }
-    }
-    else if (self.previousPageView) {
-        CGRect previousFrame = self.previousPageView.frame;
-        if (leftDirection) { frame.origin.x = CGRectGetMinX(previousFrame) - segmentWidth; }
-        else { frame.origin.x = segmentWidth + halfSpacing; }
-    }
-    self.currentPageView.frame = frame;
+//    // Move the current page to be adjacent to whichever view is visible
+//    CGRect frame = self.currentPageView.frame;
+//    if (self.nextPageView) {
+//        CGRect nextFrame = self.nextPageView.frame;
+//        if (leftDirection) { frame.origin.x = segmentWidth + halfSpacing; }
+//        else { frame.origin.x = CGRectGetMinX(nextFrame) - segmentWidth; }
+//    }
+//    else if (self.previousPageView) {
+//        CGRect previousFrame = self.previousPageView.frame;
+//        if (leftDirection) { frame.origin.x = CGRectGetMinX(previousFrame) - segmentWidth; }
+//        else { frame.origin.x = segmentWidth + halfSpacing; }
+//    }
+//    self.currentPageView.frame = frame;
+    
+    // Flip the content insets if we were potentially at the end of the scroll view
+//    UIEdgeInsets insets = self.scrollView.contentInset;
+//    CGFloat leftInset = insets.left;
+//    insets.left = insets.right;
+//    insets.right = leftInset;
+//    self.scrollView.contentInset = insets;
     
     // Flip the current scroll position, based off the middle of the scrolling region
-    CGFloat contentMiddle = contentWidth * 0.5f;
-    CGFloat contentOffset = self.scrollView.contentOffset.x + (segmentWidth * 0.5f);
-    CGFloat distance = contentOffset - contentMiddle;
+//    CGFloat contentMiddle = contentWidth * 0.5f;
+//    CGFloat contentMidOffset = contentOffset.x + (segmentWidth * 0.5f);
+//    CGFloat distance = contentMidOffset - contentMiddle;
+//    
+//    CGPoint newOffset = self.scrollView.contentOffset;
+//    newOffset.x = (contentMiddle - distance) - halfSegment;
+//    self.scrollView.contentOffset = newOffset;
+}
+
+- (void)setNextPageEnabled:(BOOL)enabled
+{
+    if (self.isDirectionReversed) {
+        [self setPageSlotEnabled:enabled isLeft:YES];
+    }
+    else {
+        [self setPageSlotEnabled:enabled isLeft:NO];
+    }
+}
+
+- (void)setPreviousPageEnabled:(BOOL)enabled
+{
+    if (!self.isDirectionReversed) {
+        [self setPageSlotEnabled:enabled isLeft:YES];
+    }
+    else {
+        [self setPageSlotEnabled:enabled isLeft:NO];
+    }
+}
+
+- (void)setPageSlotEnabled:(BOOL)enabled isLeft:(BOOL)isLeft
+{
+    // Work out what the value should be
+    CGFloat value = enabled ? 0.0f : -self.scrollViewPageWidth;
     
-    CGPoint newOffset = self.scrollView.contentOffset;
-    newOffset.x = (contentMiddle - distance) - halfSegment;
-    self.scrollView.contentOffset = newOffset;
+    // Capture the content offset since changing the inset will change it
+    CGPoint contentOffset = self.scrollView.contentOffset;
+    
+    // Get the insets and apply the new value
+    UIEdgeInsets insets = self.scrollView.contentInset;
+    if (isLeft) { insets.left = value; }
+    else { insets.right = value; }
+    
+    // Set the inset and then restore the offset
+    [self performWithoutLayout:^{
+        self.scrollView.contentInset = insets;
+        self.scrollView.contentOffset = contentOffset;
+    }];
 }
 
 #pragma mark - External Page Control -
@@ -591,6 +669,16 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
                             animated:animated];
 }
 
+- (void)jumpToNextPageWithBlock:(UIView * (^)(TODynamicPageView *dynamicPageView, UIView *currentView))pageBlock
+{
+    
+}
+
+- (void)jumpToPreviousPageWithBlock:(UIView * (^)(TODynamicPageView *dynamicPageView, UIView *currentView))pageBlock
+{
+    
+}
+
 #pragma mark - Keyboard Control -
 
 - (BOOL)canBecomeFirstResponder { return YES; }
@@ -619,6 +707,13 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 }
 
 #pragma mark - Scroll View Observing -
+
+- (void)performWithoutLayout:(void (^)(void))block
+{
+    self.disableLayout = YES;
+    if (block) { block(); }
+    self.disableLayout = NO;
+}
 
 - (void)observeValueForKeyPath:(NSString *)keyPath
                       ofObject:(id)object
@@ -659,6 +754,38 @@ static NSString * const kTODynamicPageViewDefaultIdentifier = @"TODynamicPageVie
 - (BOOL)isDirectionReversed
 {
     return (self.pageScrollDirection == TODynamicPageViewDirectionRightToLeft);
+}
+
+- (CGRect)currentPageViewFrame
+{
+    // Current page is always in the middle slot
+    CGRect frame = self.bounds;
+    frame.origin.x = self.scrollViewPageWidth + (_pageSpacing * 0.5f);
+    return frame;
+}
+
+- (CGRect)nextPageViewFrame
+{
+    // Next frame is on the right side when non-reversed,
+    // and on the right side when reversed
+    CGRect frame = self.bounds;
+    if (!self.isDirectionReversed) {
+        frame.origin.x = (self.scrollViewPageWidth * 2.0f);
+    }
+    frame.origin.x += (_pageSpacing * 0.5f);
+    return frame;
+}
+
+- (CGRect)previousPageViewFrame
+{
+    // Previous frame is on the left side when non-reversed,
+    // and on the right side when reversed
+    CGRect frame = self.bounds;
+    if (self.isDirectionReversed) {
+        frame.origin.x = (self.scrollViewPageWidth * 2.0f);
+    }
+    frame.origin.x += (_pageSpacing * 0.5f);
+    return frame;
 }
 
 @end
