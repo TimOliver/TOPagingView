@@ -135,7 +135,7 @@ typedef enum {
 /** Reload the view from scratch and re-layout all pages. */
 - (void)reload;
 
-/** Perform a chcek in needing to add a previous or next page that didn't previously exist. */
+/** Perform a check in needing to add a previous or next page that didn't previously exist. */
 - (void)setNeedsPageUpdate;
 
 /** Returns a page view from the default queue of pages, ready for re-use. */
@@ -163,10 +163,12 @@ typedef enum {
 - (void)turnToRightPageAnimated:(BOOL)animated;
 
 /** Jump ahead to an arbitry next page view, using the provided block to generate the page. */
-- (void)jumpToNextPageWithBlock:(UIView * (^)(TODynamicPageView *dynamicPageView, UIView *currentView))pageBlock;
+- (void)jumpToNextPageAnimated:(BOOL)animated
+                     withBlock:(UIView * (^)(TODynamicPageView *dynamicPageView, UIView *currentView))pageBlock;
 
 /** Jump backwards to an arbitrary previous page view, using the provided block to generate the page. */
-- (void)jumpToPreviousPageWithBlock:(UIView * (^)(TODynamicPageView *dynamicPageView, UIView *currentView))pageBlock;
+- (void)jumpToPreviousPageAnimated:(BOOL)animated
+                         withBlock:(UIView * (^)(TODynamicPageView *dynamicPageView, UIView *currentView))pageBlock;
 
 @end
 

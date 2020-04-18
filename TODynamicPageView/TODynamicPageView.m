@@ -281,7 +281,7 @@ static CGFloat const kTODynamicPageViewPageSlotCount = 3.0f;
     if (self.dataSource == nil) { return; }
     
     // Remove all currently visible pages from the scroll views
-    for (UIView *view in self.scrollView.subviews) { [view removeFromSuperview]; }
+    for (UIView *view in self.visiblePages) { [self reclaimPageView:view]; }
     
     // Reset the content size of the scroll view content
     self.scrollView.contentSize = CGSizeZero;
@@ -291,6 +291,37 @@ static CGFloat const kTODynamicPageViewPageSlotCount = 3.0f;
     
     // Perform the initial layout of pages
     [self layoutPages];
+}
+
+- (void)setNeedsPageUpdate
+{
+    if (self.dataSource == nil) { return; }
+    
+    // If there currently isn't a previous page, check if there is one now
+    if (!self.hasPreviousPage) {
+        UIView *previousPage = [self.dataSource dynamicPageView:self
+                                 previousPageViewBeforePageView:self.currentPageView];
+        // Add the page view to the hierarchy
+        if (previousPage) {
+            [self insertPageView:previousPage];
+            previousPage.frame = self.previousPageViewFrame;
+            [self setPreviousPageEnabled:YES];
+            self.hasPreviousPage = YES;
+        }
+    }
+    
+    // If there currently isn't a next page, check if there is one now
+    if (!self.hasNextPage) {
+        UIView *nextPage = [self.dataSource dynamicPageView:self
+                                  nextPageViewAfterPageView:self.currentPageView];
+        // Add the page view to the hierarchy
+        if (nextPage) {
+            [self insertPageView:nextPage];
+            nextPage.frame = self.nextPageViewFrame;
+            [self setNextPageEnabled:YES];
+            self.hasNextPage = YES;
+        }
+    }
 }
 
 - (void)insertPageView:(UIView *)pageView
@@ -674,14 +705,50 @@ static CGFloat const kTODynamicPageViewPageSlotCount = 3.0f;
                             animated:animated];
 }
 
-- (void)jumpToNextPageWithBlock:(UIView * (^)(TODynamicPageView *dynamicPageView, UIView *currentView))pageBlock
+- (void)jumpToNextPageAnimated:(BOOL)animated
+                     withBlock:(UIView * (^)(TODynamicPageView *dynamicPageView, UIView *currentView))pageBlock
 {
+    // Work out the direction we'll scroll in
+    CGFloat offset = 0.0f;
+    if (!self.isDirectionReversed) { offset = self.scrollViewPageWidth * 2.0f; }
     
+    // Remove the page that this page will be replacing
+    [self reclaimPageView:self.nextPageView];
+    
+    // Get the new page
+    self.nextPageView = pageBlock(self, self.currentPageView);
+    
+    // Add it to the scroll view
+    [self insertPageView:self.nextPageView];
+    
+    // Set its frame to its placement
+    self.nextPageView.frame = self.nextPageViewFrame;
+    
+    // Set the offset to trigger the appropriate layout
+    [self turnToPageAtContentXOffset:offset animated:animated];
 }
 
-- (void)jumpToPreviousPageWithBlock:(UIView * (^)(TODynamicPageView *dynamicPageView, UIView *currentView))pageBlock
+- (void)jumpToPreviousPageAnimated:(BOOL)animated
+                         withBlock:(UIView * (^)(TODynamicPageView *dynamicPageView, UIView *currentView))pageBlock
 {
+    // Work out the direction we'll scroll in
+    CGFloat offset = 0.0f;
+    if (self.isDirectionReversed) { offset = self.scrollViewPageWidth * 2.0f; }
     
+    // Remove the page that this page will be replacing
+    [self reclaimPageView:self.previousPageView];
+    
+    // Get the new page
+    self.previousPageView = pageBlock(self, self.currentPageView);
+    
+    // Add it to the scroll view
+    [self insertPageView:self.previousPageView];
+    
+    // Set its frame to its placement
+    self.previousPageView.frame = self.previousPageViewFrame;
+
+    // Set the offset to trigger the appropriate layout
+    [self turnToPageAtContentXOffset:offset animated:animated];
 }
 
 #pragma mark - Keyboard Control -
