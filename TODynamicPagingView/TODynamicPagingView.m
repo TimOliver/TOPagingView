@@ -109,7 +109,9 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     scrollView.pagingEnabled = YES;
     
     // Disable auto status bar insetting
-    scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    if (@available(iOS 11.0, *)) {
+        scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
     
     // Never show the indicators
     scrollView.showsHorizontalScrollIndicator = NO;
