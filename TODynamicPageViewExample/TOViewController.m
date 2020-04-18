@@ -48,11 +48,21 @@
 {
     CGPoint tapPoint = [recgonizer locationInView:self.view];
     CGFloat halfBoundWidth = CGRectGetWidth(self.view.bounds) / 2.0f;
-    
+  
     if (tapPoint.x < halfBoundWidth) {
+//        [self.pageView jumpToPreviousPageAnimated:YES withBlock:^UIView *(TODynamicPageView *dynamicPageView, UIView *currentView) {
+//            TOTestPageView *pageView = [dynamicPageView dequeueReusablePageView];
+//            pageView.number = rand() % 100;
+//            return pageView;
+//        }];
         [self.pageView turnToLeftPageAnimated:YES];
     }
     else {
+//        [self.pageView jumpToNextPageAnimated:YES withBlock:^UIView *(TODynamicPageView *dynamicPageView, UIView *currentView) {
+//            TOTestPageView *pageView = [dynamicPageView dequeueReusablePageView];
+//            pageView.number = rand() % 100;
+//            return pageView;
+//        }];
         [self.pageView turnToRightPageAnimated:YES];
     }
 }
