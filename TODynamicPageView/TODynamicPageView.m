@@ -600,18 +600,45 @@ static CGFloat const kTODynamicPageViewPageSlotCount = 3.0f;
 
 - (void)turnToPageAtContentXOffset:(CGFloat)offset animated:(BOOL)animated
 {
+    UIScrollView *scrollView = self.scrollView;
+    
+    // If we're not animating, re-enable layout,
+    // and then set the offset to the target
     if (animated == NO) {
         self.disableLayout = NO;
-        self.scrollView.contentOffset = (CGPoint){offset, 0.0f};
+        scrollView.contentOffset = (CGPoint){offset, 0.0f};
         return;
     }
     
-    // If we're already in an animation, cancel it out
-    // and reset all of the content as if the animation completed
-    if (self.scrollView.layer.animationKeys.count) {
-        [self.scrollView.layer removeAllAnimations];
+    // If we're already in an animation, all of the values will already
+    // be set to their destinations, so before we cancel the animation below,
+    // force a re-layout so everything is in the right place.
+    if (scrollView.layer.animationKeys.count) {
         self.disableLayout = NO;
         [self layoutPages];
+    }
+    
+    // If a layout pass did happen above, then if we're reaching the end of the pages,
+    // the scroll view will have its insets set at this point.
+    // To stop animating past the last page, check if our destination offset is inside
+    // the scroll view, and exit out if it is
+    if ((offset - FLT_EPSILON <= self.scrollViewPageWidth &&
+        scrollView.contentInset.left < -FLT_EPSILON)
+        ||
+        (offset + FLT_EPSILON >= self.scrollViewPageWidth &&
+         scrollView.contentInset.right < -FLT_EPSILON))
+    {
+        self.disableLayout = NO;
+        return;
+    }
+    
+    // If the offset didn't happen to be inside an inset, and an animation
+    // is still in progress, cancel it out now.
+    // Doing it this way, if there was an animation in progress, but the next page
+    // was going to be the last one anyway, this lets the final animation finish playing
+    // out, preventing an abrupt snap to the last page.
+    if (scrollView.layer.animationKeys.count) {
+        [scrollView.layer removeAllAnimations];
     }
     
     // Disable layout during this animation as we're controlling the whole stack
@@ -624,7 +651,7 @@ static CGFloat const kTODynamicPageViewPageSlotCount = 3.0f;
           initialSpringVelocity:2.5f
                         options:UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        self.scrollView.contentOffset = (CGPoint){offset, 0.0f};
+        scrollView.contentOffset = (CGPoint){offset, 0.0f};
     } completion:^(BOOL finished) {
         // If we canceled this animation,
         // disregard since we'll manually restore after
