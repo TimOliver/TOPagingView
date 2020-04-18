@@ -1,15 +1,15 @@
 //
 //  TOTestPageView.m
-//  TODynamicPageViewExample
+//  TODynamicPagingViewExample
 //
 //  Created by Tim Oliver on 2020/03/25.
 //  Copyright © 2020 Tim Oliver. All rights reserved.
 //
 
 #import "TOTestPageView.h"
-#import "TODynamicPageView.h"
+#import "TODynamicPagingView.h"
 
-@interface TOTestPageView () <TODynamicPageViewPageProtocol>
+@interface TOTestPageView () <TODynamicPagingViewPageProtocol>
 
 @property (nonatomic, strong) UILabel *numberLabel;
 

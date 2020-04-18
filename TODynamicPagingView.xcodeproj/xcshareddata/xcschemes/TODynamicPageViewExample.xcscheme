@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "22C3161A242899AA0063F6A6"
-               BuildableName = "TODynamicPageViewExample.app"
-               BlueprintName = "TODynamicPageViewExample"
-               ReferencedContainer = "container:TODynamicPageView.xcodeproj">
+               BuildableName = "TODynamicPagingViewExample.app"
+               BlueprintName = "TODynamicPagingViewExample"
+               ReferencedContainer = "container:TODynamicPagingView.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "22C31635242899AB0063F6A6"
-               BuildableName = "TODynamicPageViewTests.xctest"
-               BlueprintName = "TODynamicPageViewTests"
-               ReferencedContainer = "container:TODynamicPageView.xcodeproj">
+               BuildableName = "TODynamicPagingViewTests.xctest"
+               BlueprintName = "TODynamicPagingViewTests"
+               ReferencedContainer = "container:TODynamicPagingView.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "22C3161A242899AA0063F6A6"
-            BuildableName = "TODynamicPageViewExample.app"
-            BlueprintName = "TODynamicPageViewExample"
-            ReferencedContainer = "container:TODynamicPageView.xcodeproj">
+            BuildableName = "TODynamicPagingViewExample.app"
+            BlueprintName = "TODynamicPagingViewExample"
+            ReferencedContainer = "container:TODynamicPagingView.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "22C3161A242899AA0063F6A6"
-            BuildableName = "TODynamicPageViewExample.app"
-            BlueprintName = "TODynamicPageViewExample"
-            ReferencedContainer = "container:TODynamicPageView.xcodeproj">
+            BuildableName = "TODynamicPagingViewExample.app"
+            BlueprintName = "TODynamicPagingViewExample"
+            ReferencedContainer = "container:TODynamicPagingView.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
