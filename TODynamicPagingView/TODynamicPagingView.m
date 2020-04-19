@@ -44,6 +44,9 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 @property (nonatomic, weak, readwrite) UIView *nextPageView;
 @property (nonatomic, weak, readwrite) UIView *previousPageView;
 
+/** The logical frame for the scroll view given the current bounds */
+@property (nonatomic, readonly) CGRect scrollViewFrame;
+
 /** The logical frame values for laying out each of the frames. */
 @property (nonatomic, readonly) CGRect currentPageViewFrame;
 @property (nonatomic, readonly) CGRect nextPageViewFrame;
@@ -105,6 +108,10 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 {
     UIScrollView *scrollView = self.scrollView;
     
+    // Set the frame of the scrollview now so we can start
+    // calculating the inset
+    scrollView.frame = self.scrollViewFrame;
+    
     // Set the scroll behaviour to snap between pages
     scrollView.pagingEnabled = YES;
     
@@ -127,29 +134,27 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    
-    CGRect bounds = self.bounds;
+
     UIScrollView *scrollView = self.scrollView;
     
     // Disable the observer while we update the scroll view
     self.disableLayout = YES;
     
+    // In case the width is changing, re-set the content size and offset to match
+    CGFloat oldContentWidth = scrollView.contentSize.width;
+    CGFloat oldOffsetMid    = scrollView.contentOffset.x + (scrollView.frame.size.width * 0.5f);
+    
     // Lay-out the scroll view.
     // In order to allow spaces between the pages, the scroll
     // view needs to be slightly wider than this container view.
-    scrollView.frame = CGRectIntegral(CGRectInset(bounds,
-                                                       -(_pageSpacing * 0.5f),
-                                                       0.0f));
-    
-    // In case the width changed, re-set the content size and offset to match
-    CGFloat oldContentWidth = scrollView.contentSize.width;
-    CGFloat oldOffset       = scrollView.contentOffset.x;
+    scrollView.frame = self.scrollViewFrame;
     
     // Update the content size of the scroll view
     [self updateContentSize];
     
     // Update the content offset to match the amount that the width changed
-    CGFloat contentOffset = oldOffset * (scrollView.contentSize.width / oldContentWidth);
+    CGFloat newOffsetMid = oldOffsetMid * (scrollView.contentSize.width / oldContentWidth);
+    CGFloat contentOffset = newOffsetMid - (scrollView.frame.size.width * 0.5f);
     scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
     
     // Re-enable the observer
@@ -828,6 +833,12 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 - (BOOL)isDirectionReversed
 {
     return (self.pageScrollDirection == TODynamicPagingViewDirectionRightToLeft);
+}
+
+- (CGRect)scrollViewFrame
+{
+    CGRect frame = CGRectInset(self.bounds, -(_pageSpacing * 0.5f), 0.0f);
+    return CGRectIntegral(frame);
 }
 
 - (CGRect)currentPageViewFrame
