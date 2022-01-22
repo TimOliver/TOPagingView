@@ -20,9 +20,12 @@
     self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     self.window.rootViewController = [[TOViewController alloc] init];
     [self.window makeKeyAndVisible];
-    
+
+    if (@available(iOS 13.0, *)) {
+        self.window.windowScene.titlebar.titleVisibility = UITitlebarTitleVisibilityHidden;
+    }
+
     return YES;
 }
-
 
 @end
