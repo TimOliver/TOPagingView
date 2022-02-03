@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name     = 'TOPagingView'
-  s.version  = '1.0.1'
+  s.version  = '1.1.0'
   s.license  =  { :type => 'MIT', :file => 'LICENSE' }
   s.summary  = 'A paging scroll view that can handle arbitrary numbers of page views at runtime.'
   s.homepage = 'https://github.com/TimOliver/TOPagingView'

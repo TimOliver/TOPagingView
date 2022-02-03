@@ -30,7 +30,7 @@
 /* Begin PBXFileReference section */
 		227BEDF927AC1867009D6B6D /* CHANGELOG.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		227BEDFB27AC186F009D6B6D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		227BEDFC27AC1879009D6B6D /* TODynamicPagingView.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = TODynamicPagingView.podspec; sourceTree = "<group>"; };
+		227BEDFC27AC1879009D6B6D /* TOPagingView.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = TOPagingView.podspec; sourceTree = "<group>"; };
 		22ADED22242B2ADD004A7854 /* TOTestPageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOTestPageView.h; sourceTree = "<group>"; };
 		22ADED23242B2ADD004A7854 /* TOTestPageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOTestPageView.m; sourceTree = "<group>"; };
 		22C3161B242899AA0063F6A6 /* TOPagingViewExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TOPagingViewExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -72,7 +72,7 @@
 				22C3167C242A3C460063F6A6 /* TOPagingView */,
 				22C3161D242899AA0063F6A6 /* TOPagingViewExample */,
 				22C31639242899AB0063F6A6 /* TOPagingViewTests */,
-				227BEDFC27AC1879009D6B6D /* TODynamicPagingView.podspec */,
+				227BEDFC27AC1879009D6B6D /* TOPagingView.podspec */,
 				227BEDFB27AC186F009D6B6D /* README.md */,
 				227BEDF927AC1867009D6B6D /* CHANGELOG.md */,
 				22C3161C242899AA0063F6A6 /* Products */,
