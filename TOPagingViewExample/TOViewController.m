@@ -86,7 +86,9 @@
     [self.pagingView registerPageViewClass:TOTestPageView.class];
     self.pagingView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.pagingView];
-    
+
+    [self.pagingView becomeFirstResponder];
+
     UITapGestureRecognizer *tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapGestureRecognized:)];
     [self.pagingView addGestureRecognizer:tapRecognizer];
     

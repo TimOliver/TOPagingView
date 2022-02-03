@@ -9,7 +9,7 @@
 #import "TOTestPageView.h"
 #import "TOPagingView.h"
 
-@interface TOTestPageView () <TOPagingViewPageProtocol>
+@interface TOTestPageView () <TOPagingViewPage>
 
 @property (nonatomic, strong) UILabel *numberLabel;
 

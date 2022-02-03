@@ -36,7 +36,7 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
 //-------------------------------------------------------------------
 
 /** Optional protocol that page views may implement. */
-@protocol TOPagingViewPageProtocol <NSObject>
+@protocol TOPagingViewPage <NSObject>
 
 @optional
 
@@ -157,11 +157,11 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
 
 /** Jump ahead to an arbitry next page view, using the provided block to generate the page. */
 - (void)jumpToNextPageAnimated:(BOOL)animated
-                     withBlock:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageBlock;
+                  withPageView:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock;
 
 /** Jump backwards to an arbitrary previous page view, using the provided block to generate the page. */
 - (void)jumpToPreviousPageAnimated:(BOOL)animated
-                         withBlock:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageBlock;
+                     withPageView:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock;
 
 @end
 

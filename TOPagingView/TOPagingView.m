@@ -713,7 +713,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
 }
 
 - (void)jumpToNextPageAnimated:(BOOL)animated
-                     withBlock:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageBlock
+                  withPageView:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock
 {
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
@@ -723,7 +723,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     [self reclaimPageView:self.nextPageView];
     
     // Get the new page
-    self.nextPageView = pageBlock(self, self.currentPageView);
+    self.nextPageView = pageViewBlock(self, self.currentPageView);
     
     // Add it to the scroll view
     [self insertPageView:self.nextPageView];
@@ -736,7 +736,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
 }
 
 - (void)jumpToPreviousPageAnimated:(BOOL)animated
-                         withBlock:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageBlock
+                      withPageView:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock
 {
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
@@ -746,7 +746,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     [self reclaimPageView:self.previousPageView];
     
     // Get the new page
-    self.previousPageView = pageBlock(self, self.currentPageView);
+    self.previousPageView = pageViewBlock(self, self.currentPageView);
     
     // Add it to the scroll view
     [self insertPageView:self.previousPageView];
@@ -768,10 +768,16 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     UIKeyCommand *leftArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow
                                                          modifierFlags:0
                                                                 action:selector];
+
     UIKeyCommand *rightArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow
                                                           modifierFlags:0
                                                                  action:selector];
-    
+
+    if (@available(iOS 15.0, *)) {
+        leftArrowCommand.wantsPriorityOverSystemBehavior = YES;
+        rightArrowCommand.wantsPriorityOverSystemBehavior = YES;
+    }
+
     return @[leftArrowCommand, rightArrowCommand];
 }
 
