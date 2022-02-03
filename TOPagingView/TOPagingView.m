@@ -1,7 +1,7 @@
 //
-//  TODynamicPagingView.m
+//  TOPagingView.m
 //
-//  Copyright 2018-2020 Timothy Oliver. All rights reserved.
+//  Copyright 2018-2022 Timothy Oliver. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to
@@ -20,15 +20,15 @@
 //  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#import "TODynamicPagingView.h"
+#import "TOPagingView.h"
 
 /** For pages that don't specify an identifier, this string will be used. */
-static NSString * const kTODynamicPagingViewDefaultIdentifier = @"TODynamicPagingView.DefaultPageIdentifier";
+static NSString * const kTOPagingViewDefaultIdentifier = @"TOPagingView.DefaultPageIdentifier";
 
 /** There are always 3 slots, with content insetting used to block pages on either side. */
-static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
+static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
 
-@interface TODynamicPagingView ()
+@interface TOPagingView ()
 
 /** The scroll view managed by this container */
 @property (nonatomic, strong, readwrite) UIScrollView *scrollView;
@@ -70,7 +70,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 
 @end
 
-@implementation TODynamicPagingView
+@implementation TOPagingView
 
 #pragma mark - Object Creation -
 
@@ -170,7 +170,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     
     // Flip the array if we have reversed the page direction
     NSArray *visiblePages = self.visiblePages;
-    if (self.pageScrollDirection == TODynamicPagingViewDirectionRightToLeft) {
+    if (self.pageScrollDirection == TOPagingViewDirectionRightToLeft) {
         visiblePages = [[visiblePages reverseObjectEnumerator] allObjects];
     }
     
@@ -199,7 +199,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 {
     // With the up-to-three pages set, calculate the scrolling content size
     CGSize contentSize = self.bounds.size;
-    contentSize.width = self.scrollViewPageWidth * kTODynamicPagingViewPageSlotCount;
+    contentSize.width = self.scrollViewPageWidth * kTOPagingViewPageSlotCount;
     self.scrollView.contentSize = contentSize;
 }
 
@@ -240,7 +240,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 
 - (__kindof UIView *)dequeueReusablePageViewForIdentifier:(NSString *)identifier
 {
-    if (identifier.length == 0) { identifier = kTODynamicPagingViewDefaultIdentifier; }
+    if (identifier.length == 0) { identifier = kTOPagingViewDefaultIdentifier; }
     
     // Fetch the set for this page type, and lazily create if it doesn't exist
     NSMutableSet *enqueuedPages = self.queuedPages[identifier];
@@ -273,7 +273,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 
 - (NSString *)identifierForPageViewClass:(Class)pageViewClass
 {
-    NSString *pageIdentifier = kTODynamicPagingViewDefaultIdentifier;
+    NSString *pageIdentifier = kTOPagingViewDefaultIdentifier;
     if ([pageViewClass respondsToSelector:@selector(pageIdentifier)]) {
         pageIdentifier = [pageViewClass pageIdentifier];
     }
@@ -306,8 +306,8 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     
     // If there currently isn't a previous page, check if there is one now
     if (!self.hasPreviousPage) {
-        UIView *previousPage = [self.dataSource dynamicPagingView:self
-                                   previousPageViewBeforePageView:self.currentPageView];
+        UIView *previousPage = [self.dataSource pagingView:self
+                            previousPageViewBeforePageView:self.currentPageView];
         // Add the page view to the hierarchy
         if (previousPage) {
             [self insertPageView:previousPage];
@@ -319,8 +319,8 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     
     // If there currently isn't a next page, check if there is one now
     if (!self.hasNextPage) {
-        UIView *nextPage = [self.dataSource dynamicPagingView:self
-                                    nextPageViewAfterPageView:self.currentPageView];
+        UIView *nextPage = [self.dataSource pagingView:self
+                             nextPageViewAfterPageView:self.currentPageView];
         // Add the page view to the hierarchy
         if (nextPage) {
             [self insertPageView:nextPage];
@@ -427,21 +427,21 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     _hasPreviousPage = YES;
     
     // Add the initial page
-    UIView *pageView = [self.dataSource initialPageViewForDynamicPagingView:self];
+    UIView *pageView = [self.dataSource initialPageViewForPagingView:self];
     if (pageView == nil) { return; }
     [self insertPageView:pageView];
     self.currentPageView = pageView;
     
     // Add the next page
-    pageView = [self.dataSource dynamicPagingView:self
-                        nextPageViewAfterPageView:self.currentPageView];
+    pageView = [self.dataSource pagingView:self
+                 nextPageViewAfterPageView:self.currentPageView];
     _hasNextPage = (pageView != nil);
     _nextPageView = pageView;
     [self insertPageView:pageView];
     
     // Add the previous page
-    pageView = [self.dataSource dynamicPagingView:self
-                   previousPageViewBeforePageView:self.currentPageView];
+    pageView = [self.dataSource pagingView:self
+            previousPageViewBeforePageView:self.currentPageView];
     _hasPreviousPage = (pageView != nil);
     _previousPageView = pageView;
     [self insertPageView:pageView];
@@ -475,8 +475,8 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     if (!_hasNextPage) { return; }
     
     // Query the data source for the next page
-    UIView *nextPage = [self.dataSource dynamicPagingView:self
-                                nextPageViewAfterPageView:self.nextPageView];
+    UIView *nextPage = [self.dataSource pagingView:self
+                         nextPageViewAfterPageView:self.nextPageView];
     
     // Insert the new page object (Will fall through if nil)
     [self insertPageView:nextPage];
@@ -523,8 +523,8 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     if (!_hasPreviousPage) { return; }
     
     // Query the data source for the previous page, and exit out if there is no more page data
-    UIView *previousPage = [self.dataSource dynamicPagingView:self
-                               previousPageViewBeforePageView:self.previousPageView];
+    UIView *previousPage = [self.dataSource pagingView:self
+                        previousPageViewBeforePageView:self.previousPageView];
     
     // Insert the new page object (Will fall through if nil)
     [self insertPageView:previousPage];
@@ -558,10 +558,10 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     }
 }
 
-- (void)rearrangePagesForScrollDirection:(TODynamicPagingViewDirection)direction
+- (void)rearrangePagesForScrollDirection:(TOPagingViewDirection)direction
 {
     // Left is for Eastern type layouts
-    BOOL leftDirection = (direction == TODynamicPagingViewDirectionRightToLeft);
+    BOOL leftDirection = (direction == TOPagingViewDirectionRightToLeft);
     
     CGFloat segmentWidth = self.scrollViewPageWidth;
     CGFloat contentWidth = self.scrollView.contentSize.width;
@@ -713,7 +713,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 }
 
 - (void)jumpToNextPageAnimated:(BOOL)animated
-                     withBlock:(UIView * (^)(TODynamicPagingView *dynamicPagingView, UIView *currentView))pageBlock
+                  withPageView:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock
 {
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
@@ -723,7 +723,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     [self reclaimPageView:self.nextPageView];
     
     // Get the new page
-    self.nextPageView = pageBlock(self, self.currentPageView);
+    self.nextPageView = pageViewBlock(self, self.currentPageView);
     
     // Add it to the scroll view
     [self insertPageView:self.nextPageView];
@@ -736,7 +736,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 }
 
 - (void)jumpToPreviousPageAnimated:(BOOL)animated
-                         withBlock:(UIView * (^)(TODynamicPagingView *dynamicPagingView, UIView *currentView))pageBlock
+                      withPageView:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock
 {
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
@@ -746,7 +746,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     [self reclaimPageView:self.previousPageView];
     
     // Get the new page
-    self.previousPageView = pageBlock(self, self.currentPageView);
+    self.previousPageView = pageViewBlock(self, self.currentPageView);
     
     // Add it to the scroll view
     [self insertPageView:self.previousPageView];
@@ -768,10 +768,16 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     UIKeyCommand *leftArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow
                                                          modifierFlags:0
                                                                 action:selector];
+
     UIKeyCommand *rightArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow
                                                           modifierFlags:0
                                                                  action:selector];
-    
+
+    if (@available(iOS 15.0, *)) {
+        leftArrowCommand.wantsPriorityOverSystemBehavior = YES;
+        rightArrowCommand.wantsPriorityOverSystemBehavior = YES;
+    }
+
     return @[leftArrowCommand, rightArrowCommand];
 }
 
@@ -823,7 +829,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
     return self.bounds.size.width + _pageSpacing;
 }
 
-- (void)setPageScrollDirection:(TODynamicPagingViewDirection)pageScrollDirection
+- (void)setPageScrollDirection:(TOPagingViewDirection)pageScrollDirection
 {
     if (_pageScrollDirection == pageScrollDirection) { return; }
     _pageScrollDirection = pageScrollDirection;
@@ -832,7 +838,7 @@ static CGFloat const kTODynamicPagingViewPageSlotCount = 3.0f;
 
 - (BOOL)isDirectionReversed
 {
-    return (self.pageScrollDirection == TODynamicPagingViewDirectionRightToLeft);
+    return (self.pageScrollDirection == TOPagingViewDirectionRightToLeft);
 }
 
 - (CGRect)scrollViewFrame

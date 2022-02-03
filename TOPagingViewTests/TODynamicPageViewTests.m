@@ -1,6 +1,6 @@
 //
-//  TODynamicPagingViewTests.m
-//  TODynamicPagingViewTests
+//  TOPagingViewTests.m
+//  TOPagingViewTests
 //
 //  Created by Tim Oliver on 2020/03/23.
 //  Copyright © 2020 Tim Oliver. All rights reserved.
@@ -8,11 +8,11 @@
 
 #import <XCTest/XCTest.h>
 
-@interface TODynamicPagingViewTests : XCTestCase
+@interface TOPagingViewTests : XCTestCase
 
 @end
 
-@implementation TODynamicPagingViewTests
+@implementation TOPagingViewTests
 
 - (void)setUp {
     // Put setup code here. This method is called before the invocation of each test method in the class.

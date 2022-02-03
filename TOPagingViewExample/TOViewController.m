@@ -1,18 +1,18 @@
 //
 //  ViewController.m
-//  TODynamicPagingViewExample
+//  TOPagingViewExample
 //
 //  Created by Tim Oliver on 2020/03/23.
 //  Copyright © 2020 Tim Oliver. All rights reserved.
 //
 
 #import "TOViewController.h"
-#import "TODynamicPagingView.h"
+#import "TOPagingView.h"
 #import "TOTestPageView.h"
 
-@interface TOViewController () <TODynamicPagingViewDataSource>
+@interface TOViewController () <TOPagingViewDataSource>
 
-@property (nonatomic, strong) TODynamicPagingView *pagingView;
+@property (nonatomic, strong) TOPagingView *pagingView;
 @property (nonatomic, strong) UIButton *button;
 
 @end
@@ -21,23 +21,23 @@
 
 #pragma mark - Page View Data Source -
 
-- (UIView *)initialPageViewForDynamicPagingView:(TODynamicPagingView *)dynamicPagingView
+- (UIView *)initialPageViewForPagingView:(TOPagingView *)pagingView
 {
-    TOTestPageView *pageView = [dynamicPagingView dequeueReusablePageView];
+    TOTestPageView *pageView = [pagingView dequeueReusablePageView];
     pageView.number = 0;
     return pageView;
 }
 
-- (UIView *)dynamicPagingView:(TODynamicPagingView *)dynamicPagingView previousPageViewBeforePageView:(TOTestPageView *)currentPageView
+- (UIView *)pagingView:(TOPagingView *)pagingView previousPageViewBeforePageView:(TOTestPageView *)currentPageView
 {
-    TOTestPageView *pageView = [dynamicPagingView dequeueReusablePageView];
+    TOTestPageView *pageView = [pagingView dequeueReusablePageView];
     pageView.number = currentPageView.number - 1;
     return pageView;
 }
 
-- (UIView *)dynamicPagingView:(TODynamicPagingView *)dynamicPagingView nextPageViewAfterPageView:(TOTestPageView *)currentPageView
+- (UIView *)pagingView:(TOPagingView *)pagingView nextPageViewAfterPageView:(TOTestPageView *)currentPageView
 {
-    TOTestPageView *pageView = [dynamicPagingView dequeueReusablePageView];
+    TOTestPageView *pageView = [pagingView dequeueReusablePageView];
     pageView.number = currentPageView.number + 1;
     return pageView;
 }
@@ -50,7 +50,7 @@
     CGFloat halfBoundWidth = CGRectGetWidth(self.view.bounds) / 2.0f;
     
     if (tapPoint.x < halfBoundWidth) {
-        //        [self.pagingView jumpToPreviousPageAnimated:YES withBlock:^UIView *(TODynamicPagingView *dynamicPagingView, UIView *currentView) {
+        //        [self.pagingView jumpToPreviousPageAnimated:YES withBlock:^UIView *(TOPagingView *dynamicPagingView, UIView *currentView) {
         //            TOTestPageView *pageView = [dynamicPagingView dequeueReusablePageView];
         //            pageView.number = rand() % 100;
         //            return pageView;
@@ -58,7 +58,7 @@
         [self.pagingView turnToLeftPageAnimated:YES];
     }
     else {
-        //        [self.pagingView jumpToNextPageAnimated:YES withBlock:^UIView *(TODynamicPagingView *dynamicPagingView, UIView *currentView) {
+        //        [self.pagingView jumpToNextPageAnimated:YES withBlock:^UIView *(TOPagingView *dynamicPagingView, UIView *currentView) {
         //            TOTestPageView *pageView = [dynamicPagingView dequeueReusablePageView];
         //            pageView.number = rand() % 100;
         //            return pageView;
@@ -81,12 +81,14 @@
     
     self.view.backgroundColor = [UIColor blackColor];
     
-    self.pagingView = [[TODynamicPagingView alloc] initWithFrame:self.view.bounds];
+    self.pagingView = [[TOPagingView alloc] initWithFrame:self.view.bounds];
     self.pagingView.dataSource = self;
     [self.pagingView registerPageViewClass:TOTestPageView.class];
     self.pagingView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.pagingView];
-    
+
+    [self.pagingView becomeFirstResponder];
+
     UITapGestureRecognizer *tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapGestureRecognized:)];
     [self.pagingView addGestureRecognizer:tapRecognizer];
     
@@ -105,13 +107,13 @@
 
 - (void)buttonTapped
 {
-    TODynamicPagingViewDirection direction = self.pagingView.pageScrollDirection;
-    if (direction == TODynamicPagingViewDirectionLeftToRight) {
-        direction = TODynamicPagingViewDirectionRightToLeft;
+    TOPagingViewDirection direction = self.pagingView.pageScrollDirection;
+    if (direction == TOPagingViewDirectionLeftToRight) {
+        direction = TOPagingViewDirectionRightToLeft;
         [self.button setTitle:@"Left" forState:UIControlStateNormal];
     }
     else {
-        direction = TODynamicPagingViewDirectionLeftToRight;
+        direction = TOPagingViewDirectionLeftToRight;
         [self.button setTitle:@"Right" forState:UIControlStateNormal];
     }
     self.pagingView.pageScrollDirection = direction;
