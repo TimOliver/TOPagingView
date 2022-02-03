@@ -7,13 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		227BEDFA27AC1867009D6B6D /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 227BEDF927AC1867009D6B6D /* CHANGELOG.md */; };
 		22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22ADED23242B2ADD004A7854 /* TOTestPageView.m */; };
 		22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3161F242899AA0063F6A6 /* TOAppDelegate.m */; };
 		22C31626242899AA0063F6A6 /* TOViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31625242899AA0063F6A6 /* TOViewController.m */; };
 		22C3162E242899AB0063F6A6 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 22C3162C242899AB0063F6A6 /* LaunchScreen.storyboard */; };
 		22C31631242899AB0063F6A6 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31630242899AB0063F6A6 /* main.m */; };
 		22C3163B242899AB0063F6A6 /* TODynamicPageViewTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */; };
-		22C3167F242A40F80063F6A6 /* TODynamicPagingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3167E242A40F80063F6A6 /* TODynamicPagingView.m */; };
+		22C3167F242A40F80063F6A6 /* TOPagingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3167E242A40F80063F6A6 /* TOPagingView.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -27,10 +28,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		22ACEAD9242C5A8F0071346F /* RevealServer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = RevealServer.framework; sourceTree = SOURCE_ROOT; };
+		227BEDF927AC1867009D6B6D /* CHANGELOG.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
+		227BEDFB27AC186F009D6B6D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		227BEDFC27AC1879009D6B6D /* TODynamicPagingView.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = TODynamicPagingView.podspec; sourceTree = "<group>"; };
 		22ADED22242B2ADD004A7854 /* TOTestPageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOTestPageView.h; sourceTree = "<group>"; };
 		22ADED23242B2ADD004A7854 /* TOTestPageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOTestPageView.m; sourceTree = "<group>"; };
-		22C3161B242899AA0063F6A6 /* TODynamicPagingViewExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TODynamicPagingViewExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		22C3161B242899AA0063F6A6 /* TOPagingViewExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TOPagingViewExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		22C3161E242899AA0063F6A6 /* TOAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOAppDelegate.h; sourceTree = "<group>"; };
 		22C3161F242899AA0063F6A6 /* TOAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOAppDelegate.m; sourceTree = "<group>"; };
 		22C31624242899AA0063F6A6 /* TOViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOViewController.h; sourceTree = "<group>"; };
@@ -38,11 +41,11 @@
 		22C3162D242899AB0063F6A6 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		22C3162F242899AB0063F6A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		22C31630242899AB0063F6A6 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		22C31636242899AB0063F6A6 /* TODynamicPagingViewTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TODynamicPagingViewTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		22C31636242899AB0063F6A6 /* TOPagingViewTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TOPagingViewTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TODynamicPageViewTests.m; sourceTree = "<group>"; };
 		22C3163C242899AB0063F6A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		22C3167D242A40F80063F6A6 /* TODynamicPagingView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TODynamicPagingView.h; sourceTree = "<group>"; };
-		22C3167E242A40F80063F6A6 /* TODynamicPagingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TODynamicPagingView.m; sourceTree = "<group>"; };
+		22C3167D242A40F80063F6A6 /* TOPagingView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingView.h; sourceTree = "<group>"; };
+		22C3167E242A40F80063F6A6 /* TOPagingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,24 +69,26 @@
 		22C31612242899AA0063F6A6 = {
 			isa = PBXGroup;
 			children = (
-				22C3167C242A3C460063F6A6 /* TODynamicPagingView */,
-				22C3161D242899AA0063F6A6 /* TODynamicPagingViewExample */,
-				22C31639242899AB0063F6A6 /* TODynamicPagingViewTests */,
+				22C3167C242A3C460063F6A6 /* TOPagingView */,
+				22C3161D242899AA0063F6A6 /* TOPagingViewExample */,
+				22C31639242899AB0063F6A6 /* TOPagingViewTests */,
+				227BEDFC27AC1879009D6B6D /* TODynamicPagingView.podspec */,
+				227BEDFB27AC186F009D6B6D /* README.md */,
+				227BEDF927AC1867009D6B6D /* CHANGELOG.md */,
 				22C3161C242899AA0063F6A6 /* Products */,
-				22ACEAD9242C5A8F0071346F /* RevealServer.framework */,
 			);
 			sourceTree = "<group>";
 		};
 		22C3161C242899AA0063F6A6 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				22C3161B242899AA0063F6A6 /* TODynamicPagingViewExample.app */,
-				22C31636242899AB0063F6A6 /* TODynamicPagingViewTests.xctest */,
+				22C3161B242899AA0063F6A6 /* TOPagingViewExample.app */,
+				22C31636242899AB0063F6A6 /* TOPagingViewTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		22C3161D242899AA0063F6A6 /* TODynamicPagingViewExample */ = {
+		22C3161D242899AA0063F6A6 /* TOPagingViewExample */ = {
 			isa = PBXGroup;
 			children = (
 				22C3161E242899AA0063F6A6 /* TOAppDelegate.h */,
@@ -96,33 +101,33 @@
 				22C3162F242899AB0063F6A6 /* Info.plist */,
 				22C31630242899AB0063F6A6 /* main.m */,
 			);
-			path = TODynamicPagingViewExample;
+			path = TOPagingViewExample;
 			sourceTree = "<group>";
 		};
-		22C31639242899AB0063F6A6 /* TODynamicPagingViewTests */ = {
+		22C31639242899AB0063F6A6 /* TOPagingViewTests */ = {
 			isa = PBXGroup;
 			children = (
 				22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */,
 				22C3163C242899AB0063F6A6 /* Info.plist */,
 			);
-			path = TODynamicPagingViewTests;
+			path = TOPagingViewTests;
 			sourceTree = "<group>";
 		};
-		22C3167C242A3C460063F6A6 /* TODynamicPagingView */ = {
+		22C3167C242A3C460063F6A6 /* TOPagingView */ = {
 			isa = PBXGroup;
 			children = (
-				22C3167D242A40F80063F6A6 /* TODynamicPagingView.h */,
-				22C3167E242A40F80063F6A6 /* TODynamicPagingView.m */,
+				22C3167D242A40F80063F6A6 /* TOPagingView.h */,
+				22C3167E242A40F80063F6A6 /* TOPagingView.m */,
 			);
-			path = TODynamicPagingView;
+			path = TOPagingView;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		22C3161A242899AA0063F6A6 /* TODynamicPagingViewExample */ = {
+		22C3161A242899AA0063F6A6 /* TOPagingViewExample */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 22C3163F242899AB0063F6A6 /* Build configuration list for PBXNativeTarget "TODynamicPagingViewExample" */;
+			buildConfigurationList = 22C3163F242899AB0063F6A6 /* Build configuration list for PBXNativeTarget "TOPagingViewExample" */;
 			buildPhases = (
 				22C31617242899AA0063F6A6 /* Sources */,
 				22C31618242899AA0063F6A6 /* Frameworks */,
@@ -133,14 +138,14 @@
 			);
 			dependencies = (
 			);
-			name = TODynamicPagingViewExample;
+			name = TOPagingViewExample;
 			productName = TODynamicPageView;
-			productReference = 22C3161B242899AA0063F6A6 /* TODynamicPagingViewExample.app */;
+			productReference = 22C3161B242899AA0063F6A6 /* TOPagingViewExample.app */;
 			productType = "com.apple.product-type.application";
 		};
-		22C31635242899AB0063F6A6 /* TODynamicPagingViewTests */ = {
+		22C31635242899AB0063F6A6 /* TOPagingViewTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 22C31642242899AB0063F6A6 /* Build configuration list for PBXNativeTarget "TODynamicPagingViewTests" */;
+			buildConfigurationList = 22C31642242899AB0063F6A6 /* Build configuration list for PBXNativeTarget "TOPagingViewTests" */;
 			buildPhases = (
 				22C31632242899AB0063F6A6 /* Sources */,
 				22C31633242899AB0063F6A6 /* Frameworks */,
@@ -151,9 +156,9 @@
 			dependencies = (
 				22C31638242899AB0063F6A6 /* PBXTargetDependency */,
 			);
-			name = TODynamicPagingViewTests;
+			name = TOPagingViewTests;
 			productName = TODynamicPageViewTests;
-			productReference = 22C31636242899AB0063F6A6 /* TODynamicPagingViewTests.xctest */;
+			productReference = 22C31636242899AB0063F6A6 /* TOPagingViewTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -174,7 +179,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 22C31616242899AA0063F6A6 /* Build configuration list for PBXProject "TODynamicPagingView" */;
+			buildConfigurationList = 22C31616242899AA0063F6A6 /* Build configuration list for PBXProject "TOPagingView" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -187,8 +192,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				22C3161A242899AA0063F6A6 /* TODynamicPagingViewExample */,
-				22C31635242899AB0063F6A6 /* TODynamicPagingViewTests */,
+				22C3161A242899AA0063F6A6 /* TOPagingViewExample */,
+				22C31635242899AB0063F6A6 /* TOPagingViewTests */,
 			);
 		};
 /* End PBXProject section */
@@ -199,6 +204,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				22C3162E242899AB0063F6A6 /* LaunchScreen.storyboard in Resources */,
+				227BEDFA27AC1867009D6B6D /* CHANGELOG.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -239,7 +245,7 @@
 				22C31626242899AA0063F6A6 /* TOViewController.m in Sources */,
 				22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */,
 				22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */,
-				22C3167F242A40F80063F6A6 /* TODynamicPagingView.m in Sources */,
+				22C3167F242A40F80063F6A6 /* TOPagingView.m in Sources */,
 				22C31631242899AB0063F6A6 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -257,7 +263,7 @@
 /* Begin PBXTargetDependency section */
 		22C31638242899AB0063F6A6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 22C3161A242899AA0063F6A6 /* TODynamicPagingViewExample */;
+			target = 22C3161A242899AA0063F6A6 /* TOPagingViewExample */;
 			targetProxy = 22C31637242899AB0063F6A6 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -394,16 +400,15 @@
 				DEVELOPMENT_TEAM = 6LF3GMKZAB;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/TODynamicPagingViewExample",
 					"$(SRCROOT)",
 				);
-				INFOPLIST_FILE = TODynamicPagingViewExample/Info.plist;
+				INFOPLIST_FILE = TOPagingViewExample/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TODynamicPagingViewExample;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TOPagingViewExample;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTS_MACCATALYST = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -418,16 +423,15 @@
 				DEVELOPMENT_TEAM = 6LF3GMKZAB;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/TODynamicPagingViewExample",
 					"$(SRCROOT)",
 				);
-				INFOPLIST_FILE = TODynamicPagingViewExample/Info.plist;
+				INFOPLIST_FILE = TOPagingViewExample/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TODynamicPagingViewExample;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TOPagingViewExample;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTS_MACCATALYST = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -440,17 +444,17 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 6LF3GMKZAB;
-				INFOPLIST_FILE = TODynamicPagingViewTests/Info.plist;
+				INFOPLIST_FILE = TOPagingViewTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TODynamicPagingViewTests;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TOPagingViewTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TODynamicPagingView.app/TODynamicPagingView";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TOPagingView.app/TOPagingView";
 			};
 			name = Debug;
 		};
@@ -460,24 +464,24 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 6LF3GMKZAB;
-				INFOPLIST_FILE = TODynamicPagingViewTests/Info.plist;
+				INFOPLIST_FILE = TOPagingViewTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TODynamicPagingViewTests;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TOPagingViewTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TODynamicPagingView.app/TODynamicPagingView";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TOPagingView.app/TOPagingView";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		22C31616242899AA0063F6A6 /* Build configuration list for PBXProject "TODynamicPagingView" */ = {
+		22C31616242899AA0063F6A6 /* Build configuration list for PBXProject "TOPagingView" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				22C3163D242899AB0063F6A6 /* Debug */,
@@ -486,7 +490,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		22C3163F242899AB0063F6A6 /* Build configuration list for PBXNativeTarget "TODynamicPagingViewExample" */ = {
+		22C3163F242899AB0063F6A6 /* Build configuration list for PBXNativeTarget "TOPagingViewExample" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				22C31640242899AB0063F6A6 /* Debug */,
@@ -495,7 +499,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		22C31642242899AB0063F6A6 /* Build configuration list for PBXNativeTarget "TODynamicPagingViewTests" */ = {
+		22C31642242899AB0063F6A6 /* Build configuration list for PBXNativeTarget "TOPagingViewTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				22C31643242899AB0063F6A6 /* Debug */,

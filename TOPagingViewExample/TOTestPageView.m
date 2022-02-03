@@ -1,15 +1,15 @@
 //
 //  TOTestPageView.m
-//  TODynamicPagingViewExample
+//  TOPagingViewExample
 //
 //  Created by Tim Oliver on 2020/03/25.
 //  Copyright © 2020 Tim Oliver. All rights reserved.
 //
 
 #import "TOTestPageView.h"
-#import "TODynamicPagingView.h"
+#import "TOPagingView.h"
 
-@interface TOTestPageView () <TODynamicPagingViewPageProtocol>
+@interface TOTestPageView () <TOPagingViewPageProtocol>
 
 @property (nonatomic, strong) UILabel *numberLabel;
 
@@ -45,7 +45,7 @@
 - (void)setNumber:(NSInteger)number
 {
     _number = number;
-    self.numberLabel.text = [NSString stringWithFormat:@"%ld", number];
+    self.numberLabel.text = [NSString stringWithFormat:@"%ld", (long)number];
     [self setNeedsLayout];
 }
 

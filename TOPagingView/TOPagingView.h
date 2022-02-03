@@ -1,7 +1,7 @@
 //
-//  TODynamicPagingView.h
+//  TOPagingView.h
 //
-//  Copyright 2018-2020 Timothy Oliver. All rights reserved.
+//  Copyright 2018-2022 Timothy Oliver. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to
@@ -24,19 +24,19 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class TODynamicPagingView;
+@class TOPagingView;
 
 //-------------------------------------------------------------------
 /** An enumeration of directions in which the scroll view may display pages. */
-typedef enum {
-    TODynamicPagingViewDirectionLeftToRight = 0, /** Pages ascend from the left, to the right */
-    TODynamicPagingViewDirectionRightToLeft = 1 /** Pages ascend from the right, to the left */
-} TODynamicPagingViewDirection;
+typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
+    TOPagingViewDirectionLeftToRight = 0, /** Pages ascend from the left, to the right */
+    TOPagingViewDirectionRightToLeft = 1 /** Pages ascend from the right, to the left */
+};
 
 //-------------------------------------------------------------------
 
 /** Optional protocol that page views may implement. */
-@protocol TODynamicPagingViewPageProtocol <NSObject>
+@protocol TOPagingViewPageProtocol <NSObject>
 
 @optional
 
@@ -70,26 +70,26 @@ typedef enum {
 
 //-------------------------------------------------------------------
 
-@protocol TODynamicPagingViewDataSource <NSObject>
+@protocol TOPagingViewDataSource <NSObject>
 
 @required
 
-/** Called once upon each reload, the initial page view that will be displayed intially. */
-- (nullable __kindof UIView *)initialPageViewForDynamicPagingView:(TODynamicPagingView *)dynamicPagingView;
+/** Called once upon each reload of the paging view. Use this to provide the initial page view to display. */
+- (nullable __kindof UIView *)initialPageViewForPagingView:(TOPagingView *)pagingView;
 
-/** Using the current page, fetch and return the next page view that will be displayed after it. */
-- (nullable __kindof  UIView *)dynamicPagingView:(TODynamicPagingView *)dynamicPagingView
+/** Given the current page view, return the next page view that should come after it. */
+- (nullable __kindof  UIView *)pagingView:(TOPagingView *)pagingView
            nextPageViewAfterPageView:(__kindof UIView *)currentPageView;
 
-/** Using the current page, fetch and return the previous page view that will be  */
-- (nullable __kindof  UIView *)dynamicPagingView:(TODynamicPagingView *)dynamicPagingView
+/** Given the current page view, return the previous page view that should come before it. */
+- (nullable __kindof  UIView *)pagingView:(TOPagingView *)pagingView
       previousPageViewBeforePageView:(__kindof UIView *)currentPageView;
 
 @end
 
 //-------------------------------------------------------------------
 
-@protocol TODynamicPagingViewDelegate <NSObject>
+@protocol TOPagingViewDelegate <NSObject>
 
 @optional
 
@@ -97,22 +97,22 @@ typedef enum {
 
 //-------------------------------------------------------------------
 
-@interface TODynamicPagingView : UIView
+@interface TOPagingView : UIView
 
 /** Direct access to the scroll view object inside this view (read-only). */
 @property (nonatomic, strong, readonly) UIScrollView *scrollView;
 
 /** Data source object to supply page information to the scroll view */
-@property (nonatomic, weak, nullable) id <TODynamicPagingViewDataSource> dataSource;
+@property (nonatomic, weak, nullable) id <TOPagingViewDataSource> dataSource;
 
 /** Delegate object in which page scroll view events are sent. */
-@property (nonatomic, weak, nullable) id <TODynamicPagingViewDelegate> delegate;
+@property (nonatomic, weak, nullable) id <TOPagingViewDelegate> delegate;
 
 /** Width of the spacing between pages in points (default value of 40). */
 @property (nonatomic, assign) CGFloat pageSpacing;
 
 /** The direction of the layout order of pages. */
-@property (nonatomic, assign) TODynamicPagingViewDirection pageScrollDirection;
+@property (nonatomic, assign) TOPagingViewDirection pageScrollDirection;
 
 /* All of the page view objects currently placed in the scroll view. */
 @property (nonatomic, readonly) NSArray<UIView *> *visiblePages;
@@ -157,11 +157,11 @@ typedef enum {
 
 /** Jump ahead to an arbitry next page view, using the provided block to generate the page. */
 - (void)jumpToNextPageAnimated:(BOOL)animated
-                     withBlock:(UIView * (^)(TODynamicPagingView *dynamicPagingView, UIView *currentView))pageBlock;
+                     withBlock:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageBlock;
 
 /** Jump backwards to an arbitrary previous page view, using the provided block to generate the page. */
 - (void)jumpToPreviousPageAnimated:(BOOL)animated
-                         withBlock:(UIView * (^)(TODynamicPagingView *dynamicPagingView, UIView *currentView))pageBlock;
+                         withBlock:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageBlock;
 
 @end
 
