@@ -21,24 +21,24 @@
 
 #pragma mark - Page View Data Source -
 
-- (UIView *)initialPageViewForPagingView:(TOPagingView *)pagingView
+- (TOTestPageView *)pagingView:(TOPagingView *)pagingView
+                                  pageViewForType:(TOPagingViewPageType)type
+                                  currentPageView:(TOTestPageView *)currentPageView
 {
     TOTestPageView *pageView = [pagingView dequeueReusablePageView];
-    pageView.number = 0;
-    return pageView;
-}
 
-- (UIView *)pagingView:(TOPagingView *)pagingView previousPageViewBeforePageView:(TOTestPageView *)currentPageView
-{
-    TOTestPageView *pageView = [pagingView dequeueReusablePageView];
-    pageView.number = currentPageView.number - 1;
-    return pageView;
-}
+    switch (type) {
+        case TOPagingViewPageTypeInitial:
+            pageView.number = 0;
+            break;
+        case TOPagingViewPageTypeNext:
+            pageView.number = currentPageView.number + 1;
+            break;
+        case TOPagingViewPageTypePrevious:
+            pageView.number = currentPageView.number - 1;
+            break;
+    }
 
-- (UIView *)pagingView:(TOPagingView *)pagingView nextPageViewAfterPageView:(TOTestPageView *)currentPageView
-{
-    TOTestPageView *pageView = [pagingView dequeueReusablePageView];
-    pageView.number = currentPageView.number + 1;
     return pageView;
 }
 
