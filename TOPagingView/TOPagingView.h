@@ -27,10 +27,18 @@ NS_ASSUME_NONNULL_BEGIN
 @class TOPagingView;
 
 //-------------------------------------------------------------------
+
 /** An enumeration of directions in which the scroll view may display pages. */
 typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
-    TOPagingViewDirectionLeftToRight = 0, /** Pages ascend from the left, to the right */
-    TOPagingViewDirectionRightToLeft = 1 /** Pages ascend from the right, to the left */
+    TOPagingViewDirectionLeftToRight = 0, /** Pages ascend from the left, to the right. */
+    TOPagingViewDirectionRightToLeft = 1  /** Pages ascend from the right, to the left. */
+};
+
+/** An enumeration describing the kind of page being requested by the data source */
+typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
+    TOPagingViewPageTypeInitial, /** The initial page to display after a reload. */
+    TOPagingViewPageTypeNext,    /** The next page sequentially after the current page. */
+    TOPagingViewPageTypePrevious /** The previous page sequentially after the current page. */
 };
 
 //-------------------------------------------------------------------
@@ -74,16 +82,16 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
 
 @required
 
-/** Called once upon each reload of the paging view. Use this to provide the initial page view to display. */
-- (nullable __kindof UIView *)initialPageViewForPagingView:(TOPagingView *)pagingView;
-
-/** Given the current page view, return the next page view that should come after it. */
-- (nullable __kindof  UIView *)pagingView:(TOPagingView *)pagingView
-           nextPageViewAfterPageView:(__kindof UIView *)currentPageView;
-
-/** Given the current page view, return the previous page view that should come before it. */
-- (nullable __kindof  UIView *)pagingView:(TOPagingView *)pagingView
-      previousPageViewBeforePageView:(__kindof UIView *)currentPageView;
+/**
+ Called when the paging view is requesting a new page view in the current sequence in either direction.
+ Use this method to dequeue, or create a new page view that will be displayed in the paging view.
+@param pagingView The paging view requesting the new page view.
+@param type The type of page to be displayed in its relation to the visible page on screen.
+@param currentPageView The current page view on screen. This can be nil if no pages have been displayed yet.
+*/
+- (nullable __kindof UIView<TOPagingViewPage> *)pagingView:(TOPagingView *)pagingView
+                                           pageViewForType:(TOPagingViewPageType)type
+                                           currentPageView:(UIView<TOPagingViewPage> * _Nullable)currentPageView;
 
 @end
 
