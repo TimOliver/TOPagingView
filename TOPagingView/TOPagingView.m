@@ -491,7 +491,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     // Query the data source for the next page
     UIView *nextPage = [self.dataSource pagingView:self
                                    pageViewForType:TOPagingViewPageTypeNext
-                                   currentPageView:self.currentPageView];
+                                   currentPageView:self.nextPageView];
     
     // Insert the new page object (Will fall through if nil)
     [self insertPageView:nextPage];
@@ -540,7 +540,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     // Query the data source for the previous page, and exit out if there is no more page data
     UIView *previousPage = [self.dataSource pagingView:self
                                        pageViewForType:TOPagingViewPageTypePrevious
-                                       currentPageView:self.currentPageView];
+                                       currentPageView:self.previousPageView];
     
     // Insert the new page object (Will fall through if nil)
     [self insertPageView:previousPage];
