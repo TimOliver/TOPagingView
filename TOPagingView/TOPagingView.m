@@ -153,10 +153,13 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     [self updateContentSize];
     
     // Update the content offset to match the amount that the width changed
-    CGFloat newOffsetMid = oldOffsetMid * (scrollView.contentSize.width / oldContentWidth);
-    CGFloat contentOffset = newOffsetMid - (scrollView.frame.size.width * 0.5f);
-    scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
-    
+    // (Only do this if there actually was an old content width, otherwise we might get a NaN error)
+    if (oldContentWidth > FLT_EPSILON) {
+        CGFloat newOffsetMid = oldOffsetMid * (scrollView.contentSize.width / oldContentWidth);
+        CGFloat contentOffset = newOffsetMid - (scrollView.frame.size.width * 0.5f);
+        scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
+    }
+
     // Re-enable the observer
     self.disableLayout = NO;
     
@@ -289,7 +292,12 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     
     // Remove all currently visible pages from the scroll views
     for (UIView *view in self.visiblePages) { [self reclaimPageView:view]; }
-    
+
+    // Reset all of the active pages
+    self.currentPageView = nil;
+    self.previousPageView = nil;
+    self.nextPageView = nil;
+
     // Reset the content size of the scroll view content
     self.scrollView.contentSize = CGSizeZero;
     
@@ -307,7 +315,8 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     // If there currently isn't a previous page, check if there is one now
     if (!self.hasPreviousPage) {
         UIView *previousPage = [self.dataSource pagingView:self
-                            previousPageViewBeforePageView:self.currentPageView];
+                                           pageViewForType:TOPagingViewPageTypePrevious
+                                           currentPageView:self.currentPageView];
         // Add the page view to the hierarchy
         if (previousPage) {
             [self insertPageView:previousPage];
@@ -320,7 +329,8 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     // If there currently isn't a next page, check if there is one now
     if (!self.hasNextPage) {
         UIView *nextPage = [self.dataSource pagingView:self
-                             nextPageViewAfterPageView:self.currentPageView];
+                                       pageViewForType:TOPagingViewPageTypeNext
+                                       currentPageView:self.currentPageView];
         // Add the page view to the hierarchy
         if (nextPage) {
             [self insertPageView:nextPage];
@@ -427,21 +437,25 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     _hasPreviousPage = YES;
     
     // Add the initial page
-    UIView *pageView = [self.dataSource initialPageViewForPagingView:self];
+    UIView *pageView = [self.dataSource pagingView:self
+                                   pageViewForType:TOPagingViewPageTypeInitial
+                                   currentPageView:nil];
     if (pageView == nil) { return; }
     [self insertPageView:pageView];
     self.currentPageView = pageView;
     
     // Add the next page
     pageView = [self.dataSource pagingView:self
-                 nextPageViewAfterPageView:self.currentPageView];
+                           pageViewForType:TOPagingViewPageTypeNext
+                           currentPageView:self.currentPageView];
     _hasNextPage = (pageView != nil);
     _nextPageView = pageView;
     [self insertPageView:pageView];
     
     // Add the previous page
     pageView = [self.dataSource pagingView:self
-            previousPageViewBeforePageView:self.currentPageView];
+                           pageViewForType:TOPagingViewPageTypePrevious
+                           currentPageView:self.currentPageView];
     _hasPreviousPage = (pageView != nil);
     _previousPageView = pageView;
     [self insertPageView:pageView];
@@ -459,7 +473,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     [self resetContentOffset];
     
     // Re-enable the observer
-    self.disableLayout = YES;
+    self.disableLayout = NO;
 }
 
 - (void)transitionOverToNextPage
@@ -476,7 +490,8 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     
     // Query the data source for the next page
     UIView *nextPage = [self.dataSource pagingView:self
-                         nextPageViewAfterPageView:self.nextPageView];
+                                   pageViewForType:TOPagingViewPageTypeNext
+                                   currentPageView:self.currentPageView];
     
     // Insert the new page object (Will fall through if nil)
     [self insertPageView:nextPage];
@@ -524,7 +539,8 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     
     // Query the data source for the previous page, and exit out if there is no more page data
     UIView *previousPage = [self.dataSource pagingView:self
-                        previousPageViewBeforePageView:self.previousPageView];
+                                       pageViewForType:TOPagingViewPageTypePrevious
+                                       currentPageView:self.currentPageView];
     
     // Insert the new page object (Will fall through if nil)
     [self insertPageView:previousPage];
