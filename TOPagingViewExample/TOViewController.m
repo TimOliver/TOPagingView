@@ -10,7 +10,7 @@
 #import "TOPagingView.h"
 #import "TOTestPageView.h"
 
-@interface TOViewController () <TOPagingViewDataSource>
+@interface TOViewController () <TOPagingViewDataSource, TOPagingViewDelegate>
 
 @property (nonatomic, strong) TOPagingView *pagingView;
 @property (nonatomic, strong) UIButton *button;
@@ -19,7 +19,7 @@
 
 @implementation TOViewController
 
-#pragma mark - Page View Data Source -
+#pragma mark - Paging View Data Source -
 
 - (TOTestPageView *)pagingView:(TOPagingView *)pagingView
                                   pageViewForType:(TOPagingViewPageType)type
@@ -42,6 +42,28 @@
     return pageView;
 }
 
+#pragma mark - Paging View Delegate -
+
+-(void)pagingView:(TOPagingView *)pagingView willTurnToPageOfType:(TOPagingViewPageType)type
+{
+    NSLog(@"Paging view will to turn to: %@", [self stringForType:type]);
+}
+
+- (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type
+{
+    NSLog(@"Paging view did to turn to: %@", [self stringForType:type]);
+}
+
+- (NSString *)stringForType:(TOPagingViewPageType)type
+{
+    switch(type) {
+        case TOPagingViewPageTypeInitial: return @"Initial";
+        case TOPagingViewPageTypeNext: return @"Next";
+        case TOPagingViewPageTypePrevious: return @"Previous";
+    }
+    return nil;
+}
+
 #pragma mark - Gesture Recognizer -
 
 - (void)tapGestureRecognized:(UITapGestureRecognizer *)recgonizer
@@ -50,19 +72,9 @@
     CGFloat halfBoundWidth = CGRectGetWidth(self.view.bounds) / 2.0f;
     
     if (tapPoint.x < halfBoundWidth) {
-        //        [self.pagingView jumpToPreviousPageAnimated:YES withBlock:^UIView *(TOPagingView *dynamicPagingView, UIView *currentView) {
-        //            TOTestPageView *pageView = [dynamicPagingView dequeueReusablePageView];
-        //            pageView.number = rand() % 100;
-        //            return pageView;
-        //        }];
         [self.pagingView turnToLeftPageAnimated:YES];
     }
     else {
-        //        [self.pagingView jumpToNextPageAnimated:YES withBlock:^UIView *(TOPagingView *dynamicPagingView, UIView *currentView) {
-        //            TOTestPageView *pageView = [dynamicPagingView dequeueReusablePageView];
-        //            pageView.number = rand() % 100;
-        //            return pageView;
-        //        }];
         [self.pagingView turnToRightPageAnimated:YES];
     }
 }
@@ -83,6 +95,7 @@
     
     self.pagingView = [[TOPagingView alloc] initWithFrame:self.view.bounds];
     self.pagingView.dataSource = self;
+    self.pagingView.delegate = self;
     [self.pagingView registerPageViewClass:TOTestPageView.class];
     self.pagingView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.pagingView];
