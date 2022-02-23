@@ -78,6 +78,13 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
 
 #pragma mark - Object Creation -
 
+- (instancetype)init
+{
+    self = [super init];
+    if (self) { [self setUp]; }
+    return self;
+}
+
 - (instancetype)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
@@ -99,7 +106,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     _queuedPages = [NSMutableDictionary dictionary];
 
     // Configure the main properties of this view
-    //self.clipsToBounds = YES; // The scroll view intentionally overlaps, so this view MUST clip.
+    self.clipsToBounds = YES; // The scroll view intentionally overlaps, so this view MUST clip.
     self.backgroundColor = [UIColor clearColor];
     
     // Create and configure the scroll view
@@ -180,17 +187,27 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     if (self.pageScrollDirection == TOPagingViewDirectionRightToLeft) {
         visiblePages = [[visiblePages reverseObjectEnumerator] allObjects];
     }
-    
-    // Re-size each page view currently in the scroll view
+
+    // Set the origin to account for the scroll view padding
     CGFloat offset = (_pageSpacing * 0.5f);
+    CGFloat width = bounds.size.width + _pageSpacing;
+
+    // If the first page is the center page (eg, the previous/next page is nil),
+    // skip ahead one offset slot
+    if (visiblePages.firstObject == _currentPageView) {
+        offset += width;
+    }
+
+    // Re-size each page view currently in the scroll view
     for (UIView *pageView in visiblePages) {
         // Center each page view in each scroll content slot
         CGRect frame = pageView.frame;
         frame.origin.x = offset;
         frame.size = bounds.size;
         pageView.frame = frame;
-        
-        offset += bounds.size.width + _pageSpacing;
+
+        // Apply the offset for the next page
+        offset += width;
     }
 }
 
@@ -292,12 +309,13 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
 
 - (void)reload
 {
-    if (self.dataSource == nil) { return; }
+    // Exit out if we're not ready to display any content yet
+    if (self.dataSource == nil || self.superview == nil) { return; }
     
     // Remove all currently visible pages from the scroll views
     for (UIView *view in self.visiblePages) { [self reclaimPageView:view]; }
 
-    // Reset all of the active pages
+    // Reset all of the active page references
     self.currentPageView = nil;
     self.previousPageView = nil;
     self.nextPageView = nil;
@@ -373,27 +391,29 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
 - (void)reclaimPageView:(UIView *)pageView
 {
     if (pageView == nil) { return; }
-    
-    // Re-add it to the recycled pages pool
-    NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
-    [self.queuedPages[pageIdentifier] addObject:pageView];
-    
+
+    // Pull it out of the scroll view
+    [pageView removeFromSuperview];
+
     // If the page has a unique identifier, remove it from the dictionary
     if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
         [self.uniqueIdentifierPages removeObjectForKey:[(id)pageView uniqueIdentifier]];
     }
-    
+
     // If the class supports the clean up method, clean it up now
     if ([pageView respondsToSelector:@selector(prepareForReuse)]) {
         [(id)pageView prepareForReuse];
     }
-    
-    // Pull it out of the scroll view
-    [pageView removeFromSuperview];
+
+    // Re-add it to the recycled pages pool
+    NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
+    [self.queuedPages[pageIdentifier] addObject:pageView];
 }
 
 - (void)layoutPages
 {
+    // Only perform this overhead when we have sufficient data,
+    // and we're not being disabled by an active animation.
     if (self.dataSource == nil || self.disableLayout) { return; }
 
     UIScrollView *scrollView = self.scrollView;
@@ -445,7 +465,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     }
 
     // If we're not being dragged, reset the state
-    if (self.scrollView.isDragging == NO) {
+    if (self.scrollView.isTracking == NO) {
         self.draggingOrigin = -CGFLOAT_MAX;
         self.draggingDirectionType = TOPagingViewPageTypeInitial;
         return;
@@ -505,6 +525,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     _hasNextPage = (pageView != nil);
     _nextPageView = pageView;
     [self insertPageView:pageView];
+    [self setNextPageEnabled:_hasNextPage];
     
     // Add the previous page
     pageView = [self.dataSource pagingView:self
@@ -513,6 +534,7 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     _hasPreviousPage = (pageView != nil);
     _previousPageView = pageView;
     [self insertPageView:pageView];
+    [self setPreviousPageEnabled:_hasPreviousPage];
     
     // Disable the observer while we manually place all elements
     self.disableLayout = YES;
@@ -546,36 +568,33 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     
     // Don't start churning if we already confirmed there is no page after this.
     if (!_hasNextPage) { return; }
-    
+
+    // Reclaim the previous view
+    [self reclaimPageView:self.previousPageView];
+
+    // Update all of the references by pushing each view back
+    self.previousPageView = self.currentPageView;
+    self.currentPageView = self.nextPageView;
+
+    // Update the frames of the pages
+    self.currentPageView.frame = self.currentPageViewFrame;
+    self.previousPageView.frame = self.previousPageViewFrame;
+
+    // Inform the delegate we have comitted to a transition so we can update state for the next page
+    if ([self.delegate respondsToSelector:@selector(pagingView:didTurnToPageOfType:)]) {
+        [self.delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypeNext];
+    }
+
     // Query the data source for the next page
     UIView<TOPagingViewPage> *nextPage = [self.dataSource pagingView:self
                                                      pageViewForType:TOPagingViewPageTypeNext
                                                      currentPageView:self.nextPageView];
     
-    // Insert the new page object (Will fall through if nil)
+    // Insert the new page object and update its position (Will fall through if nil)
     [self insertPageView:nextPage];
-    
-    // Reclaim the previous view
-    [self reclaimPageView:self.previousPageView];
-    
-    // Update all of the references by pushing each view back
-    self.previousPageView = self.currentPageView;
-    self.currentPageView = self.nextPageView;
     self.nextPageView = nextPage;
-    
-    // Re-position every view into the appropriate slot
     self.nextPageView.frame = self.nextPageViewFrame;
-    self.currentPageView.frame = self.currentPageViewFrame;
-    self.previousPageView.frame = self.previousPageViewFrame;
-    
-    // Move the scroll view back one segment
-    CGPoint contentOffset = self.scrollView.contentOffset;
-    if (self.isDirectionReversed) { contentOffset.x += self.scrollViewPageWidth; }
-    else { contentOffset.x -= self.scrollViewPageWidth; }
-    [self performWithoutLayout:^{
-        self.scrollView.contentOffset = contentOffset;
-    }];
-    
+
     // If the next page ended up being nil,
     // set a flag to prevent churning, and inset the scroll inset
     if (nextPage == nil) {
@@ -583,10 +602,13 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
         [self setNextPageEnabled:NO];
     }
 
-    // Inform the delegate we just transitioned
-    if ([self.delegate respondsToSelector:@selector(pagingView:didTurnToPageOfType:)]) {
-        [self.delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypeNext];
-    }
+    // Move the scroll view back one segment
+    CGPoint contentOffset = self.scrollView.contentOffset;
+    if (self.isDirectionReversed) { contentOffset.x += self.scrollViewPageWidth; }
+    else { contentOffset.x -= self.scrollViewPageWidth; }
+    [self performWithoutLayout:^{
+        self.scrollView.contentOffset = contentOffset;
+    }];
 
     // If we're dragging, reset the state
     if (self.scrollView.isDragging) {
@@ -606,36 +628,33 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
         
     // Don't start churning if we already confirmed there is no page before this.
     if (!_hasPreviousPage) { return; }
-    
+
+    // Reclaim the next view
+    [self reclaimPageView:self.nextPageView];
+
+    // Update all of the references by pushing each view forward
+    self.nextPageView = self.currentPageView;
+    self.currentPageView = self.previousPageView;
+
+    // Update the frames of the pages
+    self.currentPageView.frame = self.currentPageViewFrame;
+    self.nextPageView.frame = self.nextPageViewFrame;
+
+    // Inform the delegate we have just committed to a transition so we can update state for the previous page
+    if ([self.delegate respondsToSelector:@selector(pagingView:didTurnToPageOfType:)]) {
+        [self.delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypePrevious];
+    }
+
     // Query the data source for the previous page, and exit out if there is no more page data
     UIView<TOPagingViewPage> *previousPage = [self.dataSource pagingView:self
                                                          pageViewForType:TOPagingViewPageTypePrevious
                                                          currentPageView:self.previousPageView];
     
-    // Insert the new page object (Will fall through if nil)
+    // Insert the new page object and set its position (Will fall through if nil)
     [self insertPageView:previousPage];
-    
-    // Reclaim the previous view
-    [self reclaimPageView:self.nextPageView];
-  
-    // Update all of the references by pushing each view forward
-    self.nextPageView = self.currentPageView;
-    self.currentPageView = self.previousPageView;
     self.previousPageView = previousPage;
-    
-    // Re-position every view into the appropriate slot
     self.previousPageView.frame = self.previousPageViewFrame;
-    self.currentPageView.frame = self.currentPageViewFrame;
-    self.nextPageView.frame = self.nextPageViewFrame;
-    
-    // Move the scroll view forward one segment
-    CGPoint contentOffset = self.scrollView.contentOffset;
-    if (self.isDirectionReversed) { contentOffset.x -= self.scrollViewPageWidth; }
-    else { contentOffset.x += self.scrollViewPageWidth; }
-    [self performWithoutLayout:^{
-        self.scrollView.contentOffset = contentOffset;
-    }];
-    
+
     // If the previous page ended up being nil,
     // set a flag to prevent churning, and inset the scroll inset
     if (previousPage == nil) {
@@ -643,10 +662,13 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
         [self setPreviousPageEnabled:NO];
     }
 
-    // Inform the delegate we just transitioned
-    if ([self.delegate respondsToSelector:@selector(pagingView:didTurnToPageOfType:)]) {
-        [self.delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypePrevious];
-    }
+    // Move the scroll view forward one segment
+    CGPoint contentOffset = self.scrollView.contentOffset;
+    if (self.isDirectionReversed) { contentOffset.x -= self.scrollViewPageWidth; }
+    else { contentOffset.x += self.scrollViewPageWidth; }
+    [self performWithoutLayout:^{
+        self.scrollView.contentOffset = contentOffset;
+    }];
 
     // If we're dragging, reset the state
     if (self.scrollView.isDragging) {
@@ -1004,6 +1026,13 @@ static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
     }
     frame.origin.x += (_pageSpacing * 0.5f);
     return frame;
+}
+
+- (void)setDataSource:(id<TOPagingViewDataSource>)dataSource
+{
+    if (dataSource == _dataSource) { return; }
+    _dataSource = dataSource;
+    [self reload];
 }
 
 @end
