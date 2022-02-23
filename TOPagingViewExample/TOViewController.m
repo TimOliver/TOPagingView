@@ -61,7 +61,8 @@
 {
     // This delegate event is called once it has been confirmed that the pages have crossed over the threshold
     // and a new page just officially became the "current" page. This is where any UI or state attached to this
-    // view can be safely updated to match this view.
+    // view can be safely updated to match this view. This is called before the data source requests the next page
+    // in order to update the state that will reflect what the data source needs to generate.
 
     if (type == TOPagingViewPageTypeNext) { self.pageIndex++; }
     if (type == TOPagingViewPageTypePrevious) { self.pageIndex--; }
