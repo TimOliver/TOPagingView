@@ -71,7 +71,7 @@ typedef struct {
 @property (nonatomic, assign) TOPagingViewDelegateFlags delegateFlags;
 
 /** Disable automatic layout when manually laying out content. */
-@property (nonatomic ,assign) BOOL disableLayout;
+@property (nonatomic, assign) BOOL disableLayout;
 
 /** A dictionary that holds references to any pages with unique identifiers. */
 @property (nonatomic, strong) NSMutableDictionary<NSString *, UIView *> *uniqueIdentifierPages;
@@ -85,6 +85,20 @@ typedef struct {
 
 /** A convenience accessor for checking if we are reversed. */
 @property (nonatomic, direct, readonly) BOOL isDirectionReversed;
+
+/** Mark all methods called per-frame as direct calls
+ (ie, they are called directly, instead of via objc_msgSend)
+ to reduce per-frame overhead as much as possible.  */
+- (void)layoutPages __attribute__((objc_direct));
+- (void)performInitialLayout __attribute__((objc_direct));
+- (void)handlePageTransitions __attribute__((objc_direct));
+- (void)updateEnabledPages __attribute__((objc_direct));
+- (void)updateDragInteraction __attribute__((objc_direct));
+- (void)transitionOverToNextPage __attribute__((objc_direct));
+- (void)transitionOverToPreviousPage __attribute__((objc_direct));
+- (void)insertPageView:(UIView *)pageView __attribute__((objc_direct));
+- (void)reclaimPageView:(UIView *)pageView __attribute__((objc_direct));
+- (void)setPageSlotEnabled:(BOOL)enabled isLeft:(BOOL)isLeft  __attribute__((objc_direct));
 
 @end
 
@@ -265,7 +279,8 @@ typedef struct {
 
 - (void)registerPageViewClass:(Class)pageViewClass
 {
-    NSAssert([pageViewClass isSubclassOfClass:[UIView class]], @"Only UIView objects may be registered as pages.");
+    NSAssert([pageViewClass isSubclassOfClass:[UIView class]],
+             @"Only UIView objects may be registered as pages.");
     
     // Fetch the page identifier (or use the default if none were 
     NSString *pageIdentifier = [self identifierForPageViewClass:pageViewClass];
@@ -558,7 +573,7 @@ typedef struct {
     _hasPreviousPage = YES;
 
     // Send a delegate event stating we're about to transition to the initial page
-    if ([self.delegate respondsToSelector:@selector(pagingView:willTurnToPageOfType:)]) {
+    if (_delegateFlags.delegateWillTurnToPage) {
         [self.delegate pagingView:self willTurnToPageOfType:TOPagingViewPageTypeInitial];
     }
 
@@ -602,7 +617,7 @@ typedef struct {
     self.disableLayout = NO;
 
     // Send a delegate event stating we've completed transitioning to the initial page
-    if ([self.delegate respondsToSelector:@selector(pagingView:didTurnToPageOfType:)]) {
+    if (_delegateFlags.delegateDidTurnToPage) {
         [self.delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypeInitial];
     }
 }
@@ -613,7 +628,6 @@ typedef struct {
     // re-enable the previous page
     if (!self.hasPreviousPage) {
         self.hasPreviousPage = YES;
-        [self setPreviousPageEnabled:YES];
     }
     
     // Don't start churning if we already confirmed there is no page after this.
@@ -631,7 +645,7 @@ typedef struct {
     self.previousPageView.frame = self.previousPageViewFrame;
 
     // Inform the delegate we have comitted to a transition so we can update state for the next page
-    if ([self.delegate respondsToSelector:@selector(pagingView:didTurnToPageOfType:)]) {
+    if (_delegateFlags.delegateDidTurnToPage) {
         [self.delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypeNext];
     }
 
@@ -672,7 +686,6 @@ typedef struct {
     // so we can query again next time
     if (!self.hasNextPage) {
         self.hasNextPage = YES;
-        [self setNextPageEnabled:YES];
     }
         
     // Don't start churning if we already confirmed there is no page before this.
@@ -690,7 +703,7 @@ typedef struct {
     self.nextPageView.frame = self.nextPageViewFrame;
 
     // Inform the delegate we have just committed to a transition so we can update state for the previous page
-    if ([self.delegate respondsToSelector:@selector(pagingView:didTurnToPageOfType:)]) {
+    if (_delegateFlags.delegateDidTurnToPage) {
         [self.delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypePrevious];
     }
 
@@ -759,26 +772,6 @@ typedef struct {
     [self performWithoutLayout:^{
         self.scrollView.contentInset = insets;
     }];
-}
-
-- (void)setNextPageEnabled:(BOOL)enabled
-{
-    if (self.isDirectionReversed) {
-        [self setPageSlotEnabled:enabled isLeft:YES];
-    }
-    else {
-        [self setPageSlotEnabled:enabled isLeft:NO];
-    }
-}
-
-- (void)setPreviousPageEnabled:(BOOL)enabled
-{
-    if (!self.isDirectionReversed) {
-        [self setPageSlotEnabled:enabled isLeft:YES];
-    }
-    else {
-        [self setPageSlotEnabled:enabled isLeft:NO];
-    }
 }
 
 - (void)setPageSlotEnabled:(BOOL)enabled isLeft:(BOOL)isLeft
