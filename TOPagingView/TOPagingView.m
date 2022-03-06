@@ -813,15 +813,14 @@ typedef struct {
                            (self.isDirectionReversed && !isLeftDirection));
 
     // Send a delegate event stating the page is about to turn
-    if ([self.delegate respondsToSelector:@selector(pagingView:willTurnToPageOfType:)]) {
-        [self.delegate pagingView:self
-             willTurnToPageOfType:(isPreviousPage ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext)];
+    if (_delegateFlags.delegateWillTurnToPage) {
+        TOPagingViewPageType type = (isPreviousPage ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext);
+        [_delegate pagingView:self willTurnToPageOfType:type];
     }
 
     // If we're not animating, re-enable layout,
     // and then set the offset to the target
     if (animated == NO) {
-        self.disableLayout = NO;
         scrollView.contentOffset = (CGPoint){offset, 0.0f};
         return;
     }
@@ -830,6 +829,7 @@ typedef struct {
     // be set to their destinations, so before we cancel the animation below,
     // force a re-layout so everything is in the right place.
     if (scrollView.layer.animationKeys.count) {
+        [scrollView.layer removeAllAnimations];
         self.disableLayout = NO;
         [self layoutPages];
     }
@@ -844,17 +844,7 @@ typedef struct {
         (offset + FLT_EPSILON >= self.scrollViewPageWidth &&
          scrollView.contentInset.right < -FLT_EPSILON))
     {
-        self.disableLayout = NO;
         return;
-    }
-    
-    // If the offset didn't happen to be inside an inset, and an animation
-    // is still in progress, cancel it out now.
-    // Doing it this way, if there was an animation in progress, but the next page
-    // was going to be the last one anyway, this lets the final animation finish playing
-    // out, preventing an abrupt snap to the last page.
-    if (scrollView.layer.animationKeys.count) {
-        [scrollView.layer removeAllAnimations];
     }
 
     // Move the scroll view to the target offset, which will trigger a layout.
@@ -883,10 +873,6 @@ typedef struct {
                      animations:^{
         scrollView.contentOffset = destOffset;
     } completion:^(BOOL finished) {
-        // If we canceled this animation,
-        // disregard since we'll manually restore after
-        if (!finished) { return; }
-
         // Re-enable automatic layout
         self.disableLayout = NO;
 
