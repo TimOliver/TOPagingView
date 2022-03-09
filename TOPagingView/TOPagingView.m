@@ -156,7 +156,7 @@ typedef struct {
     
     // Set the scroll behaviour to snap between pages
     scrollView.pagingEnabled = YES;
-    
+
     // Disable auto status bar insetting
     if (@available(iOS 11.0, *)) {
         scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
@@ -825,26 +825,19 @@ typedef struct {
         return;
     }
     
-    // If we're already in an animation, all of the values will already
-    // be set to their destinations, so before we cancel the animation below,
-    // force a re-layout so everything is in the right place.
+    // If we're already in an animation, we can't queue up a new animation
+    // before the old one completes, otherwise we'll overshoot the pages and cause visual glitching.
+    // (There might be a better way to implement this down the line)
     if (scrollView.layer.animationKeys.count) {
+        // If we're already in an animation that is moving towards the last a page
+        // with no page coming after it, cancel out to let the animation completely fluidly.
+        if ((isPreviousPage && !_hasPreviousPage) ||
+            (!isPreviousPage && !_hasNextPage)) { return; }
+
+        // Cancel the current animation, and force a layout to reset the state of all the pages
         [scrollView.layer removeAllAnimations];
         self.disableLayout = NO;
         [self layoutPages];
-    }
-    
-    // If a layout pass did happen above, then if we're reaching the end of the pages,
-    // the scroll view will have its insets set at this point.
-    // To stop animating past the last page, check if our destination offset is inside
-    // the scroll view, and exit out if it is
-    if ((offset - FLT_EPSILON <= self.scrollViewPageWidth &&
-        scrollView.contentInset.left < -FLT_EPSILON)
-        ||
-        (offset + FLT_EPSILON >= self.scrollViewPageWidth &&
-         scrollView.contentInset.right < -FLT_EPSILON))
-    {
-        return;
     }
 
     // Move the scroll view to the target offset, which will trigger a layout.
@@ -865,11 +858,11 @@ typedef struct {
     }
 
     // Perform the animation
-    [UIView animateWithDuration:0.45f
+    [UIView animateWithDuration:0.4f
                           delay:0.0f
          usingSpringWithDamping:1.0f
-          initialSpringVelocity:2.5f
-                        options:UIViewAnimationOptionAllowUserInteraction
+          initialSpringVelocity:1.0f
+                        options:(UIViewAnimationOptionAllowUserInteraction|UIViewAnimationOptionCurveEaseOut)
                      animations:^{
         scrollView.contentOffset = destOffset;
     } completion:^(BOOL finished) {
