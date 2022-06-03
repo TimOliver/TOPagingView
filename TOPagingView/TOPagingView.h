@@ -180,13 +180,11 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 /** Advance one page to the right (Regardless of current scroll direction) */
 - (void)turnToRightPageAnimated:(BOOL)animated;
 
-/** Jump ahead to an arbitry next page view, using the provided block to generate the page. */
-- (void)jumpToNextPageAnimated:(BOOL)animated
-                  withPageView:(nullable __kindof UIView<TOPagingViewPage> * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock;
+/** Advances ahead to an arbitrary new page, retrieved from the data source at the same time. */
+- (void)skipAheadToNewPageAnimated:(BOOL)animated;
 
-/** Jump backwards to an arbitrary previous page view, using the provided block to generate the page. */
-- (void)jumpToPreviousPageAnimated:(BOOL)animated
-                     withPageView:(nullable __kindof UIView<TOPagingViewPage> * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock;
+/** Reverses back previously to a new page, retrieved from the data source at the same time. */
+- (void)skipBehindToNewPageAnimated:(BOOL)animated;
 
 @end
 

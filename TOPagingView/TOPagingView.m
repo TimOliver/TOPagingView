@@ -404,7 +404,11 @@ typedef struct {
     if (pageView == nil) { return; }
     
     // Add the view to the scroll view
-    [_scrollView addSubview:pageView];
+    if (pageView.superview == nil) {
+        [_scrollView addSubview:pageView];
+    } else {
+        pageView.hidden = NO;
+    }
     
     // If it has a unique identifier, store it so we can refer to it easily
     if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
@@ -428,8 +432,8 @@ typedef struct {
 {
     if (pageView == nil) { return; }
 
-    // Pull it out of the scroll view
-    [pageView removeFromSuperview];
+    // Leave in the hierarchy, but hide from view
+    pageView.hidden = YES;
 
     // If the page has a unique identifier, remove it from the dictionary
     if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
@@ -803,7 +807,15 @@ typedef struct {
 
 #pragma mark - External Page Control -
 
-- (void)turnToPageAtContentXOffset:(CGFloat)offset animated:(BOOL)animated
+- (void)turnToPageAtContentXOffset:(CGFloat)offset
+                          animated:(BOOL)animated
+{
+    [self turnToPageAtContentXOffset:offset animated:animated completionHandler:nil];
+}
+
+- (void)turnToPageAtContentXOffset:(CGFloat)offset
+                          animated:(BOOL)animated
+                 completionHandler:(void (^)(void))completionHandler
 {
     UIScrollView *scrollView = self.scrollView;
 
@@ -822,6 +834,7 @@ typedef struct {
     // and then set the offset to the target
     if (animated == NO) {
         scrollView.contentOffset = (CGPoint){offset, 0.0f};
+        if (completionHandler) { completionHandler(); }
         return;
     }
     
@@ -872,6 +885,9 @@ typedef struct {
         // Perform a sanity layout just in case
         // (But in most cases, this should be a no-op)
         [self layoutPages];
+
+        // Perform the completion handler if available
+        if (completionHandler) { completionHandler(); }
     }];
 }
 
@@ -888,8 +904,7 @@ typedef struct {
                             animated:animated];
 }
 
-- (void)jumpToNextPageAnimated:(BOOL)animated
-                  withPageView:(nullable __kindof UIView<TOPagingViewPage> * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock
+- (void)skipAheadToNewPageAnimated:(BOOL)animated
 {
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
@@ -899,7 +914,9 @@ typedef struct {
     [self reclaimPageView:self.nextPageView];
     
     // Get the new page
-    self.nextPageView = pageViewBlock(self, self.currentPageView);
+    self.nextPageView = [_dataSource pagingView:self
+                                pageViewForType:TOPagingViewPageTypeNext
+                                currentPageView:self.currentPageView];
     
     // Add it to the scroll view
     [self insertPageView:self.nextPageView];
@@ -908,11 +925,21 @@ typedef struct {
     self.nextPageView.frame = self.nextPageViewFrame;
     
     // Set the offset to trigger the appropriate layout
-    [self turnToPageAtContentXOffset:offset animated:animated];
+    [self turnToPageAtContentXOffset:offset animated:animated completionHandler:^{
+        // When finished, replace the page we just came from
+        [self reclaimPageView:self.previousPageView];
+
+        self.previousPageView = [self->_dataSource pagingView:self
+                                              pageViewForType:TOPagingViewPageTypePrevious
+                                              currentPageView:self.currentPageView];
+
+        [self insertPageView:self.previousPageView];
+
+        self.previousPageView.frame = self.previousPageViewFrame;
+    }];
 }
 
-- (void)jumpToPreviousPageAnimated:(BOOL)animated
-                      withPageView:(nullable __kindof UIView<TOPagingViewPage> * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock
+- (void)skipBehindToNewPageAnimated:(BOOL)animated
 {
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
@@ -922,7 +949,9 @@ typedef struct {
     [self reclaimPageView:self.previousPageView];
     
     // Get the new page
-    self.previousPageView = pageViewBlock(self, self.currentPageView);
+    self.previousPageView = [_dataSource pagingView:self
+                                    pageViewForType:TOPagingViewPageTypePrevious
+                                    currentPageView:self.currentPageView];
     
     // Add it to the scroll view
     [self insertPageView:self.previousPageView];
@@ -931,7 +960,18 @@ typedef struct {
     self.previousPageView.frame = self.previousPageViewFrame;
 
     // Set the offset to trigger the appropriate layout
-    [self turnToPageAtContentXOffset:offset animated:animated];
+    [self turnToPageAtContentXOffset:offset animated:animated completionHandler:^{
+        // When finished, replace the page we just came from
+        [self reclaimPageView:self.nextPageView];
+
+        self.nextPageView = [self->_dataSource pagingView:self
+                                          pageViewForType:TOPagingViewPageTypePrevious
+                                          currentPageView:self.currentPageView];
+
+        [self insertPageView:self.nextPageView];
+
+        self.nextPageView.frame = self.nextPageViewFrame;
+    }];
 }
 
 #pragma mark - Keyboard Control -
