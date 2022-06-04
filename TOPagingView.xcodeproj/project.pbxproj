@@ -6,6 +6,20 @@
 	objectVersion = 50;
 	objects = {
 
+/* Begin PBXAggregateTarget section */
+		22AD8C13284B25C6009F6265 /* OCLint */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 22AD8C16284B25C6009F6265 /* Build configuration list for PBXAggregateTarget "OCLint" */;
+			buildPhases = (
+				22AD8C17284B25DA009F6265 /* ShellScript */,
+			);
+			dependencies = (
+			);
+			name = OCLint;
+			productName = OCLint;
+		};
+/* End PBXAggregateTarget section */
+
 /* Begin PBXBuildFile section */
 		227BEDFA27AC1867009D6B6D /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 227BEDF927AC1867009D6B6D /* CHANGELOG.md */; };
 		22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22ADED23242B2ADD004A7854 /* TOTestPageView.m */; };
@@ -170,6 +184,9 @@
 				LastUpgradeCheck = 1330;
 				ORGANIZATIONNAME = "Tim Oliver";
 				TargetAttributes = {
+					22AD8C13284B25C6009F6265 = {
+						CreatedOnToolsVersion = 13.3;
+					};
 					22C3161A242899AA0063F6A6 = {
 						CreatedOnToolsVersion = 11.3.1;
 					};
@@ -194,6 +211,7 @@
 			targets = (
 				22C3161A242899AA0063F6A6 /* TOPagingViewExample */,
 				22C31635242899AB0063F6A6 /* TOPagingViewTests */,
+				22AD8C13284B25C6009F6265 /* OCLint */,
 			);
 		};
 /* End PBXProject section */
@@ -218,6 +236,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		22AD8C17284B25DA009F6265 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# brew install --cask oclint\n\nexport PATH=~/.rbenv/shims:$PATH\neval \"$(/opt/homebrew/bin/brew shellenv)\"\n\nunset LLVM_TARGET_TRIPLE_SUFFIX\n\nxcodebuild clean\nxcodebuild COMPILER_INDEX_STORE_ENABLE=NO | xcpretty -r json-compilation-database --output compile_commands.json\n\n# Rules\nLINT_LONG_LINE=300\nLINT_LONG_VARIABLE_NAME=64\nLINT_LONG_METHOD=150\n\nLINT_RULES=\"-rc LONG_LINE=${LINT_LONG_LINE} \\\n    -rc LONG_VARIABLE_NAME=${LINT_LONG_VARIABLE_NAME} \\\n    -rc LONG_METHOD=${LINT_LONG_METHOD}\"\n\n# Threshold.\nLINT_PRIORITY_1_THRESHOLD=0\nLINT_PRIORITY_2_THRESHOLD=20\nLINT_PRIORITY_3_THRESHOLD=30\nLINT_THRESHOLD = \"-max-priority-1=${LINT_PRIORITY_1_THRESHOLD} \\\n    -max-priority-2=${LINT_PRIORITY_2_THRESHOLD} \\\n    -max-priority-3=${LINT_PRIORITY_3_THRESHOLD}\"\n\n# Excludes\n# you can use grep-like regular expressions syntax,\nLINT_EXCLUDES=\"Pods|lib\"\n\noclint-json-compilation-database \\\n    -exclude ${LINT_EXCLUDES} \\\n    -- \\\n    -report-type xcode \\\n    ${LINT_RULES} \\\n\n";
+		};
 		22ADED27242C587C004A7854 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -280,6 +315,24 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		22AD8C14284B25C6009F6265 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6LF3GMKZAB;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		22AD8C15284B25C6009F6265 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6LF3GMKZAB;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		22C3163D242899AB0063F6A6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -481,6 +534,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		22AD8C16284B25C6009F6265 /* Build configuration list for PBXAggregateTarget "OCLint" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				22AD8C14284B25C6009F6265 /* Debug */,
+				22AD8C15284B25C6009F6265 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		22C31616242899AA0063F6A6 /* Build configuration list for PBXProject "TOPagingView" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
