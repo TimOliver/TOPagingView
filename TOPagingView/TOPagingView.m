@@ -103,6 +103,7 @@ typedef struct {
 - (void)transitionOverToPreviousPage __attribute__((objc_direct));
 - (void)insertPageView:(UIView *)pageView __attribute__((objc_direct));
 - (void)reclaimPageView:(UIView *)pageView __attribute__((objc_direct));
+- (NSString *)identifierForPageViewClass:(Class)pageViewClass __attribute__((objc_direct));
 - (void)setPageSlotEnabled:(BOOL)enabled edge:(UIRectEdge)edge __attribute__((objc_direct));
 
 @end
@@ -231,7 +232,7 @@ typedef struct {
     }
 
     // Set the origin to account for the scroll view padding
-    CGFloat offset = (_pageSpacing * 0.5f);
+    CGFloat offset = _pageSpacing * 0.5f;
     const CGFloat width = bounds.size.width + _pageSpacing;
 
     // If the first page is the center page (eg, the previous/next page is nil),
@@ -484,34 +485,24 @@ typedef struct {
 
 - (void)handlePageTransitions
 {
-    const BOOL isReversed = self.isDirectionReversed;
+    const BOOL isReversed = (_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     const CGPoint offset = _scrollView.contentOffset;
     const CGFloat segmentWidth = self.scrollViewPageWidth;
     const CGSize contentSize = _scrollView.contentSize;
 
-    // Configure two blocks we can dynamically call depending on the direction
-    // we scrolled, but also accounting for the layout ordering of the pages.
-    void (^goToNextPageBlock)(void) = ^{
-        [self transitionOverToNextPage];
-    };
-
-    void (^goToPreviousPageBlock)(void) = ^{
-        [self transitionOverToPreviousPage];
-    };
-
     // Check if we went over the right-hand threshold to start transitioning the pages
     const CGFloat rightPageThreshold = contentSize.width - (segmentWidth * 1.5f);
     if (offset.x > rightPageThreshold) {
-        if (isReversed) { goToPreviousPageBlock(); }
-        else { goToNextPageBlock(); }
+        if (isReversed) { [self transitionOverToPreviousPage]; }
+        else { [self transitionOverToNextPage]; }
         return;
     }
 
     // Check if we went over the left-hand threshold to start transitioning the pages
     const CGFloat leftPageThreshold = segmentWidth * 0.5f;
     if (offset.x < leftPageThreshold) {
-        if (isReversed) { goToNextPageBlock(); }
-        else { goToPreviousPageBlock(); }
+        if (isReversed) { [self transitionOverToNextPage]; }
+        else { [self transitionOverToPreviousPage]; }
         return;
     }
 }
@@ -556,7 +547,7 @@ typedef struct {
 
     // Check the direction of the next step
     const CGFloat offset = _scrollView.contentOffset.x;
-    const BOOL isReversed = self.isDirectionReversed;
+    const BOOL isReversed = (_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     TOPagingViewPageType directionType = TOPagingViewPageTypeInitial;
 
     // We dragged to the right
@@ -806,10 +797,10 @@ typedef struct {
     else { insets.right = value; }
     
     // Set the inset and then restore the offset
-    [self performWithoutLayout:^{
-        self->_scrollView.contentInset = insets;
-        self->_scrollView.contentOffset = contentOffset;
-    }];
+    _disableLayout = YES;
+    _scrollView.contentInset = insets;
+    _scrollView.contentOffset = contentOffset;
+    _disableLayout = NO;
 }
 
 #pragma mark - External Page Control -
