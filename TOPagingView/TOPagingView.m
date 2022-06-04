@@ -470,12 +470,12 @@ typedef struct {
         return;
     }
 
-    // Observe user interaction for triggering certain delegate callbacks
-    [self updateDragInteraction];
-
     // Check the offset of the scroll view, and when it passes over
     // the mid point between two pages, perform the page transition
     [self handlePageTransitions];
+
+    // Observe user interaction for triggering certain delegate callbacks
+    [self updateDragInteraction];
 
     // When the page offset crosses either the left or right threshold,
     // check if a page is ready or not and enable insetting at that point to
@@ -559,7 +559,10 @@ typedef struct {
 
     // If this is a new direction than before, inform the delegate, and then save to avoid repeating
     if (directionType != _draggingDirectionType) {
-        [_delegate pagingView:self willTurnToPageOfType:directionType];
+        // Offload this delegate call to another run-loop to avoid any heavy operations as the data source
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            [self.delegate pagingView:self willTurnToPageOfType:directionType];
+        }];
         _draggingDirectionType = directionType;
     }
 
@@ -650,21 +653,10 @@ typedef struct {
         [_delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypeNext];
     }
 
-    // Query the data source for the next page
-    UIView<TOPagingViewPage> *nextPage = [_dataSource pagingView:self
-                                                 pageViewForType:TOPagingViewPageTypeNext
-                                                 currentPageView:_nextPageView];
-    
-    // Insert the new page object and update its position (Will fall through if nil)
-    [self insertPageView:nextPage];
-    _nextPageView = nextPage;
-    _nextPageView.frame = self.nextPageViewFrame;
-
-    // If the next page ended up being nil,
-    // set a flag to prevent churning, and inset the scroll inset
-    if (nextPage == nil) {
-        _hasNextPage = NO;
-    }
+    // Offload the heavy work to a new run-loop cyle so we don't overload the current one
+    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+        [self fetchNewNextPage];
+    }];
 
     // Move the scroll view back one segment
     CGPoint contentOffset = _scrollView.contentOffset;
@@ -679,6 +671,26 @@ typedef struct {
         _draggingOrigin = -CGFLOAT_MAX;
         _draggingDirectionType = TOPagingViewPageTypeInitial;
     }
+}
+
+- (void)fetchNewNextPage
+{
+    // Query the data source for the next page
+    UIView<TOPagingViewPage> *nextPage = [_dataSource pagingView:self
+                                                 pageViewForType:TOPagingViewPageTypeNext
+                                                 currentPageView:_nextPageView];
+
+    // Insert the new page object and update its position (Will fall through if nil)
+    [self insertPageView:nextPage];
+    _nextPageView = nextPage;
+    _nextPageView.frame = self.nextPageViewFrame;
+
+    // If the next page ended up being nil,
+    // set a flag to prevent churning, and inset the scroll inset
+    _hasNextPage = (nextPage != nil);
+
+    // Update the insets if this state ended up changing them
+    [self updateEnabledPages];
 }
 
 - (void)transitionOverToPreviousPage
@@ -708,21 +720,10 @@ typedef struct {
         [_delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypePrevious];
     }
 
-    // Query the data source for the previous page, and exit out if there is no more page data
-    UIView<TOPagingViewPage> *previousPage = [_dataSource pagingView:self
-                                                     pageViewForType:TOPagingViewPageTypePrevious
-                                                     currentPageView:_previousPageView];
-    
-    // Insert the new page object and set its position (Will fall through if nil)
-    [self insertPageView:previousPage];
-    _previousPageView = previousPage;
-    _previousPageView.frame = self.previousPageViewFrame;
-
-    // If the previous page ended up being nil,
-    // set a flag to prevent churning, and inset the scroll inset
-    if (previousPage == nil) {
-        _hasPreviousPage = NO;
-    }
+    // Offload the heavy work to a new run-loop cyle so we don't overload the current one
+    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+        [self fetchNewPreviousPage];
+    }];
 
     // Move the scroll view forward one segment
     CGPoint contentOffset = _scrollView.contentOffset;
@@ -737,6 +738,25 @@ typedef struct {
         _draggingOrigin = -CGFLOAT_MAX;
         _draggingDirectionType = TOPagingViewPageTypeInitial;
     }
+}
+
+- (void)fetchNewPreviousPage
+{
+    // Query the data source for the previous page, and exit out if there is no more page data
+    UIView<TOPagingViewPage> *previousPage = [_dataSource pagingView:self
+                                                     pageViewForType:TOPagingViewPageTypePrevious
+                                                     currentPageView:_previousPageView];
+
+    // Insert the new page object and set its position (Will fall through if nil)
+    [self insertPageView:previousPage];
+    _previousPageView = previousPage;
+    _previousPageView.frame = self.previousPageViewFrame;
+
+    // If the previous page ended up being nil, set a flag so we don't check again until we need to
+    _hasPreviousPage = (previousPage != nil);
+
+    // Update the insets if this state ended up changing them
+    [self updateEnabledPages];
 }
 
 - (void)rearrangePagesForScrollDirection:(TOPagingViewDirection)direction
