@@ -687,9 +687,10 @@ typedef struct {
 
     // If the next page ended up being nil,
     // set a flag to prevent churning, and inset the scroll inset
-    if (nextPage == nil) {
-        _hasNextPage = NO;
-    }
+    _hasNextPage = (nextPage != nil);
+
+    // Update the insets if this state ended up changing them
+    [self updateEnabledPages];
 }
 
 - (void)transitionOverToPreviousPage
@@ -751,11 +752,11 @@ typedef struct {
     _previousPageView = previousPage;
     _previousPageView.frame = self.previousPageViewFrame;
 
-    // If the previous page ended up being nil,
-    // set a flag to prevent churning, and inset the scroll inset
-    if (previousPage == nil) {
-        _hasPreviousPage = NO;
-    }
+    // If the previous page ended up being nil, set a flag so we don't check again until we need to
+    _hasPreviousPage = (previousPage != nil);
+
+    // Update the insets if this state ended up changing them
+    [self updateEnabledPages];
 }
 
 - (void)rearrangePagesForScrollDirection:(TOPagingViewDirection)direction
