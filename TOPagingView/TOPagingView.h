@@ -27,10 +27,18 @@ NS_ASSUME_NONNULL_BEGIN
 @class TOPagingView;
 
 //-------------------------------------------------------------------
+
 /** An enumeration of directions in which the scroll view may display pages. */
 typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
-    TOPagingViewDirectionLeftToRight = 0, /** Pages ascend from the left, to the right */
-    TOPagingViewDirectionRightToLeft = 1 /** Pages ascend from the right, to the left */
+    TOPagingViewDirectionLeftToRight = 0, /** Pages ascend from the left, to the right. */
+    TOPagingViewDirectionRightToLeft = 1  /** Pages ascend from the right, to the left. */
+};
+
+/** An enumeration describing the kind of page being requested by the data source */
+typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
+    TOPagingViewPageTypeInitial, /** The initial page to display after a reload. */
+    TOPagingViewPageTypeNext,    /** The next page sequentially after the current page. */
+    TOPagingViewPageTypePrevious /** The previous page sequentially before the current page. */
 };
 
 //-------------------------------------------------------------------
@@ -74,16 +82,16 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
 
 @required
 
-/** Called once upon each reload of the paging view. Use this to provide the initial page view to display. */
-- (nullable __kindof UIView *)initialPageViewForPagingView:(TOPagingView *)pagingView;
-
-/** Given the current page view, return the next page view that should come after it. */
-- (nullable __kindof  UIView *)pagingView:(TOPagingView *)pagingView
-           nextPageViewAfterPageView:(__kindof UIView *)currentPageView;
-
-/** Given the current page view, return the previous page view that should come before it. */
-- (nullable __kindof  UIView *)pagingView:(TOPagingView *)pagingView
-      previousPageViewBeforePageView:(__kindof UIView *)currentPageView;
+/**
+ Called when the paging view is requesting a new page view in the current sequence in either direction.
+ Use this method to dequeue, or create a new page view that will be displayed in the paging view.
+@param pagingView The paging view requesting the new page view.
+@param type The type of page to be displayed in its relation to the visible page on screen.
+@param currentPageView The current page view on screen. This can be nil if no pages have been displayed yet.
+*/
+- (nullable __kindof UIView<TOPagingViewPage> *)pagingView:(TOPagingView *)pagingView
+                                           pageViewForType:(TOPagingViewPageType)type
+                                           currentPageView:(UIView<TOPagingViewPage> * _Nullable)currentPageView;
 
 @end
 
@@ -92,6 +100,23 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
 @protocol TOPagingViewDelegate <NSObject>
 
 @optional
+
+/**
+ Called when a transaction has started moving in a direction (eg, the user has
+ started swiping in a direction, or an animation is about to start) that can potentially
+ end in a page transition. Use this to start preloading content in that direction.
+ @param pagingView The calling paging view instance.
+ @param type The type of page that was turned to, whether the next or previous one.
+*/
+- (void)pagingView:(TOPagingView *)pagingView willTurnToPageOfType:(TOPagingViewPageType)type;
+
+/**
+ Called when a page turn has crossed the turning threshold and a new page has become the current one.
+ Use this to update any state around the paging view used to control the current page.
+ @param pagingView The calling paging view instance.
+ @param type The type of page that was turned to (This can include initial after a reload).
+*/
+- (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type;
 
 @end
 
@@ -132,22 +157,22 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
 - (void)setNeedsPageUpdate;
 
 /** Returns a page view from the default queue of pages, ready for re-use. */
-- (nullable __kindof UIView *)dequeueReusablePageView;
+- (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageView;
 
 /** Returns a page view from the specific queue matching the provided identifier string. */
-- (nullable __kindof UIView *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier;
+- (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier;
 
 /** The currently visible primary page view on screen. */
-- (nullable __kindof UIView *)currentPageView;
+- (nullable __kindof UIView<TOPagingViewPage> *)currentPageView;
 
 /** The next page after the currently visible page on the screen. */
-- (nullable __kindof UIView *)nextPageView;
+- (nullable __kindof UIView<TOPagingViewPage> *)nextPageView;
 
 /** The previous page before the currently visible page on the screen. */
-- (nullable __kindof UIView *)previousPageView;
+- (nullable __kindof UIView<TOPagingViewPage> *)previousPageView;
 
 /** Returns the visible page view for the supplied unique identifier, or nil otherwise. */
-- (nullable __kindof UIView *)pageViewForUniqueIdentifier:(NSString *)identifier;
+- (nullable __kindof UIView<TOPagingViewPage> *)pageViewForUniqueIdentifier:(NSString *)identifier;
 
 /** Advance one page to the left (Regardless of current scroll direction) */
 - (void)turnToLeftPageAnimated:(BOOL)animated;
@@ -155,13 +180,11 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
 /** Advance one page to the right (Regardless of current scroll direction) */
 - (void)turnToRightPageAnimated:(BOOL)animated;
 
-/** Jump ahead to an arbitry next page view, using the provided block to generate the page. */
-- (void)jumpToNextPageAnimated:(BOOL)animated
-                  withPageView:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock;
+/** Advances ahead to an arbitrary new page, retrieved from the data source at the same time. */
+- (void)skipAheadToNewPageAnimated:(BOOL)animated;
 
-/** Jump backwards to an arbitrary previous page view, using the provided block to generate the page. */
-- (void)jumpToPreviousPageAnimated:(BOOL)animated
-                     withPageView:(UIView * (^)(TOPagingView *pagingView, UIView *currentView))pageViewBlock;
+/** Reverses back previously to a new page, retrieved from the data source at the same time. */
+- (void)skipBehindToNewPageAnimated:(BOOL)animated;
 
 @end
 
