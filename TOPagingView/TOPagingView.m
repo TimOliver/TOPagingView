@@ -30,6 +30,10 @@ static NSString * const kTOPagingViewDefaultIdentifier = @"TOPagingView.DefaultP
 /** There are always 3 slots, with content insetting used to block pages on either side. */
 static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
 
+/** The amount of padding along the edge of the screen shown when the "no incoming page" animation plays */
+static CGFloat const kTOPagingViewBumperWidthCompact = 48.0f;
+static CGFloat const kTOPagingViewBumperWidthRegular = 96.0f;
+
 // -----------------------------------------------------------------
 
 typedef struct {
@@ -815,7 +819,7 @@ typedef struct {
 
 - (void)turnToPageAtContentXOffset:(CGFloat)offset
                           animated:(BOOL)animated
-                 completionHandler:(void (^)(void))completionHandler
+                 completionHandler:(void (^)(BOOL))completionHandler
 {
     UIScrollView *scrollView = self.scrollView;
 
@@ -834,7 +838,7 @@ typedef struct {
     // and then set the offset to the target
     if (animated == NO) {
         scrollView.contentOffset = (CGPoint){offset, 0.0f};
-        if (completionHandler) { completionHandler(); }
+        if (completionHandler) { completionHandler(YES); }
         return;
     }
     
@@ -844,8 +848,10 @@ typedef struct {
     if (scrollView.layer.animationKeys.count) {
         // If we're already in an animation that is moving towards the last a page
         // with no page coming after it, cancel out to let the animation completely fluidly.
-        if ((isPreviousPage && !_hasPreviousPage) ||
-            (!isPreviousPage && !_hasNextPage)) { return; }
+        if ((isPreviousPage && !_hasPreviousPage) || (!isPreviousPage && !_hasNextPage)) {
+            completionHandler(NO);
+            return;
+        }
 
         // Cancel the current animation, and force a layout to reset the state of all the pages
         [scrollView.layer removeAllAnimations];
@@ -887,19 +893,37 @@ typedef struct {
         [self layoutPages];
 
         // Perform the completion handler if available
-        if (completionHandler) { completionHandler(); }
+        if (completionHandler) { completionHandler(YES); }
     }];
 }
 
 - (void)turnToLeftPageAnimated:(BOOL)animated
 {
-    if (self.isDirectionReversed && !self.hasNextPage) { return; }
+    BOOL hasLeftPage = (self.isDirectionReversed && self.hasNextPage) ||
+                        (!self.isDirectionReversed && self.hasPreviousPage);
+
+    // Play a bouncy animation if there's no incoming page
+    if (!hasLeftPage) {
+        if (!animated) { return; }
+        [self playBounceAnimationInDirection:TOPagingViewDirectionRightToLeft];
+        return;
+    }
+
     [self turnToPageAtContentXOffset:0.0f animated:animated];
 }
 
 - (void)turnToRightPageAnimated:(BOOL)animated
 {
-    if (!self.isDirectionReversed && !self.hasNextPage) { return; }
+    BOOL hasRightPage = (self.isDirectionReversed && self.hasPreviousPage) ||
+                        (!self.isDirectionReversed && self.hasNextPage);
+
+    // Play a bouncy animation if there's no incoming page
+    if (!hasRightPage) {
+        if (!animated) { return; }
+        [self playBounceAnimationInDirection:TOPagingViewDirectionLeftToRight];
+        return;
+    }
+
     [self turnToPageAtContentXOffset:self.scrollView.contentSize.width - self.scrollViewPageWidth
                             animated:animated];
 }
@@ -925,7 +949,9 @@ typedef struct {
     self.nextPageView.frame = self.nextPageViewFrame;
     
     // Set the offset to trigger the appropriate layout
-    [self turnToPageAtContentXOffset:offset animated:animated completionHandler:^{
+    [self turnToPageAtContentXOffset:offset animated:animated completionHandler:^(BOOL success) {
+        if (success == NO) { return; }
+
         // When finished, replace the page we just came from
         [self reclaimPageView:self.previousPageView];
 
@@ -960,7 +986,9 @@ typedef struct {
     self.previousPageView.frame = self.previousPageViewFrame;
 
     // Set the offset to trigger the appropriate layout
-    [self turnToPageAtContentXOffset:offset animated:animated completionHandler:^{
+    [self turnToPageAtContentXOffset:offset animated:animated completionHandler:^(BOOL success) {
+        if (success == NO) { return; }
+
         // When finished, replace the page we just came from
         [self reclaimPageView:self.nextPageView];
 
@@ -972,6 +1000,57 @@ typedef struct {
 
         self.nextPageView.frame = self.nextPageViewFrame;
     }];
+}
+
+- (void)playBounceAnimationInDirection:(TOPagingViewDirection)direction
+{
+    const CGFloat offsetModifier = (direction == TOPagingViewDirectionLeftToRight) ? 1.0f : -1.0f;
+    const BOOL isCompactSizeClass = self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact;
+    const CGFloat bumperPadding = (isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) * offsetModifier;
+
+    // Set the origin and bumper margins
+    CGPoint origin = (CGPoint){self.scrollViewPageWidth, 0.0f};
+    CGPoint bumperOffset = (CGPoint){origin.x + bumperPadding, 0.0f};
+
+    // Disable layout while this is occurring
+    self.disableLayout = YES;
+
+    // Animation block when pulling back to the original state
+    void (^popAnimationBlock)(void) = ^{
+        [self.scrollView setContentOffset:origin animated:NO];
+    };
+
+    // Completion block that cleans everything up at the end of the animation
+    void (^popAnimationCompletionBlock)(BOOL) = ^(BOOL success) {
+        self.disableLayout = NO;
+    };
+
+    // Initial block that starts the animation chain
+    void (^pullAnimationBlock)(void) = ^{
+        [self.scrollView setContentOffset:bumperOffset animated:NO];
+    };
+
+    // Completion block after the initial pull back is started
+    void (^pullAnimationCompletionBlock)(BOOL) = ^(BOOL success) {
+        // Play a very wobbly spring back animation snapping back into place
+        [UIView animateWithDuration:0.4f
+                              delay:0.0f
+             usingSpringWithDamping:0.3f
+              initialSpringVelocity:0.1f
+                            options:UIViewAnimationOptionAllowUserInteraction
+                         animations:popAnimationBlock
+                         completion:popAnimationCompletionBlock];
+    };
+
+    // Kickstart the animation chain.
+    // Play a very quick rubber-banding slide out to the bumper padding
+    [UIView animateWithDuration:0.1f
+                          delay:0.0f
+         usingSpringWithDamping:1.0f
+          initialSpringVelocity:2.5f
+                        options:UIViewAnimationOptionAllowUserInteraction
+                     animations:pullAnimationBlock
+                     completion:pullAnimationCompletionBlock];
 }
 
 #pragma mark - Keyboard Control -
