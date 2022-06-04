@@ -464,14 +464,14 @@ typedef struct {
 
     const CGSize contentSize = _scrollView.contentSize;
 
-    // Observe user interaction for triggering certain delegate callbacks
-    [self updateDragInteraction];
-
     // On first run, set up the initial pages layout
     if (_currentPageView == nil || contentSize.width < FLT_EPSILON) {
         [self performInitialLayout];
         return;
     }
+
+    // Observe user interaction for triggering certain delegate callbacks
+    [self updateDragInteraction];
 
     // Check the offset of the scroll view, and when it passes over
     // the mid point between two pages, perform the page transition
@@ -850,7 +850,6 @@ typedef struct {
         // Cancel the current animation, and force a layout to reset the state of all the pages
         [scrollView.layer removeAllAnimations];
         _disableLayout = NO;
-        [self layoutPages];
     }
 
     // Move the scroll view to the target offset, which will trigger a layout.
