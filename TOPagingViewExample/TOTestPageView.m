@@ -40,6 +40,13 @@
     self.numberLabel.center = (CGPoint){CGRectGetMidX(self.bounds),
                                         CGRectGetMidY(self.bounds)};
     self.numberLabel.frame = CGRectIntegral(self.numberLabel.frame);
+
+    // Private API. Don't actually use this.
+    if (@available(iOS 13.0, *)) {
+        CGFloat cornerRadius = [[[UIScreen mainScreen] valueForKey:@"_displayCornerRadius"] floatValue];
+        self.layer.cornerRadius = cornerRadius;
+        self.layer.cornerCurve = kCACornerCurveContinuous;
+    }
 }
 
 - (void)setNumber:(NSInteger)number
