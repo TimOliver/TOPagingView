@@ -588,7 +588,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     }
 
     // Check the right slot
-    if (offset.x > segmentWidth * 2.0f) {
+    if (offset.x > segmentWidth) {
         const BOOL isEnabled = isReversed ? _hasPreviousPage : _hasNextPage;
         [self setPageSlotEnabled:isEnabled edge:UIRectEdgeRight];
     }
@@ -665,6 +665,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         self->_nextPageView = pageView;
         [self insertPageView:pageView];
         [self layoutPageSubviews];
+        [self updateEnabledPages];
     }];
 
     // Add the previous page
@@ -676,6 +677,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         self->_previousPageView = pageView;
         [self insertPageView:pageView];
         [self layoutPageSubviews];
+        [self updateEnabledPages];
     }];
 
     // Disable the observer while we manually place all elements
