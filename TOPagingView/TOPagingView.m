@@ -42,6 +42,27 @@ typedef struct {
     unsigned int delegateDidTurnToPage:1;
 } TOPagingViewDelegateFlags;
 
+/** A struct to cache which methods each page view class implements. */
+typedef struct {
+    unsigned int protocolPageIdentifier;
+    unsigned int protocolUniqueIdentifier;
+    unsigned int protocolPrepareForReuse;
+} TOPageViewProtocolFlags;
+
+// -----------------------------------------------------------------
+
+static inline NSValue *TOPagingViewValueForClass(Class *class) {
+    return [NSValue valueWithBytes:class objCType:@encode(Class)];
+}
+
+static inline Class TOPagingViewClassForValue(NSValue *value) {
+    Class class; [value getValue:&class]; return class;
+}
+
+static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue *value) {
+    TOPageViewProtocolFlags flags; [value getValue:&flags]; return flags;
+}
+
 // -----------------------------------------------------------------
 
 @interface TOPagingView ()
@@ -75,6 +96,9 @@ typedef struct {
 /** Struct to cache the state of the delegate for performance. */
 @property (nonatomic, assign) TOPagingViewDelegateFlags delegateFlags;
 
+/** Struct to cache the protocol state of each type of page view class used in this session. */
+@property (nonatomic, strong) NSMutableDictionary<NSValue *, NSValue *> *pageViewProtocolFlags;
+
 /** Disable automatic layout when manually laying out content. */
 @property (nonatomic, assign) BOOL disableLayout;
 
@@ -105,6 +129,7 @@ typedef struct {
 - (void)reclaimPageView:(UIView *)pageView __attribute__((objc_direct));
 - (NSString *)identifierForPageViewClass:(Class)pageViewClass __attribute__((objc_direct));
 - (void)setPageSlotEnabled:(BOOL)enabled edge:(UIRectEdge)edge __attribute__((objc_direct));
+- (TOPageViewProtocolFlags)cachedProtocolFlagsForPageViewClass:(Class)class __attribute__((objc_direct));
 
 @end
 
@@ -140,6 +165,7 @@ typedef struct {
     // Set default values
     _pageSpacing = 40.0f;
     _queuedPages = [NSMutableDictionary dictionary];
+    _pageViewProtocolFlags = [NSMutableDictionary dictionary];
     memset(&_delegateFlags, 0, sizeof(TOPagingViewDelegateFlags));
 
     // Configure the main properties of this view
@@ -287,7 +313,10 @@ typedef struct {
 {
     NSAssert([pageViewClass isSubclassOfClass:[UIView class]],
              @"Only UIView objects may be registered as pages.");
-    
+
+    // Cache the protocol methods this class implements to save checking each time
+    [self cachedProtocolFlagsForPageViewClass:pageViewClass];
+
     // Fetch the page identifier (or use the default if none were 
     const NSString *pageIdentifier = [self identifierForPageViewClass:pageViewClass];
     
@@ -297,8 +326,7 @@ typedef struct {
     }
     
     // Encode the class as an NSValue and store to the dictionary
-    NSValue *const encodedClass = [NSValue valueWithBytes:&pageViewClass objCType:@encode(Class)];
-    _registeredPageViewClasses[pageIdentifier] = encodedClass;
+    _registeredPageViewClasses[pageIdentifier] = TOPagingViewValueForClass(&pageViewClass);
 }
 
 - (__kindof UIView<TOPagingViewPage> *)dequeueReusablePageView
@@ -329,8 +357,7 @@ typedef struct {
     // If we have a class for this one, create a new instance and return
     NSValue *pageClassValue = _registeredPageViewClasses[identifier];
     if (pageClassValue) {
-        Class pageClass;
-        [pageClassValue getValue:&pageClass];
+        Class pageClass = TOPagingViewClassForValue(pageClassValue);
         pageView = [[pageClass alloc] initWithFrame:self.bounds];
         [enqueuedPages addObject:pageView];
         return pageView;
@@ -341,12 +368,38 @@ typedef struct {
 
 - (NSString *)identifierForPageViewClass:(Class)pageViewClass
 {
-    NSString *pageIdentifier = kTOPagingViewDefaultIdentifier;
-    if ([pageViewClass respondsToSelector:@selector(pageIdentifier)]) {
-        pageIdentifier = [pageViewClass pageIdentifier];
+    TOPageViewProtocolFlags flags = [self cachedProtocolFlagsForPageViewClass:pageViewClass];
+    if (flags.protocolPageIdentifier) {
+        return [pageViewClass pageIdentifier];
+    } else {
+        return kTOPagingViewDefaultIdentifier;
     }
-    
-    return pageIdentifier;
+}
+
+- (TOPageViewProtocolFlags)cachedProtocolFlagsForPageViewClass:(Class)class
+{
+    // Skip if we already captured the protocols from this class
+    NSValue const* classValue = TOPagingViewValueForClass(&class);
+    if (_pageViewProtocolFlags[(NSValue *)classValue] != nil) {
+        NSValue const* flagsValue = _pageViewProtocolFlags[(NSValue *)classValue];
+        return TOPagingViewProtocolFlagsForValue((NSValue *)flagsValue);
+    }
+
+    // Create a new instance of the struct and prepare its memory
+    TOPageViewProtocolFlags flags;
+    memset(&flags, 0, sizeof(TOPageViewProtocolFlags));
+
+    // Capture the protocol methods this class implements
+    flags.protocolPageIdentifier = [class respondsToSelector:@selector(pageIdentifier)];
+    flags.protocolUniqueIdentifier = [class instancesRespondToSelector:@selector(uniqueIdentifier)];
+    flags.protocolPrepareForReuse = [class instancesRespondToSelector:@selector(prepareForReuse)];
+
+    // Store in the dictionary
+    NSValue const* flagsValue = [NSValue valueWithBytes:&flags objCType:@encode(TOPageViewProtocolFlags)];
+    _pageViewProtocolFlags[classValue] = (NSValue *)flagsValue;
+
+    // Return the flags
+    return flags;
 }
 
 #pragma mark - Page Management -
@@ -410,14 +463,13 @@ typedef struct {
     if (pageView == nil) { return; }
     
     // Add the view to the scroll view
-    if (pageView.superview == nil) {
-        [_scrollView addSubview:pageView];
-    } else {
-        pageView.hidden = NO;
-    }
-    
+    [_scrollView addSubview:pageView];
+
+    // Cache the page's protocol methods if it hasn't been done yet
+    TOPageViewProtocolFlags flags = [self cachedProtocolFlagsForPageViewClass:pageView.class];
+
     // If it has a unique identifier, store it so we can refer to it easily
-    if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
+    if (flags.protocolUniqueIdentifier) {
         NSString *uniqueIdentifier = [(id)pageView uniqueIdentifier];
         
         // Lazily create the dictionary as needed
@@ -438,17 +490,24 @@ typedef struct {
 {
     if (pageView == nil) { return; }
 
-    // Leave in the hierarchy, but hide from view
-    pageView.hidden = YES;
+    // Remove from the hierarchy
+    [pageView removeFromSuperview];
+
+    // Fetch the protocol flags for this class
+    TOPageViewProtocolFlags flags = [self cachedProtocolFlagsForPageViewClass:pageView.class];
 
     // If the page has a unique identifier, remove it from the dictionary
-    if ([pageView respondsToSelector:@selector(uniqueIdentifier)]) {
+    if (flags.protocolUniqueIdentifier) {
         [_uniqueIdentifierPages removeObjectForKey:[(id)pageView uniqueIdentifier]];
     }
 
     // If the class supports the clean up method, clean it up now
-    if ([pageView respondsToSelector:@selector(prepareForReuse)]) {
-        [(id)pageView prepareForReuse];
+    if (flags.protocolPrepareForReuse) {
+        // Perform the reuse on an adjacent run loop since this may be a heavy
+        // operation and the view is off screen by this point
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            [(id)pageView prepareForReuse];
+        }];
     }
 
     // Re-add it to the recycled pages pool
@@ -863,7 +922,7 @@ typedef struct {
         // If we're already in an animation that is moving towards the last a page
         // with no page coming after it, cancel out to let the animation completely fluidly.
         if ((isPreviousPage && !_hasPreviousPage) || (!isPreviousPage && !_hasNextPage)) {
-            completionHandler(NO);
+            if (completionHandler) { completionHandler(NO); }
             return;
         }
 
@@ -941,7 +1000,7 @@ typedef struct {
                             animated:animated];
 }
 
-- (void)skipAheadToNewPageAnimated:(BOOL)animated
+- (void)skipForwardToNewPageAnimated:(BOOL)animated
 {
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
@@ -979,7 +1038,7 @@ typedef struct {
     }];
 }
 
-- (void)skipBehindToNewPageAnimated:(BOOL)animated
+- (void)skipBackwardsToNewPageAnimated:(BOOL)animated
 {
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
