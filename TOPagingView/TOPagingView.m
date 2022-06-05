@@ -1023,7 +1023,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Remove the page that this page will be replacing
     [self reclaimPageView:_nextPageView];
 
-    // Get the new page (Offload it to a new run-loop since this may be a heavy operation)
+    // Get the new page
     _nextPageView = [_dataSource pagingView:self
                                         pageViewForType:TOPagingViewPageTypeNext
                                         currentPageView:_currentPageView];
@@ -1063,7 +1063,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Remove the page that this page will be replacing
     [self reclaimPageView:_previousPageView];
     
-    // Get the new page (Offload it to a new run-loop since this may be a heavy operation)
+    // Get the new page
     _previousPageView = [_dataSource pagingView:self
                                 pageViewForType:TOPagingViewPageTypePrevious
                                 currentPageView:_currentPageView];
