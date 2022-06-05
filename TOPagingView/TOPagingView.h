@@ -180,10 +180,10 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 /** Advance one page to the right (Regardless of current scroll direction) */
 - (void)turnToRightPageAnimated:(BOOL)animated;
 
-/** Advances ahead to an arbitrary new page, retrieved from the data source at the same time. */
+/** Fetches a new arbitrary page from the data source, and skips forward to it. */
 - (void)skipForwardToNewPageAnimated:(BOOL)animated;
 
-/** Reverses back previously to a new page, retrieved from the data source at the same time. */
+/** Fetches a new arbitrary page from the data source, and skips backward to it. */
 - (void)skipBackwardsToNewPageAnimated:(BOOL)animated;
 
 @end

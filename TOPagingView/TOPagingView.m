@@ -42,15 +42,19 @@ typedef struct {
     unsigned int delegateDidTurnToPage:1;
 } TOPagingViewDelegateFlags;
 
-/** A struct to cache which methods each page view class implements. */
+/**
+ A struct to cache which methods each page view class implements.
+ (C-struct bitfields don't work with NSValue, so
+ */
 typedef struct {
-    unsigned int protocolPageIdentifier;
-    unsigned int protocolUniqueIdentifier;
-    unsigned int protocolPrepareForReuse;
+    BOOL protocolPageIdentifier;
+    BOOL protocolUniqueIdentifier;
+    BOOL protocolPrepareForReuse;
 } TOPageViewProtocolFlags;
 
 // -----------------------------------------------------------------
 
+/** Con*/
 static inline NSValue *TOPagingViewValueForClass(Class *class) {
     return [NSValue valueWithBytes:class objCType:@encode(Class)];
 }
@@ -433,28 +437,32 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     
     // If there currently isn't a previous page, check again to see if there is one now.
     if (!_hasPreviousPage) {
-        UIView *previousPage = [_dataSource pagingView:self
-                                       pageViewForType:TOPagingViewPageTypePrevious
-                                       currentPageView:_currentPageView];
-        // Add the page view to the hierarchy
-        if (previousPage) {
-            [self insertPageView:previousPage];
-            previousPage.frame = self.previousPageViewFrame;
-            _hasPreviousPage = YES;
-        }
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            UIView *previousPage = [self->_dataSource pagingView:self
+                                           pageViewForType:TOPagingViewPageTypePrevious
+                                           currentPageView:self->_currentPageView];
+            // Add the page view to the hierarchy
+            if (previousPage) {
+                [self insertPageView:previousPage];
+                previousPage.frame = self.previousPageViewFrame;
+                self->_hasPreviousPage = YES;
+            }
+        }];
     }
     
     // If there currently isn't a next page, check again
     if (!_hasNextPage) {
-        UIView *nextPage = [_dataSource pagingView:self
-                                   pageViewForType:TOPagingViewPageTypeNext
-                                   currentPageView:_currentPageView];
-        // Add the page view to the hierarchy
-        if (nextPage) {
-            [self insertPageView:nextPage];
-            nextPage.frame = self.nextPageViewFrame;
-            _hasNextPage = YES;
-        }
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            UIView *nextPage = [self->_dataSource pagingView:self
+                                       pageViewForType:TOPagingViewPageTypeNext
+                                       currentPageView:self->_currentPageView];
+            // Add the page view to the hierarchy
+            if (nextPage) {
+                [self insertPageView:nextPage];
+                nextPage.frame = self.nextPageViewFrame;
+                self->_hasNextPage = YES;
+            }
+        }];
     }
 }
 
