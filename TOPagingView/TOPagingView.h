@@ -181,10 +181,10 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 - (void)turnToRightPageAnimated:(BOOL)animated;
 
 /** Advances ahead to an arbitrary new page, retrieved from the data source at the same time. */
-- (void)skipAheadToNewPageAnimated:(BOOL)animated;
+- (void)skipForwardToNewPageAnimated:(BOOL)animated;
 
 /** Reverses back previously to a new page, retrieved from the data source at the same time. */
-- (void)skipBehindToNewPageAnimated:(BOOL)animated;
+- (void)skipBackwardsToNewPageAnimated:(BOOL)animated;
 
 @end
 
