@@ -1064,9 +1064,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     [self reclaimPageView:_previousPageView];
     
     // Get the new page (Offload it to a new run-loop since this may be a heavy operation)
-    _previousPageView = [self->_dataSource pagingView:self
-                                            pageViewForType:TOPagingViewPageTypePrevious
-                                            currentPageView:_currentPageView];
+    _previousPageView = [_dataSource pagingView:self
+                                pageViewForType:TOPagingViewPageTypePrevious
+                                currentPageView:_currentPageView];
 
     // Add it to the scroll view
     [self insertPageView:_previousPageView];
