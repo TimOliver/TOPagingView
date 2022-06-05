@@ -657,21 +657,27 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     _currentPageView = pageView;
     
     // Add the next page
-    pageView = [_dataSource pagingView:self
-                       pageViewForType:TOPagingViewPageTypeNext
-                       currentPageView:_currentPageView];
-    _hasNextPage = (pageView != nil);
-    _nextPageView = pageView;
-    [self insertPageView:pageView];
-    
+    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+        UIView<TOPagingViewPage> *pageView = [self->_dataSource pagingView:self
+                                                     pageViewForType:TOPagingViewPageTypeNext
+                                                     currentPageView:self->_currentPageView];
+        self->_hasNextPage = (pageView != nil);
+        self->_nextPageView = pageView;
+        [self insertPageView:pageView];
+        [self layoutPageSubviews];
+    }];
+
     // Add the previous page
-    pageView = [_dataSource pagingView:self
-                       pageViewForType:TOPagingViewPageTypePrevious
-                       currentPageView:_currentPageView];
-    _hasPreviousPage = (pageView != nil);
-    _previousPageView = pageView;
-    [self insertPageView:pageView];
-    
+    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+        UIView<TOPagingViewPage> *pageView = [self->_dataSource pagingView:self
+                                                           pageViewForType:TOPagingViewPageTypePrevious
+                                                           currentPageView:self->_currentPageView];
+        self->_hasPreviousPage = (pageView != nil);
+        self->_previousPageView = pageView;
+        [self insertPageView:pageView];
+        [self layoutPageSubviews];
+    }];
+
     // Disable the observer while we manually place all elements
     _disableLayout = YES;
     
@@ -1016,18 +1022,18 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     
     // Remove the page that this page will be replacing
     [self reclaimPageView:_nextPageView];
-    
-    // Get the new page
+
+    // Get the new page (Offload it to a new run-loop since this may be a heavy operation)
     _nextPageView = [_dataSource pagingView:self
-                            pageViewForType:TOPagingViewPageTypeNext
-                            currentPageView:_currentPageView];
-    
+                                        pageViewForType:TOPagingViewPageTypeNext
+                                        currentPageView:_currentPageView];
+
     // Add it to the scroll view
     [self insertPageView:_nextPageView];
-    
+
     // Set its frame to its placement
     _nextPageView.frame = self.nextPageViewFrame;
-    
+
     // Set the offset to trigger the appropriate layout
     [self turnToPageAtContentXOffset:offset animated:animated completionHandler:^(BOOL success) {
         if (success == NO) { return; }
@@ -1036,17 +1042,19 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         [self reclaimPageView:self->_previousPageView];
 
         // Fetch the replacement page from the data source
-        self->_previousPageView = [self->_dataSource pagingView:self
-                                                pageViewForType:TOPagingViewPageTypePrevious
-                                                currentPageView:self->_currentPageView];
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            self->_previousPageView = [self->_dataSource pagingView:self
+                                                    pageViewForType:TOPagingViewPageTypePrevious
+                                                    currentPageView:self->_currentPageView];
 
-        // Lay the new page out in the scroll view
-        [self insertPageView:self->_previousPageView];
-        self->_previousPageView.frame = self.previousPageViewFrame;
+            // Lay the new page out in the scroll view
+            [self insertPageView:self->_previousPageView];
+            self->_previousPageView.frame = self.previousPageViewFrame;
+        }];
     }];
 }
 
-- (void)skipBackwardsToNewPageAnimated:(BOOL)animated
+- (void)skipBackwardToNewPageAnimated:(BOOL)animated
 {
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
@@ -1055,14 +1063,14 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Remove the page that this page will be replacing
     [self reclaimPageView:_previousPageView];
     
-    // Get the new page
-    _previousPageView = [_dataSource pagingView:self
-                                pageViewForType:TOPagingViewPageTypePrevious
-                                currentPageView:_currentPageView];
-    
+    // Get the new page (Offload it to a new run-loop since this may be a heavy operation)
+    _previousPageView = [self->_dataSource pagingView:self
+                                            pageViewForType:TOPagingViewPageTypePrevious
+                                            currentPageView:_currentPageView];
+
     // Add it to the scroll view
     [self insertPageView:_previousPageView];
-    
+
     // Set its frame to its placement
     _previousPageView.frame = self.previousPageViewFrame;
 
@@ -1074,13 +1082,15 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         [self reclaimPageView:self->_nextPageView];
 
         // Fetch the replacement page from the data source
-        self->_nextPageView = [self->_dataSource pagingView:self
-                                          pageViewForType:TOPagingViewPageTypePrevious
-                                          currentPageView:self->_currentPageView];
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            self->_nextPageView = [self->_dataSource pagingView:self
+                                              pageViewForType:TOPagingViewPageTypePrevious
+                                              currentPageView:self->_currentPageView];
 
-        // Lay the new page out in the scroll view
-        [self insertPageView:self->_nextPageView];
-        self->_nextPageView.frame = self.nextPageViewFrame;
+            // Lay the new page out in the scroll view
+            [self insertPageView:self->_nextPageView];
+            self->_nextPageView.frame = self.nextPageViewFrame;
+        }];
     }];
 }
 
