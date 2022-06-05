@@ -64,8 +64,8 @@
     // view can be safely updated to match this view. This is called before the data source requests the next page
     // in order to update the state that will reflect what the data source needs to generate.
 
-    if (type == TOPagingViewPageTypeNext) { self.pageIndex++; }
-    if (type == TOPagingViewPageTypePrevious) { self.pageIndex--; }
+    if (type == TOPagingViewPageTypeNext) { _pageIndex++; }
+    if (type == TOPagingViewPageTypePrevious) { _pageIndex--; }
 
     NSLog(@"Paging view did to turn to: %@ at page %ld", [self stringForType:type], (long)self.pageIndex);
 }
