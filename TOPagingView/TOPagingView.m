@@ -252,7 +252,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     _disableLayout = NO;
     
     // Layout the page subviews
-    [self layoutPageSubviews];
+    [self performAsync:^{
+        [self layoutPageSubviews];
+    }];
 }
 
 - (void)layoutPageSubviews
