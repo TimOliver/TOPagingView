@@ -36,7 +36,7 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
 
 /** An enumeration describing the kind of page being requested by the data source */
 typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
-    TOPagingViewPageTypeInitial, /** The initial page to display after a reload. */
+    TOPagingViewPageTypeCurrent, /** The current page that will be visible on screen initially. */
     TOPagingViewPageTypeNext,    /** The next page sequentially after the current page. */
     TOPagingViewPageTypePrevious /** The previous page sequentially before the current page. */
 };

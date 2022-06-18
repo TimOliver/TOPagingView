@@ -620,7 +620,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // If we're not being dragged, reset the state
     if (_scrollView.isTracking == NO) {
         _draggingOrigin = -CGFLOAT_MAX;
-        _draggingDirectionType = TOPagingViewPageTypeInitial;
         return;
     }
 
@@ -633,7 +632,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Check the direction of the next step
     const CGFloat offset = _scrollView.contentOffset.x;
     const BOOL isReversed = (_pageScrollDirection == TOPagingViewDirectionRightToLeft);
-    TOPagingViewPageType directionType = TOPagingViewPageTypeInitial;
+    TOPagingViewPageType directionType;
 
     // We dragged to the right
     if (offset < _draggingOrigin - FLT_EPSILON) {
@@ -663,12 +662,12 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
     // Send a delegate event stating we're about to transition to the initial page
     if (_delegateFlags.delegateWillTurnToPage) {
-        [_delegate pagingView:self willTurnToPageOfType:TOPagingViewPageTypeInitial];
+        [_delegate pagingView:self willTurnToPageOfType:TOPagingViewPageTypeCurrent];
     }
 
     // Add the initial page
     UIView<TOPagingViewPage> *pageView = [_dataSource pagingView:self
-                                                 pageViewForType:TOPagingViewPageTypeInitial
+                                                 pageViewForType:TOPagingViewPageTypeCurrent
                                                  currentPageView:nil];
     if (pageView == nil) { return; }
     [self insertPageView:pageView];
@@ -715,7 +714,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
     // Send a delegate event stating we've completed transitioning to the initial page
     if (_delegateFlags.delegateDidTurnToPage) {
-        [_delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypeInitial];
+        [_delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypeCurrent];
     }
 }
 
@@ -762,7 +761,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // If we're dragging, reset the state
     if (_scrollView.isDragging) {
         _draggingOrigin = -CGFLOAT_MAX;
-        _draggingDirectionType = TOPagingViewPageTypeInitial;
     }
 }
 
@@ -829,7 +827,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // If we're dragging, reset the state
     if (_scrollView.isDragging) {
         _draggingOrigin = -CGFLOAT_MAX;
-        _draggingDirectionType = TOPagingViewPageTypeInitial;
     }
 }
 
@@ -1055,13 +1052,16 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
     if (!self.isDirectionReversed) { offset = self.scrollViewPageWidth * 2.0f; }
-    
+
+    // Since we're handling the entire transition, disable layout for the whole time
+    _disableLayout = YES;
+
     // Remove the page that this page will be replacing
     [self reclaimPageView:_nextPageView];
 
     // Get the new page
     _nextPageView = [_dataSource pagingView:self
-                                        pageViewForType:TOPagingViewPageTypeNext
+                                        pageViewForType:TOPagingViewPageTypeCurrent
                                         currentPageView:_currentPageView];
 
     // Add it to the scroll view
@@ -1071,14 +1071,22 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     _nextPageView.frame = self.nextPageViewFrame;
 
     // Set the offset to trigger the appropriate layout
-    [self turnToPageAtContentXOffset:offset animated:animated completionHandler:^(BOOL success) {
-        if (success == NO) { return; }
-
-        // When finished, replace the page we just came from
-        [self reclaimPageView:self->_previousPageView];
+    [self turnToPageAtContentXOffset:offset
+                       disableLayout:YES
+                            animated:animated
+                   completionHandler:^(BOOL success) {
+        if (success == NO) {
+            self->_disableLayout = NO;
+            return;
+        }
 
         // Fetch the replacement page from the data source
         [self performAsync:^{
+
+            // When finished, replace the page we just came from
+            [self reclaimPageView:self->_previousPageView];
+
+            // Load the new previous page
             self->_previousPageView = [self->_dataSource pagingView:self
                                                     pageViewForType:TOPagingViewPageTypePrevious
                                                     currentPageView:self->_currentPageView];
@@ -1086,6 +1094,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
             // Lay the new page out in the scroll view
             [self insertPageView:self->_previousPageView];
             self->_previousPageView.frame = self.previousPageViewFrame;
+
+            // Re-enable layout
+            self->_disableLayout = NO;
         }];
     }];
 }
@@ -1095,13 +1106,16 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Work out the direction we'll scroll in
     CGFloat offset = 0.0f;
     if (self.isDirectionReversed) { offset = self.scrollViewPageWidth * 2.0f; }
-    
+
+    // Since we're handling the entire transition, disable layout for the whole time
+    _disableLayout = YES;
+
     // Remove the page that this page will be replacing
     [self reclaimPageView:_previousPageView];
     
     // Get the new page
     _previousPageView = [_dataSource pagingView:self
-                                pageViewForType:TOPagingViewPageTypePrevious
+                                pageViewForType:TOPagingViewPageTypeCurrent
                                 currentPageView:_currentPageView];
 
     // Add it to the scroll view
@@ -1111,14 +1125,22 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     _previousPageView.frame = self.previousPageViewFrame;
 
     // Set the offset to trigger the appropriate layout
-    [self turnToPageAtContentXOffset:offset animated:animated completionHandler:^(BOOL success) {
-        if (success == NO) { return; }
-
-        // When finished, replace the page we just came from
-        [self reclaimPageView:self->_nextPageView];
+    [self turnToPageAtContentXOffset:offset
+                       disableLayout:YES
+                            animated:animated
+                   completionHandler:^(BOOL success) {
+        if (success == NO) {
+            self->_disableLayout = NO;
+            return;
+        }
 
         // Fetch the replacement page from the data source
         [self performAsync:^{
+
+            // When finished, replace the page we just came from
+            [self reclaimPageView:self->_nextPageView];
+
+            // Load the new next page
             self->_nextPageView = [self->_dataSource pagingView:self
                                               pageViewForType:TOPagingViewPageTypePrevious
                                               currentPageView:self->_currentPageView];
@@ -1126,6 +1148,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
             // Lay the new page out in the scroll view
             [self insertPageView:self->_nextPageView];
             self->_nextPageView.frame = self.nextPageViewFrame;
+
+            // Re-enable layout once we're finally done
+            self->_disableLayout = NO;
         }];
     }];
 }
