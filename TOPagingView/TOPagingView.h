@@ -119,6 +119,9 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 
 //-------------------------------------------------------------------
 
+/// A view that presents content as discrete horizontal scrolling pages.
+/// The interface has been designed so any arbitrary number of pages may be
+/// displayed without knowing the final number up front.
 @interface TOPagingView : UIView
 
 /// The internal scroll view wrapped by this view that controls the scrolling content.
@@ -153,6 +156,7 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 - (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageView;
 
 /// Returns a page view from the specific queue matching the provided identifier string.
+/// - Parameter identifier: The identifier of the specific page type to be returned. Generates a new instance if no more spares in the queue exist
 - (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier;
 
 /// The currently visible primary page view on screen.
@@ -165,20 +169,25 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 - (nullable __kindof UIView<TOPagingViewPage> *)previousPageView;
 
 /// Returns the visible page view for the supplied unique identifier, or nil otherwise.
+/// - Parameter identifier: The identifier of the specific page view to retrieve.
 - (nullable __kindof UIView<TOPagingViewPage> *)pageViewForUniqueIdentifier:(NSString *)identifier;
 
 /// Advance one page to the left (Regardless of current scroll direction)
+/// - Parameter animated: Whether the transition is animated, or updates instantly
 - (void)turnToLeftPageAnimated:(BOOL)animated;
 
 /// Advance one page to the right (Regardless of current scroll direction)
+/// - Parameter animated: Whether the transition is animated, or updates instantly
 - (void)turnToRightPageAnimated:(BOOL)animated;
 
 /// Skips ahead to an arbitrary new page view.
 /// The data source must be updated to the new state before calling this.
+/// - Parameter animated: Whether the transition is animated, or updates instantly
 - (void)skipForwardToNewPageAnimated:(BOOL)animated;
 
 /// Skips backwards to an arbitrary new page view.
 /// The data source must be updated to the new state before calling this.
+/// - Parameter animated: Whether the transition is animated, or updates instantly
 - (void)skipBackwardToNewPageAnimated:(BOOL)animated;
 
 @end
