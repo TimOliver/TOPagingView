@@ -24,28 +24,27 @@
 
 // -----------------------------------------------------------------
 
-/** For pages that don't specify an identifier, this string will be used. */
+/// For pages that don't specify an identifier, this string will be used.
 static NSString * const kTOPagingViewDefaultIdentifier = @"TOPagingView.DefaultPageIdentifier";
 
-/** There are always 3 slots, with content insetting used to block pages on either side. */
+/// There are always 3 slots, with content insetting used to block pages on either side.
 static CGFloat const kTOPagingViewPageSlotCount = 3.0f;
 
-/** The amount of padding along the edge of the screen shown when the "no incoming page" animation plays */
+/// The amount of padding along the edge of the screen shown when the "no incoming page" animation plays
 static CGFloat const kTOPagingViewBumperWidthCompact = 48.0f;
 static CGFloat const kTOPagingViewBumperWidthRegular = 96.0f;
 
 // -----------------------------------------------------------------
 
-/** A struct to cache which methods the current delegate implements. */
+/// A struct to cache which methods the current delegate implements. */
 typedef struct {
     unsigned int delegateWillTurnToPage:1;
     unsigned int delegateDidTurnToPage:1;
 } TOPagingViewDelegateFlags;
 
-/**
- A struct to cache which methods each page view class implements.
- (C-struct bitfields don't work with NSValue, so
- */
+
+/// A struct to cache which methods each page view class implements.
+/// (We're using BOOL values here since C-struct bitfields don't work with NSValue)
 typedef struct {
     BOOL protocolPageIdentifier;
     BOOL protocolUniqueIdentifier;
@@ -53,16 +52,19 @@ typedef struct {
 } TOPageViewProtocolFlags;
 
 // -----------------------------------------------------------------
+// Convenience functions for easier mapping Objective-C and C constructs
 
-/** Con*/
+/// Convert an Objective-C class pointer into an NSValue that can be stored in a dictionary
 static inline NSValue *TOPagingViewValueForClass(Class *class) {
     return [NSValue valueWithBytes:class objCType:@encode(Class)];
 }
 
+/// Convert an Objective-C class that was encoded to NSValue back out again
 static inline Class TOPagingViewClassForValue(NSValue *value) {
     Class class; [value getValue:&class]; return class;
 }
 
+/// Retrieve the delegate flags for a given page class from its encoded NSValue
 static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue *value) {
     TOPageViewProtocolFlags flags; [value getValue:&flags]; return flags;
 }
@@ -71,60 +73,60 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 @interface TOPagingView ()
 
-/** The scroll view managed by this container. */
+/// The scroll view managed by this container.
 @property (nonatomic, strong, readwrite) UIScrollView *scrollView;
 
-/** A collection of all of the page view objects that were once used, and are pending re-use. */
+/// A collection of all of the page view objects that were once used, and are pending re-use.
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSMutableSet *> *queuedPages;
 
-/** A collection of all of the registered page classes, saved against their identifiers. */
+/// A collection of all of the registered page classes, saved against their identifiers.
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSValue *> *registeredPageViewClasses;
 
-/** The views that are all currently in the scroll view, in specific order. */
+/// The views that are all currently in the scroll view, in specific order.
 @property (nonatomic, weak, readwrite) UIView<TOPagingViewPage> *currentPageView;
 @property (nonatomic, weak, readwrite) UIView<TOPagingViewPage> *nextPageView;
 @property (nonatomic, weak, readwrite) UIView<TOPagingViewPage> *previousPageView;
 
-/** The logical frame for the scroll view given the current bounds. */
+/// The logical frame for the scroll view given the current bounds.
 @property (nonatomic, readonly) CGRect scrollViewFrame;
 
-/** The logical frame values for laying out each of the frames. */
+/// The logical frame values for laying out each of the frames.
 @property (nonatomic, readonly) CGRect currentPageViewFrame;
 @property (nonatomic, readonly) CGRect nextPageViewFrame;
 @property (nonatomic, readonly) CGRect previousPageViewFrame;
 
-/** Flags to ensure the data source isn't thrashed if it doesn't return a page the first time. */
+/// Flags to ensure the data source isn't thrashed if it doesn't return a page the first time.
 @property (nonatomic, assign) BOOL hasNextPage;
 @property (nonatomic, assign) BOOL hasPreviousPage;
 
-/** Struct to cache the state of the delegate for performance. */
+/// Struct to cache the state of the delegate for performance.
 @property (nonatomic, assign) TOPagingViewDelegateFlags delegateFlags;
 
-/** Struct to cache the protocol state of each type of page view class used in this session. */
+/// Struct to cache the protocol state of each type of page view class used in this session.
 @property (nonatomic, strong) NSMutableDictionary<NSValue *, NSValue *> *pageViewProtocolFlags;
 
-/** Disable automatic layout when manually laying out content. */
+/// Disable automatic layout when manually laying out content.
 @property (nonatomic, assign) BOOL disableLayout;
 
-/** A dictionary that holds references to any pages with unique identifiers. */
+/// A dictionary that holds references to any pages with unique identifiers.
 @property (nonatomic, strong) NSMutableDictionary<NSString *, UIView *> *uniqueIdentifierPages;
 
-/** State tracking for when a user is dragging their finger on screen. */
+/// State tracking for when a user is dragging their finger on screen.
 @property (nonatomic, assign) CGFloat draggingOrigin;
 @property (nonatomic, assign) TOPagingViewPageType draggingDirectionType;
 
-/** Tracking any queued operations that need to be cleared due to a state reset */
+/// Tracking any queued operations that need to be cleared due to a state reset.
 @property (nonatomic, strong) NSHashTable *operations;
 
-/** The absolute size of each segment of the scroll view as it is paging.*/
+/// The absolute size of each segment of the scroll view as it is paging.
 @property (nonatomic, direct, readonly) CGFloat scrollViewPageWidth;
 
-/** A convenience accessor for checking if we are reversed. */
+/// A convenience accessor for checking if we are reversed.
 @property (nonatomic, direct, readonly) BOOL isDirectionReversed;
 
-/** Mark all methods called per-frame as direct calls
- (ie, they are called directly, instead of via objc_msgSend)
- to reduce per-frame overhead as much as possible. */
+/// Mark all methods called per-frame as direct calls
+/// (ie, they are called directly, instead of via objc_msgSend)
+/// to reduce per-frame overhead as much as possible.
 - (void)layoutPages __attribute__((objc_direct));
 - (void)performInitialLayout __attribute__((objc_direct));
 - (void)handlePageTransitions __attribute__((objc_direct));
@@ -580,15 +582,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     if (offset.x > rightPageThreshold) {
         if (isReversed) { [self transitionOverToPreviousPage]; }
         else { [self transitionOverToNextPage]; }
-        return;
-    }
-
-    // Check if we went over the left-hand threshold to start transitioning the pages
-    const CGFloat leftPageThreshold = segmentWidth * 0.5f;
-    if (offset.x < leftPageThreshold) {
+    } else if (offset.x < (segmentWidth * 0.5f)) { // Check if we're over the left threshold
         if (isReversed) { [self transitionOverToNextPage]; }
         else { [self transitionOverToPreviousPage]; }
-        return;
     }
 }
 
@@ -1072,7 +1068,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
     // Set the offset to trigger the appropriate layout
     [self turnToPageAtContentXOffset:offset
-                       disableLayout:YES
                             animated:animated
                    completionHandler:^(BOOL success) {
         if (success == NO) {
@@ -1126,7 +1121,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
     // Set the offset to trigger the appropriate layout
     [self turnToPageAtContentXOffset:offset
-                       disableLayout:YES
                             animated:animated
                    completionHandler:^(BOOL success) {
         if (success == NO) {
