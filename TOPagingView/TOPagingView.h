@@ -35,7 +35,7 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
 
     /// Pages ascend from the right, to the left.s
     TOPagingViewDirectionRightToLeft = 1
-};
+} NS_SWIFT_NAME(PagingViewDirection);
 
 /// An enumeration describing the kind of page being requested by the data source.
 typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
@@ -47,11 +47,12 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 
     /// The previous page sequentially before the current page.
     TOPagingViewPageTypePrevious
-};
+} NS_SWIFT_NAME(PagingViewPageType);
 
 //-------------------------------------------------------------------
 
 /// Optional protocol that page views may implement.
+NS_SWIFT_NAME(PagingViewPage)
 @protocol TOPagingViewPage <NSObject>
 
 @optional
@@ -80,6 +81,7 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 
 // -------------------------------------------------------------------
 
+NS_SWIFT_NAME(PagingViewDataSource)
 @protocol TOPagingViewDataSource <NSObject>
 
 @required
@@ -97,6 +99,7 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 
 // -------------------------------------------------------------------
 
+NS_SWIFT_NAME(PagingViewDataDelegate)
 @protocol TOPagingViewDelegate <NSObject>
 
 @optional
@@ -122,6 +125,7 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 /// A view that presents content as discrete horizontal scrolling pages.
 /// The interface has been designed so any arbitrary number of pages may be
 /// displayed without knowing the final number up front.
+NS_SWIFT_NAME(PagingView)
 @interface TOPagingView : UIView
 
 /// The internal scroll view wrapped by this view that controls the scrolling content.
@@ -157,7 +161,8 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 
 /// Returns a page view from the specific queue matching the provided identifier string.
 /// - Parameter identifier: The identifier of the specific page type to be returned. Generates a new instance if no more spares in the queue exist
-- (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier;
+- (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier
+                                                                            NS_SWIFT_NAME(dequeueReusablePageView(for:));
 
 /// The currently visible primary page view on screen.
 - (nullable __kindof UIView<TOPagingViewPage> *)currentPageView;
@@ -170,7 +175,8 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 
 /// Returns the visible page view for the supplied unique identifier, or nil otherwise.
 /// - Parameter identifier: The identifier of the specific page view to retrieve.
-- (nullable __kindof UIView<TOPagingViewPage> *)pageViewForUniqueIdentifier:(NSString *)identifier;
+- (nullable __kindof UIView<TOPagingViewPage> *)pageViewForUniqueIdentifier:(NSString *)identifier
+                                                                            NS_SWIFT_NAME(uniquePageView(for:));
 
 /// Advance one page to the left (Regardless of current scroll direction)
 /// - Parameter animated: Whether the transition is animated, or updates instantly
