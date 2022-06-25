@@ -28,94 +28,91 @@ NS_ASSUME_NONNULL_BEGIN
 
 //-------------------------------------------------------------------
 
-/** An enumeration of directions in which the scroll view may display pages. */
+/// An enumeration of directions in which the scroll view may display pages.
 typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
-    TOPagingViewDirectionLeftToRight = 0, /** Pages ascend from the left, to the right. */
-    TOPagingViewDirectionRightToLeft = 1  /** Pages ascend from the right, to the left. */
+    /// Pages ascend from the left, to the right.
+    TOPagingViewDirectionLeftToRight = 0,
+
+    /// Pages ascend from the right, to the left.s
+    TOPagingViewDirectionRightToLeft = 1
 };
 
-/** An enumeration describing the kind of page being requested by the data source */
+/// An enumeration describing the kind of page being requested by the data source.
 typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
-    TOPagingViewPageTypeCurrent, /** The current page that will be visible on screen initially. */
-    TOPagingViewPageTypeNext,    /** The next page sequentially after the current page. */
-    TOPagingViewPageTypePrevious /** The previous page sequentially before the current page. */
+    /// The current page that will be visible on screen initially.
+    TOPagingViewPageTypeCurrent,
+
+    ///The next page sequentially after the current page.
+    TOPagingViewPageTypeNext,
+
+    /// The previous page sequentially before the current page.
+    TOPagingViewPageTypePrevious
 };
 
 //-------------------------------------------------------------------
 
-/** Optional protocol that page views may implement. */
+/// Optional protocol that page views may implement.
 @protocol TOPagingViewPage <NSObject>
 
 @optional
 
-/**
- A unique string value that can be used to let the pager view
- dequeue pre-made objects with the same identifier, or if pre-registered,
- create new instances automatically on request.
- 
- If this property is not overridden, the page will be treated as the default
- type that will be returned whenever the identifier is nil.
- */
+/// A unique string value that can be used to let the pager view
+/// dequeue pre-made objects with the same identifier, or if pre-registered,
+/// create new instances automatically on request.
+///
+/// If this property is not overridden, the page will be treated as the default
+/// type that will be returned whenever the identifier is nil.
 + (NSString *)pageIdentifier;
 
-/**
- A globally unique identifier that can be used to uniquely tag this specific
- page object. This can be used to retrieve the page from the pager view at a later
- time.
- */
+/// A globally unique identifier that can be used to uniquely tag this specific
+/// page object. This can be used to retrieve the page from the pager view at a later
+/// time.
 - (NSString *)uniqueIdentifier;
 
-/**
- Called just before the page object is removed from the visible page set,
- and re-enqueud by the data source.
- 
- Use this method to return the page to a default state, and to clear out any
- references to memory-heavy objects like images.
- */
+/// Called just before the page object is removed from the visible page set,
+/// and re-enqueud by the data source.
+///
+/// Use this method to return the page to a default state, and to clear out any
+/// references to memory-heavy objects like images.
 - (void)prepareForReuse;
 
 @end
 
-//-------------------------------------------------------------------
+// -------------------------------------------------------------------
 
 @protocol TOPagingViewDataSource <NSObject>
 
 @required
 
-/**
- Called when the paging view is requesting a new page view in the current sequence in either direction.
- Use this method to dequeue, or create a new page view that will be displayed in the paging view.
-@param pagingView The paging view requesting the new page view.
-@param type The type of page to be displayed in its relation to the visible page on screen.
-@param currentPageView The current page view on screen. This can be nil if no pages have been displayed yet.
-*/
+/// Called when the paging view is requesting a new page view in the current sequence in either direction.
+/// Use this method to dequeue, or create a new page view that will be displayed in the paging view.
+/// @param pagingView The paging view requesting the new page view.
+/// @param type The type of page to be displayed in its relation to the visible page on screen.
+/// @param currentPageView The current page view on screen. This can be nil if no pages have been displayed yet.
 - (nullable __kindof UIView<TOPagingViewPage> *)pagingView:(TOPagingView *)pagingView
                                            pageViewForType:(TOPagingViewPageType)type
                                            currentPageView:(UIView<TOPagingViewPage> * _Nullable)currentPageView;
 
 @end
 
-//-------------------------------------------------------------------
+// -------------------------------------------------------------------
 
 @protocol TOPagingViewDelegate <NSObject>
 
 @optional
 
-/**
- Called when a transaction has started moving in a direction (eg, the user has
- started swiping in a direction, or an animation is about to start) that can potentially
- end in a page transition. Use this to start preloading content in that direction.
- @param pagingView The calling paging view instance.
- @param type The type of page that was turned to, whether the next or previous one.
-*/
+
+/// Called when a transaction has started moving in a direction (eg, the user has
+/// started swiping in a direction, or an animation is about to start) that can potentially
+/// end in a page transition. Use this to start preloading content in that direction.
+/// @param pagingView The calling paging view instance.
+/// @param type The type of page that was turned to, whether the next or previous one.
 - (void)pagingView:(TOPagingView *)pagingView willTurnToPageOfType:(TOPagingViewPageType)type;
 
-/**
- Called when a page turn has crossed the turning threshold and a new page has become the current one.
- Use this to update any state around the paging view used to control the current page.
- @param pagingView The calling paging view instance.
- @param type The type of page that was turned to (This can include initial after a reload).
-*/
+/// Called when a page turn has crossed the turning threshold and a new page has become the current one.
+/// Use this to update any state around the paging view used to control the current page.
+/// @param pagingView The calling paging view instance.
+/// @param type The type of page that was turned to (This can include initial after a reload).
 - (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type;
 
 @end
@@ -124,66 +121,64 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
 
 @interface TOPagingView : UIView
 
-/** Direct access to the scroll view object inside this view (read-only). */
+/// The internal scroll view wrapped by this view that controls the scrolling content.
+/// The delegate is available for external objects to use.
 @property (nonatomic, strong, readonly) UIScrollView *scrollView;
 
-/** Data source object to supply page information to the scroll view */
+/// The data source object that is in charge with configuring and providing views to this view.
 @property (nonatomic, weak, nullable) id <TOPagingViewDataSource> dataSource;
 
-/** Delegate object in which page scroll view events are sent. */
+/// The delegate broadcasts page turning events, so that the data source can update its state to match.
 @property (nonatomic, weak, nullable) id <TOPagingViewDelegate> delegate;
 
-/** Width of the spacing between pages in points (default value of 40). */
+/// Width of the spacing between pages in points (default value of 40).
 @property (nonatomic, assign) CGFloat pageSpacing;
 
-/** The direction of the layout order of pages. */
+/// The ascending layout direction of the page views in the scroll view.
 @property (nonatomic, assign) TOPagingViewDirection pageScrollDirection;
 
-/* All of the page view objects currently placed in the scroll view. */
-@property (nonatomic, readonly) NSArray<UIView *> *visiblePages;
-
-/**
- Registers a page view class that can be automatically instantiated as needed.
- If the class overrides `pageIdentifier`, new instances may automatically be created
- when needed. Any classes that do not override that property will become the default
- page class.
- */
+/// Registers a page view class that can be automatically instantiated as needed.
+/// If the class overrides `pageIdentifier`, new instances may automatically be created
+/// when needed. Any classes that do not override that property will become the default
+/// page class.
 - (void)registerPageViewClass:(Class)pageViewClass;
 
-/** Reload the view from scratch and re-layout all pages. */
+/// Reload the view from scratch, including tearing down and recreating all page views
 - (void)reload;
 
-/** Perform a check in needing to add a previous or next page that didn't previously exist. */
+/// Perform a check in needing to add a previous or next page that didn't previously exist.
 - (void)setNeedsPageUpdate;
 
-/** Returns a page view from the default queue of pages, ready for re-use. */
+/// Returns a page view from the default queue of pages, ready for re-use.
 - (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageView;
 
-/** Returns a page view from the specific queue matching the provided identifier string. */
+/// Returns a page view from the specific queue matching the provided identifier string.
 - (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier;
 
-/** The currently visible primary page view on screen. */
+/// The currently visible primary page view on screen.
 - (nullable __kindof UIView<TOPagingViewPage> *)currentPageView;
 
-/** The next page after the currently visible page on the screen. */
+/// The next page after the currently visible page on the screen.
 - (nullable __kindof UIView<TOPagingViewPage> *)nextPageView;
 
-/** The previous page before the currently visible page on the screen. */
+/// The previous page before the currently visible page on the screen.
 - (nullable __kindof UIView<TOPagingViewPage> *)previousPageView;
 
-/** Returns the visible page view for the supplied unique identifier, or nil otherwise. */
+/// Returns the visible page view for the supplied unique identifier, or nil otherwise.
 - (nullable __kindof UIView<TOPagingViewPage> *)pageViewForUniqueIdentifier:(NSString *)identifier;
 
-/** Advance one page to the left (Regardless of current scroll direction) */
+/// Advance one page to the left (Regardless of current scroll direction)
 - (void)turnToLeftPageAnimated:(BOOL)animated;
 
-/** Advance one page to the right (Regardless of current scroll direction) */
+/// Advance one page to the right (Regardless of current scroll direction)
 - (void)turnToRightPageAnimated:(BOOL)animated;
 
-/** Fetches a new arbitrary page from the data source, and skips forward to it. */
+/// Skips ahead to an arbitrary new page view.
+/// The data source must be updated to the new state before calling this.
 - (void)skipForwardToNewPageAnimated:(BOOL)animated;
 
-/** Fetches a new arbitrary page from the data source, and skips backward to it. */
+/// Skips backwards to an arbitrary new page view.
+/// The data source must be updated to the new state before calling this.
 - (void)skipBackwardToNewPageAnimated:(BOOL)animated;
 
 @end
