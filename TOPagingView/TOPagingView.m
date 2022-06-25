@@ -265,42 +265,14 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     _disableLayout = NO;
     
     // Layout the page subviews
-    [self performAsync:^{
-        [self layoutPageSubviews];
-    }];
+    [self layoutPageSubviews];
 }
 
 - (void)layoutPageSubviews
 {
-    const CGRect bounds = self.bounds;
-    
-    // Flip the array if we have reversed the page direction
-    NSArray *visiblePages = self.visiblePages;
-    if (self.pageScrollDirection == TOPagingViewDirectionRightToLeft) {
-        visiblePages = [[visiblePages reverseObjectEnumerator] allObjects];
-    }
-
-    // Set the origin to account for the scroll view padding
-    CGFloat offset = _pageSpacing * 0.5f;
-    const CGFloat width = bounds.size.width + _pageSpacing;
-
-    // If the first page is the center page (eg, the previous/next page is nil),
-    // skip ahead one offset slot
-    if (visiblePages.firstObject == _currentPageView) {
-        offset += width;
-    }
-
-    // Re-size each page view currently in the scroll view
-    for (UIView *pageView in visiblePages) {
-        // Center each page view in each scroll content slot
-        CGRect frame = pageView.frame;
-        frame.origin.x = offset;
-        frame.size = bounds.size;
-        pageView.frame = frame;
-
-        // Apply the offset for the next page
-        offset += width;
-    }
+    _nextPageView.frame = self.nextPageViewFrame;
+    _currentPageView.frame = self.currentPageViewFrame;
+    _previousPageView.frame = self.previousPageViewFrame;
 }
 
 - (void)didMoveToSuperview
