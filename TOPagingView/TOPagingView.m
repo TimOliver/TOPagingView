@@ -270,9 +270,17 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 - (void)layoutPageSubviews
 {
-    _nextPageView.frame = self.nextPageViewFrame;
-    _currentPageView.frame = self.currentPageViewFrame;
-    _previousPageView.frame = self.previousPageViewFrame;
+    void (^layoutBlock)(void) = ^{
+        self->_nextPageView.frame = self.nextPageViewFrame;
+        self->_currentPageView.frame = self.currentPageViewFrame;
+        self->_previousPageView.frame = self.previousPageViewFrame;
+    };
+
+    if (_operations.count > 0) {
+        [[NSOperationQueue mainQueue] addOperationWithBlock:layoutBlock];
+    } else {
+        layoutBlock();
+    }
 }
 
 - (void)didMoveToSuperview
