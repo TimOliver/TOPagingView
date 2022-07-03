@@ -121,9 +121,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 @property (nonatomic, assign) CGFloat draggingOrigin;
 @property (nonatomic, assign) TOPagingViewPageType draggingDirectionType;
 
-/// Tracking any queued operations that need to be cleared due to a state reset.
-@property (nonatomic, strong) NSHashTable *operations;
-
 /// The absolute size of each segment of the scroll view as it is paging.
 @property (nonatomic, direct, readonly) CGFloat scrollViewPageWidth;
 
@@ -186,7 +183,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     _pageSpacing = 40.0f;
     _queuedPages = [NSMutableDictionary dictionary];
     _pageViewProtocolFlags = [NSMutableDictionary dictionary];
-    _operations = [NSHashTable hashTableWithOptions:NSPointerFunctionsWeakMemory];
     memset(&_delegateFlags, 0, sizeof(TOPagingViewDelegateFlags));
 
     // Configure the main properties of this view
@@ -222,6 +218,11 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Register an observer to capture when the scroll view scrolls.
     // Doing it this way lets us leave the delegate available for external objects to use.
     [scrollView addObserver:self forKeyPath:@"contentOffset" options:0 context:nil];
+
+    // Enable scrolling with mouse (Private API. Probably shouldn't ship)
+#if DEBUG
+    [scrollView performSelector:NSSelectorFromString(@"_setSupportsPointerDragScrolling:") withObject:@(YES) afterDelay:0];
+#endif
 }
 
 - (void)dealloc
@@ -237,7 +238,13 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     [super layoutSubviews];
 
     UIScrollView *const scrollView = _scrollView;
-    
+    const CGRect newScrollViewFrame = self.scrollViewFrame;
+
+    // Bail out if the frame of the paging view didn't change
+    if (CGSizeEqualToSize(_scrollView.frame.size, newScrollViewFrame.size)) {
+        return;
+    }
+
     // Disable the observer while we update the scroll view
     _disableLayout = YES;
     
@@ -248,7 +255,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Layout the scroll view.
     // In order to allow spaces between the pages, the scroll view needs to be
     // slightly wider than this container view.
-    scrollView.frame = self.scrollViewFrame;
+    scrollView.frame = newScrollViewFrame;
     
     // Update the content size of the scroll view
     [self updateContentSize];
@@ -265,22 +272,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     _disableLayout = NO;
     
     // Layout the page subviews
-    [self layoutPageSubviews];
-}
-
-- (void)layoutPageSubviews
-{
-    void (^layoutBlock)(void) = ^{
-        self->_nextPageView.frame = self.nextPageViewFrame;
-        self->_currentPageView.frame = self.currentPageViewFrame;
-        self->_previousPageView.frame = self.previousPageViewFrame;
-    };
-
-    if (_operations.count > 0) {
-        [[NSOperationQueue mainQueue] addOperationWithBlock:layoutBlock];
-    } else {
-        layoutBlock();
-    }
+    _nextPageView.frame = self.nextPageViewFrame;
+    _currentPageView.frame = self.currentPageViewFrame;
+    _previousPageView.frame = self.previousPageViewFrame;
 }
 
 - (void)didMoveToSuperview
@@ -418,9 +412,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         [view removeFromSuperview];
     }
 
-    // Cancel any pending page loads that would execute on the next run-loop tick
-    [self cancelAllPendingPageRequests];
-
     // Reset all of the active page references
     _currentPageView = nil;
     _previousPageView = nil;
@@ -442,39 +433,33 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     
     // If there currently isn't a previous page, check again to see if there is one now.
     if (!_hasPreviousPage) {
-        [self performAsync:^{
-            UIView<TOPagingViewPage> *previousPage = [self->_dataSource pagingView:self
-                                                                     pageViewForType:TOPagingViewPageTypePrevious
-                                                                     currentPageView:self->_currentPageView];
-            // Add the page view to the hierarchy
-            if (previousPage) {
-                [self insertPageView:previousPage];
-                previousPage.frame = self.previousPageViewFrame;
-                self->_previousPageView = previousPage;
-                self->_hasPreviousPage = YES;
-            }
-
-            [self updateEnabledPages];
-        }];
+        UIView<TOPagingViewPage> *previousPage = [_dataSource pagingView:self
+                                                         pageViewForType:TOPagingViewPageTypePrevious
+                                                         currentPageView:_currentPageView];
+        // Add the page view to the hierarchy
+        if (previousPage) {
+            [self insertPageView:previousPage];
+            previousPage.frame = self.previousPageViewFrame;
+            _previousPageView = previousPage;
+            _hasPreviousPage = YES;
+        }
     }
     
     // If there currently isn't a next page, check again
     if (!_hasNextPage) {
-        [self performAsync:^{
-            UIView<TOPagingViewPage> *nextPage = [self->_dataSource pagingView:self
-                                                               pageViewForType:TOPagingViewPageTypeNext
-                                                               currentPageView:self->_currentPageView];
-            // Add the page view to the hierarchy
-            if (nextPage) {
-                [self insertPageView:nextPage];
-                nextPage.frame = self.nextPageViewFrame;
-                self->_nextPageView = nextPage;
-                self->_hasNextPage = YES;
-            }
-
-            [self updateEnabledPages];
-        }];
+        UIView<TOPagingViewPage> *nextPage = [_dataSource pagingView:self
+                                                     pageViewForType:TOPagingViewPageTypeNext
+                                                     currentPageView:_currentPageView];
+        // Add the page view to the hierarchy
+        if (nextPage) {
+            [self insertPageView:nextPage];
+            nextPage.frame = self.nextPageViewFrame;
+            _nextPageView = nextPage;
+            _hasNextPage = YES;
+        }
     }
+
+    [self updateEnabledPages];
 }
 
 - (void)turnToPageInDirection:(UIRectEdge)direction animated:(BOOL)animated
@@ -519,7 +504,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         [scrollView.layer removeAllAnimations];
 
         // Cancel any pending loading operations
-        [self cancelAllPendingPageRequests];
+        //[self cancelAllPendingPageRequests];
 
         // Re-enable layout so we can
         _disableLayout = NO;
@@ -612,7 +597,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // If we're already in an animation, cancel it and reset the position
     if (_scrollView.layer.animationKeys.count > 0) {
         [_scrollView.layer removeAllAnimations];
-        [self cancelAllPendingPageRequests];
+        //[self cancelAllPendingPageRequests];
     }
 
     // Request the new page view that will become the new current page after this completes
@@ -745,9 +730,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     if (flags.protocolPrepareForReuse) {
         // Perform the reuse on an adjacent run loop since this may be a heavy
         // operation and the view is off screen by this point
-        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-            [(id)pageView prepareForReuse];
-        }];
+        [(id)pageView prepareForReuse];
     }
 
     // Hide the view (Don't remove because that is a heavier operation)
@@ -804,41 +787,33 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
                                                  pageViewForType:TOPagingViewPageTypeCurrent
                                                  currentPageView:nil];
     if (pageView == nil) { return; }
-    [self insertPageView:pageView];
     _currentPageView = pageView;
+    [self insertPageView:pageView];
+    _currentPageView.frame = self.currentPageViewFrame;
 
     // Add the next page
-    [self performAsync:^{
-        UIView<TOPagingViewPage> *pageView = [self->_dataSource pagingView:self
-                                                     pageViewForType:TOPagingViewPageTypeNext
-                                                     currentPageView:self->_currentPageView];
-        self->_hasNextPage = (pageView != nil);
-        self->_nextPageView = pageView;
-        [self insertPageView:pageView];
-        [self layoutPageSubviews];
-        [self updateEnabledPages];
-    }];
+    pageView = [_dataSource pagingView:self
+                       pageViewForType:TOPagingViewPageTypeNext
+                       currentPageView:_currentPageView];
+    _hasNextPage = (pageView != nil);
+    _nextPageView = pageView;
+    [self insertPageView:pageView];
+    _nextPageView.frame = self.nextPageViewFrame;
 
     // Add the previous page
-    [self performAsync:^{
-        UIView<TOPagingViewPage> *pageView = [self->_dataSource pagingView:self
-                                                           pageViewForType:TOPagingViewPageTypePrevious
-                                                           currentPageView:self->_currentPageView];
-        self->_hasPreviousPage = (pageView != nil);
-        self->_previousPageView = pageView;
-        [self insertPageView:pageView];
-        [self layoutPageSubviews];
-        [self updateEnabledPages];
-    }];
+    pageView = [_dataSource pagingView:self
+                       pageViewForType:TOPagingViewPageTypePrevious
+                       currentPageView:_currentPageView];
+    _hasPreviousPage = (pageView != nil);
+    _previousPageView = pageView;
+    [self insertPageView:pageView];
+    _previousPageView.frame = self.nextPageViewFrame;
 
     // Disable the observer while we manually place all elements
     _disableLayout = YES;
 
     // Update the content size for the scroll view
     [self updateContentSize];
-
-    // Layout all of the pages
-    [self layoutPageSubviews];
 
     // Set the initial scroll point to the current page
     [self resetContentOffset];
@@ -902,9 +877,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // If this is a new direction than before, inform the delegate, and then save to avoid repeating
     if (directionType != _draggingDirectionType) {
         // Offload this delegate call to another run-loop to avoid any heavy operations as the data source
-        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-            [self.delegate pagingView:self willTurnToPageOfType:directionType];
-        }];
+        [self.delegate pagingView:self willTurnToPageOfType:directionType];
         _draggingDirectionType = directionType;
     }
 
@@ -920,7 +893,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     const BOOL isReversed = (_pageScrollDirection == TOPagingViewDirectionRightToLeft);
 
     // Check the offset and disable the adjancent slot if we've gone over the threshold
-
     if (offset.x < segmentWidth) { // Check the left page slot
         const BOOL isEnabled = isReversed ? _hasNextPage : _hasPreviousPage;
         [self setPageSlotEnabled:isEnabled edge:UIRectEdgeLeft];
@@ -960,9 +932,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     }
 
     // Offload the heavy work to a new run-loop cyle so we don't overload the current one
-    [self performAsync:^{
-        [self fetchNewNextPage];
-    }];
+    [self fetchNewNextPage];
 
     // Move the scroll view back one segment
     CGPoint contentOffset = _scrollView.contentOffset;
@@ -1006,9 +976,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     }
 
     // Offload the heavy work to a new run-loop cyle so we don't overload the current one
-    [self performAsync:^{
-        [self fetchNewPreviousPage];
-    }];
+    [self fetchNewPreviousPage];
 
     // Move the scroll view forward one segment
     CGPoint contentOffset = _scrollView.contentOffset;
@@ -1039,9 +1007,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // If the next page ended up being nil,
     // set a flag to prevent churning, and inset the scroll inset
     _hasNextPage = (nextPage != nil);
-
-    // Update the insets if this state ended up changing them
-    [self updateEnabledPages];
 }
 
 - (void)fetchNewPreviousPage
@@ -1058,9 +1023,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
     // If the previous page ended up being nil, set a flag so we don't check again until we need to
     _hasPreviousPage = (previousPage != nil);
-
-    // Update the insets if this state ended up changing them
-    [self updateEnabledPages];
 }
 
 - (void)rearrangePagesForScrollDirection:(TOPagingViewDirection)direction
@@ -1176,32 +1138,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     _scrollView.contentInset = insets;
     _scrollView.contentOffset = contentOffset;
     _disableLayout = NO;
-}
-
-#pragma mark - Asynchronous Operations -
-
-- (void)performAsync:(void (^)(void))block
-{
-    // We queue heavier operations onto separate run-loop cycles on the main
-    // thread so that no single cycle is much heavier than the others.
-    // However, we need to track the operations we've enqueued, so if a reload
-    // operation occurs in the meanwhile, we can cancel these operations
-    NSBlockOperation *operation = [[NSBlockOperation alloc] init];
-    __weak typeof(operation) weakOperation = operation;
-    [operation addExecutionBlock:^{
-        block();
-        [self->_operations removeObject:weakOperation];
-    }];
-    [_operations addObject:operation];
-    [[NSOperationQueue mainQueue] addOperation:operation];
-}
-
-- (void)cancelAllPendingPageRequests
-{
-    // Cancel any queue page load operations
-    for (NSOperation *operation in _operations) {
-        [operation cancel];
-    }
 }
 
 #pragma mark - Keyboard Control -
