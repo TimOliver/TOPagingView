@@ -116,6 +116,10 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 @property (nonatomic, assign) CGFloat draggingOrigin;
 @property (nonatomic, assign) TOPagingViewPageType draggingDirectionType;
 
+/// State tracking for handling offloading view configuration to another run-loop tick
+@property (nonatomic, assign) BOOL needsNextPage;
+@property (nonatomic, assign) BOOL needsPreviousPage;
+
 @end
 
 // -----------------------------------------------------------------
@@ -204,6 +208,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 - (void)layoutSubviews
 {
     [super layoutSubviews];
+
+    // If need be, request new next/previous pages
+    [self _requestPendingPages];
 
     UIScrollView *const scrollView = _scrollView;
     const CGRect newScrollViewFrame = [self _scrollViewFrame];
@@ -570,12 +577,15 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     const CGFloat segmentWidth = [self _scrollViewPageWidth];
     const CGSize contentSize = _scrollView.contentSize;
 
-    // Check if we went over the right-hand threshold to start transitioning the pages
+    // Define the X-offset thresholds that indicate a transition should occur
     const CGFloat rightPageThreshold = contentSize.width - (segmentWidth * 1.5f);
+    const CGFloat leftPageThreshold = segmentWidth * 0.5f;
+
+    // Check if we went over the right-hand threshold to start transitioning the pages
     if (offset.x > rightPageThreshold) {
         if (isReversed) { [self _transitionOverToPreviousPage]; }
         else { [self _transitionOverToNextPage]; }
-    } else if (offset.x < (segmentWidth * 0.5f)) { // Check if we're over the left threshold
+    } else if (offset.x < leftPageThreshold) { // Check if we're over the left threshold
         if (isReversed) { [self _transitionOverToNextPage]; }
         else { [self _transitionOverToPreviousPage]; }
     }
@@ -630,10 +640,10 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Check the offset and disable the adjancent slot if we've gone over the threshold
     if (offset.x < segmentWidth) { // Check the left page slot
         const BOOL isEnabled = isReversed ? _hasNextPage : _hasPreviousPage;
-        [self setPageSlotEnabled:isEnabled edge:UIRectEdgeLeft];
+        [self _setPageSlotEnabled:isEnabled edge:UIRectEdgeLeft];
     } else if (offset.x > segmentWidth) { // Check the right slot
         const BOOL isEnabled = isReversed ? _hasPreviousPage : _hasNextPage;
-        [self setPageSlotEnabled:isEnabled edge:UIRectEdgeRight];
+        [self _setPageSlotEnabled:isEnabled edge:UIRectEdgeRight];
     }
 }
 
@@ -823,7 +833,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     if (pageView == nil) { return; }
 
     // Add the view to the scroll view
-    [_scrollView addSubview:pageView];
+    if (pageView.superview == nil) { [_scrollView addSubview:pageView]; }
     pageView.hidden = NO;
 
     // Cache the page's protocol methods if it hasn't been done yet
@@ -861,8 +871,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
     // If the class supports the clean up method, clean it up now
     if (flags.protocolPrepareForReuse) {
-        // Perform the reuse on an adjacent run loop since this may be a heavy
-        // operation and the view is off screen by this point
         [(id)pageView prepareForReuse];
     }
 
@@ -894,6 +902,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Update all of the references by pushing each view back
     _previousPageView = _currentPageView;
     _currentPageView = _nextPageView;
+    _nextPageView = nil;
 
     // Update the frames of the pages
     _currentPageView.frame = [self _currentPageViewFrame];
@@ -905,7 +914,8 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     }
 
     // Offload the heavy work to a new run-loop cyle so we don't overload the current one
-    [self _fetchNewNextPage];
+    _needsNextPage = YES;
+    [self setNeedsLayout];
 
     // Move the scroll view back one segment
     CGPoint contentOffset = _scrollView.contentOffset;
@@ -939,6 +949,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Update all of the references by pushing each view forward
     _nextPageView = _currentPageView;
     _currentPageView = _previousPageView;
+    _previousPageView = nil;
 
     // Update the frames of the pages
     _currentPageView.frame = [self _currentPageViewFrame];
@@ -950,7 +961,8 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     }
 
     // Offload the heavy work to a new run-loop cyle so we don't overload the current one
-    [self _fetchNewPreviousPage];
+    _needsPreviousPage = YES;
+    [self setNeedsLayout];
 
     // Move the scroll view forward one segment
     CGPoint contentOffset = _scrollView.contentOffset;
@@ -1087,7 +1099,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
                      completion:pullAnimationCompletionBlock];
 }
 
-- (void)setPageSlotEnabled:(BOOL)enabled edge:(UIRectEdge)edge TOPAGINGVIEW_OBJC_DIRECT
+- (void)_setPageSlotEnabled:(BOOL)enabled edge:(UIRectEdge)edge TOPAGINGVIEW_OBJC_DIRECT
 {
     // Get the current insets of the scroll view
     UIEdgeInsets insets = _scrollView.contentInset;
@@ -1113,6 +1125,51 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     _scrollView.contentInset = insets;
     _scrollView.contentOffset = contentOffset;
     _disableLayout = NO;
+}
+
+- (void)_requestPendingPages TOPAGINGVIEW_OBJC_DIRECT
+{
+    // Don't continue if neither pages are pending
+    if (!_needsNextPage && !_needsPreviousPage) { return; }
+
+    // Request a new next page
+    if (_needsNextPage) {
+        // There should never be a next page by this point, but just in case.
+        if (_nextPageView != nil) {
+            [self _reclaimPageView:_nextPageView];
+        }
+
+        // Request the new page
+        [self _fetchNewNextPage];
+
+        // Reset the state
+        _needsNextPage = NO;
+
+        // If we also have a previous page, offload that to another tick
+        if (_needsPreviousPage) {
+            [self setNeedsLayout];
+            return;
+        }
+    }
+
+    if (_needsPreviousPage) {
+        // There should never be a previous page by this point, but just in case.
+        if (_previousPageView != nil) {
+            [self _reclaimPageView:_previousPageView];
+        }
+
+        // Request the new page
+        [self _fetchNewPreviousPage];
+
+        // Reset the state
+        _needsPreviousPage = NO;
+
+        // If we also have a next page, offload that to another tick
+        if (_needsNextPage) {
+            [self setNeedsLayout];
+            return;
+        }
+    }
 }
 
 #pragma mark - Keyboard Control -
