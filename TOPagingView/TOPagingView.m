@@ -738,17 +738,17 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         [_scrollView.layer removeAllAnimations];
     }
 
-    // Request the new page view that will become the new current page after this completes
-    UIView<TOPagingViewPage> *newPageView = [_dataSource pagingView:self
-                                                pageViewForType:TOPagingViewPageTypeCurrent
-                                                currentPageView:_currentPageView];
-
-    // Set the destination point regardless of animation to them middle
-    CGPoint destinationPoint = (CGPoint){[self _scrollViewPageWidth], 0.0f}; // Destination is always the middle
-
     // Reclaim the next and previous pages since these will always need to be regenerated
     [self _reclaimPageView:_nextPageView];
     [self _reclaimPageView:_previousPageView];
+
+    // Request the new page view that will become the new current page after this completes
+    UIView<TOPagingViewPage> *newPageView = [_dataSource pagingView:self
+                                                    pageViewForType:TOPagingViewPageTypeCurrent
+                                                    currentPageView:_currentPageView];
+
+    // Set the destination point regardless of animation to them middle
+    CGPoint destinationPoint = (CGPoint){[self _scrollViewPageWidth], 0.0f}; // Destination is always the middle
 
     // Zero out the adjacent pages and set the
     // next/previous flags to ensure we'll query for new pages
@@ -762,13 +762,13 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         // Reclaim the current page since we'll swap over to the newly requested one
         [self _reclaimPageView:_currentPageView];
 
-        // Re-enable layout to trigger a check for the next pages
-        _disableLayout = NO;
-
         // Insert the new current page view
         _currentPageView = newPageView;
         _currentPageView.frame = [self _currentPageViewFrame];
         [self _insertPageView:_currentPageView];
+
+        // Re-enable layout to trigger a check for the next pages
+        _disableLayout = NO;
 
         // Re-set the offset to the middle
         _scrollView.contentOffset = destinationPoint;
@@ -789,9 +789,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     _previousPageView = _currentPageView;
 
     // Put the new view in the center point and promote it to new current
-    newPageView.frame = [self _currentPageViewFrame];
-    [self _insertPageView:newPageView];
     _currentPageView = newPageView;
+    _currentPageView.frame = [self _currentPageViewFrame];
+    [self _insertPageView:_currentPageView];
 
     // Define the animation block
     id animationBlock = ^{
@@ -1052,7 +1052,8 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 {
     const CGFloat offsetModifier = (direction == TOPagingViewDirectionLeftToRight) ? 1.0f : -1.0f;
     const BOOL isCompactSizeClass = self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact;
-    const CGFloat bumperPadding = (isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) * offsetModifier;
+    const CGFloat bumperPadding = (isCompactSizeClass ? kTOPagingViewBumperWidthCompact :
+                                                        kTOPagingViewBumperWidthRegular) * offsetModifier;
 
     // Set the origin and bumper margins
     const CGPoint origin = (CGPoint){[self _scrollViewPageWidth], 0.0f};
