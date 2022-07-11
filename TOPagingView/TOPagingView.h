@@ -153,8 +153,8 @@ NS_SWIFT_NAME(PagingView)
 /// Reload the view from scratch, including tearing down and recreating all page views
 - (void)reload;
 
-/// Perform a check in needing to add a previous or next page that didn't previously exist.
-- (void)setNeedsPageUpdate;
+/// Refresh the previous and next pages if they have since become available in the data source.
+- (void)refreshAdjacentPages;
 
 /// Returns a page view from the default queue of pages, ready for re-use.
 - (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageView;
