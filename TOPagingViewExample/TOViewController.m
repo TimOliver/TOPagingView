@@ -32,7 +32,7 @@
     TOTestPageView *pageView = [pagingView dequeueReusablePageView];
 
     switch (type) {
-        case TOPagingViewPageTypeInitial:
+        case TOPagingViewPageTypeCurrent:
             pageView.number = self.pageIndex;
             break;
         case TOPagingViewPageTypeNext:
@@ -73,7 +73,7 @@
 - (NSString *)stringForType:(TOPagingViewPageType)type
 {
     switch(type) {
-        case TOPagingViewPageTypeInitial: return @"Initial";
+        case TOPagingViewPageTypeCurrent: return @"Current";
         case TOPagingViewPageTypeNext: return @"Next";
         case TOPagingViewPageTypePrevious: return @"Previous";
     }
