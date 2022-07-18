@@ -725,6 +725,14 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         // Perform a sanity layout just in case
         // (But in most cases, this should be a no-op)
         [self _layoutPages];
+
+        // If the scroll view delegate was set, tell it the animation completed
+        id<UIScrollViewDelegate> scrollViewDelegate = self->_scrollView.delegate;
+        if (scrollViewDelegate) {
+            if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
+                [scrollViewDelegate scrollViewDidEndScrollingAnimation:self->_scrollView];
+            }
+        }
     }];
 }
 
@@ -809,6 +817,14 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
         // Trigger requesting replacement adjacent pages
         [self refreshAdjacentPages];
+
+        // If the scroll view delegate was set, tell it the animation completed
+        id<UIScrollViewDelegate> scrollViewDelegate = self->_scrollView.delegate;
+        if (scrollViewDelegate) {
+            if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
+                [scrollViewDelegate scrollViewDidEndScrollingAnimation:self->_scrollView];
+            }
+        }
     };
 
     // Commit the animation
