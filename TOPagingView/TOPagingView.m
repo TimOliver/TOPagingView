@@ -193,7 +193,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
     // Enable scrolling with mouse (Private API. Probably shouldn't ship)
 #if DEBUG
-    [scrollView performSelector:NSSelectorFromString(@"_setSupportsPointerDragScrolling:") withObject:@(YES) afterDelay:0];
+    if (@available(iOS 14.0, *)) {
+        [scrollView performSelector:NSSelectorFromString(@"_setSupportsPointerDragScrolling:") withObject:@(YES) afterDelay:0];
+    }
 #endif
 }
 
@@ -405,7 +407,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     [_queuedPages removeAllObjects];
 
     // Reset the content size of the scroll view content
-    _scrollView.contentSize = CGSizeZero;
+    [self _performWithoutLayout:^{
+        self->_scrollView.contentSize = CGSizeZero;
+    }];
 
     // Perform a fresh layout
     [self _layoutPages];
