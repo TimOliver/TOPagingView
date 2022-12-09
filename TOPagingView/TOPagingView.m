@@ -450,6 +450,26 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     [self _updateEnabledPages];
 }
 
+- (void)turnToNextPageAnimated:(BOOL)animated
+{
+    const BOOL isDirectionReversed = [self _isDirectionReversed];
+    if (isDirectionReversed) {
+        [self turnToLeftPageAnimated:animated];
+    } else {
+        [self turnToRightPageAnimated:animated];
+    }
+}
+
+- (void)turnToPreviousPageAnimated:(BOOL)animated
+{
+    const BOOL isDirectionReversed = [self _isDirectionReversed];
+    if (isDirectionReversed) {
+        [self turnToRightPageAnimated:animated];
+    } else {
+        [self turnToLeftPageAnimated:animated];
+    }
+}
+
 - (void)turnToLeftPageAnimated:(BOOL)animated
 {
     const BOOL isDirectionReversed = [self _isDirectionReversed];

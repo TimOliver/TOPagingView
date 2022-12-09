@@ -181,6 +181,14 @@ NS_SWIFT_NAME(PagingView)
 - (nullable __kindof UIView<TOPagingViewPage> *)pageViewForUniqueIdentifier:(NSString *)identifier
                                                                             NS_SWIFT_NAME(uniquePageView(for:));
 
+/// Advance one page forward in ascending order (which will be left or right depending on direction)
+/// - Parameter animated: Whether the transition is animated, or updates instantly
+- (void)turnToNextPageAnimated:(BOOL)animated;
+
+/// Advance one page backward in descending order (which will be left or right depending on direction)
+/// - Parameter animated: Whether the transition is animated, or updates instantly
+- (void)turnToPreviousPageAnimated:(BOOL)animated;
+
 /// Advance one page to the left (Regardless of current scroll direction)
 /// - Parameter animated: Whether the transition is animated, or updates instantly
 - (void)turnToLeftPageAnimated:(BOOL)animated;
