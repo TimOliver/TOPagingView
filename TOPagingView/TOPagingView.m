@@ -700,6 +700,20 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         return;
     }
 
+    // If the scroll view delegate was set, define this block we can use when the animations completes.
+    // (Whether it succeeded, or got canceled)
+    __weak TOPagingView *weakSelf = self;
+    void (^scrollDidEndDelegateBlock)(void) = ^{
+        TOPagingView *strongSelf = weakSelf;
+        if (strongSelf == nil) { return; }
+        id<UIScrollViewDelegate> scrollViewDelegate = strongSelf->_scrollView.delegate;
+        if (scrollViewDelegate) {
+            if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
+                [scrollViewDelegate scrollViewDidEndScrollingAnimation:strongSelf->_scrollView];
+            }
+        }
+    };
+
     // If we're already in an animation, we can't queue up a new animation
     // before the old one completes, otherwise we'll overshoot the pages and cause visual glitching.
     // (There might be a better way to implement this down the line)
@@ -713,7 +727,10 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         // Cancel the current animation
         [scrollView.layer removeAllAnimations];
 
-        // Re-enable layout so we can
+        // Trigger the completed delegate
+        scrollDidEndDelegateBlock();
+
+        // Re-enable layout so when we change the content offset, we'll reset all of the pages
         _disableLayout = NO;
     }
 
@@ -750,13 +767,8 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         // (But in most cases, this should be a no-op)
         [self _layoutPages];
 
-        // If the scroll view delegate was set, tell it the animation completed
-        id<UIScrollViewDelegate> scrollViewDelegate = self->_scrollView.delegate;
-        if (scrollViewDelegate) {
-            if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
-                [scrollViewDelegate scrollViewDidEndScrollingAnimation:self->_scrollView];
-            }
-        }
+        // Trigger the animation completed delgate
+        scrollDidEndDelegateBlock();
     }];
 }
 
