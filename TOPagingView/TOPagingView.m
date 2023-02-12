@@ -1043,10 +1043,12 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
                                                  pageViewForType:TOPagingViewPageTypeNext
                                                  currentPageView:_nextPageView];
 
-    // Insert the new page object and update its position (Will fall through if nil)
-    [self _insertPageView:nextPage];
-    _nextPageView = nextPage;
-    _nextPageView.frame = [self _nextPageViewFrame];
+    if (nextPage) {
+        // Insert the new page object and update its position (Will fall through if nil)
+        [self _insertPageView:nextPage];
+        _nextPageView = nextPage;
+        _nextPageView.frame = [self _nextPageViewFrame];
+    }
 
     // If the next page ended up being nil,
     // set a flag to prevent churning, and inset the scroll inset
@@ -1060,10 +1062,12 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
                                                      pageViewForType:TOPagingViewPageTypePrevious
                                                      currentPageView:_previousPageView];
 
-    // Insert the new page object and set its position (Will fall through if nil)
-    [self _insertPageView:previousPage];
-    _previousPageView = previousPage;
-    _previousPageView.frame = [self _previousPageViewFrame];
+    if (previousPage) {
+        // Insert the new page object and set its position (Will fall through if nil)
+        [self _insertPageView:previousPage];
+        _previousPageView = previousPage;
+        _previousPageView.frame = [self _previousPageViewFrame];
+    }
 
     // If the previous page ended up being nil, set a flag so we don't check again until we need to
     _hasPreviousPage = (previousPage != nil);
