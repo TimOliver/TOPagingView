@@ -393,7 +393,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     if (_dataSource == nil || self.superview == nil) { return; }
     
     // Remove all currently visible pages from the scroll views
-    for (UIView *view in [self visiblePageViews]) {
+    for (UIView *view in _scrollView.subviews) {
         [self _reclaimPageView:view];
         [view removeFromSuperview];
     }
@@ -912,6 +912,11 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 - (void)_reclaimPageView:(UIView *)pageView TOPAGINGVIEW_OBJC_DIRECT
 {
     if (pageView == nil) { return; }
+
+    // Skip internal UIScrollView views
+    if ([NSStringFromClass([pageView class]) rangeOfString:@"_"].location == 0) {
+        return;
+    }
 
     // Fetch the protocol flags for this class
     TOPageViewProtocolFlags flags = [self _cachedProtocolFlagsForPageViewClass:pageView.class];
