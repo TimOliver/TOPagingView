@@ -191,12 +191,15 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Doing it this way lets us leave the delegate available for external objects to use.
     [scrollView addObserver:self forKeyPath:@"contentOffset" options:0 context:nil];
 
-    // Enable scrolling with mouse (Private API. Probably shouldn't ship)
-#if DEBUG
+    // Enable scrolling by clicking and dragging with the mouse
+    // The only way to do this is via a private API. FB10593893 was filed to request this property is made public.
     if (@available(iOS 14.0, *)) {
-        [scrollView performSelector:NSSelectorFromString(@"_setSupportsPointerDragScrolling:") withObject:@(YES) afterDelay:0];
+        NSArray *const selectorComponents = @[@"_", @"set", @"SupportsPointerDragScrolling:"];
+        SEL selector = NSSelectorFromString([selectorComponents componentsJoinedByString:@""]);
+        if ([scrollView respondsToSelector:selector]) {
+            [scrollView performSelector:selector withObject:@(YES) afterDelay:0];
+        }
     }
-#endif
 }
 
 - (void)dealloc
