@@ -173,6 +173,9 @@ NS_SWIFT_NAME(PagingView)
 /// The previous page before the currently visible page on the screen.
 - (nullable __kindof UIView<TOPagingViewPage> *)previousPageView;
 
+/// Returns all of the currently visible pages as an un-ordered set
+- (nullable NSSet<__kindof UIView<TOPagingViewPage> *> *)visiblePageViews;
+
 /// Returns the visible page view for the supplied unique identifier, or nil otherwise.
 /// - Parameter identifier: The identifier of the specific page view to retrieve.
 - (nullable __kindof UIView<TOPagingViewPage> *)pageViewForUniqueIdentifier:(NSString *)identifier

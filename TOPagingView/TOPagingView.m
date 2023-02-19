@@ -391,7 +391,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     if (_dataSource == nil || self.superview == nil) { return; }
     
     // Remove all currently visible pages from the scroll views
-    for (UIView *view in [self _visiblePages]) {
+    for (UIView *view in [self visiblePageViews]) {
         [self _reclaimPageView:view];
         [view removeFromSuperview];
     }
@@ -725,6 +725,14 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         // Perform a sanity layout just in case
         // (But in most cases, this should be a no-op)
         [self _layoutPages];
+
+        // If the scroll view delegate was set, tell it the animation completed
+        id<UIScrollViewDelegate> scrollViewDelegate = self->_scrollView.delegate;
+        if (scrollViewDelegate) {
+            if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
+                [scrollViewDelegate scrollViewDidEndScrollingAnimation:self->_scrollView];
+            }
+        }
     }];
 }
 
@@ -809,6 +817,14 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
         // Trigger requesting replacement adjacent pages
         [self refreshAdjacentPages];
+
+        // If the scroll view delegate was set, tell it the animation completed
+        id<UIScrollViewDelegate> scrollViewDelegate = self->_scrollView.delegate;
+        if (scrollViewDelegate) {
+            if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
+                [scrollViewDelegate scrollViewDidEndScrollingAnimation:self->_scrollView];
+            }
+        }
     };
 
     // Commit the animation
@@ -1227,13 +1243,14 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 #pragma mark - Layout Calculation -
 
-- (NSArray<UIView *> *)_visiblePages TOPAGINGVIEW_OBJC_DIRECT
+- (nullable NSSet<__kindof UIView<TOPagingViewPage> *> *)visiblePageViews
 {
-    NSMutableArray *visiblePages = [NSMutableArray array];
+    NSMutableSet *visiblePages = [NSMutableSet set];
     if (_previousPageView) { [visiblePages addObject:_previousPageView]; }
     if (_currentPageView) { [visiblePages addObject:_currentPageView]; }
     if (_nextPageView) { [visiblePages addObject:_nextPageView]; }
-    return [NSArray arrayWithArray:visiblePages];
+    if (visiblePages.count == 0) { return nil; }
+    return [NSSet setWithSet:visiblePages];
 }
 
 - (CGFloat)_scrollViewPageWidth TOPAGINGVIEW_OBJC_DIRECT
