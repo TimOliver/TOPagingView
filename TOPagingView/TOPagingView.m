@@ -191,10 +191,15 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     // Doing it this way lets us leave the delegate available for external objects to use.
     [scrollView addObserver:self forKeyPath:@"contentOffset" options:0 context:nil];
 
-    // Enable scrolling with mouse (Private API. Probably shouldn't ship)
-#if DEBUG
-    [scrollView performSelector:NSSelectorFromString(@"_setSupportsPointerDragScrolling:") withObject:@(YES) afterDelay:0];
-#endif
+    // Enable scrolling by clicking and dragging with the mouse
+    // The only way to do this is via a private API. FB10593893 was filed to request this property is made public.
+    if (@available(iOS 14.0, *)) {
+        NSArray *const selectorComponents = @[@"_", @"set", @"SupportsPointerDragScrolling:"];
+        SEL selector = NSSelectorFromString([selectorComponents componentsJoinedByString:@""]);
+        if ([scrollView respondsToSelector:selector]) {
+            [scrollView performSelector:selector withObject:@(YES) afterDelay:0];
+        }
+    }
 }
 
 - (void)dealloc
@@ -391,7 +396,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     if (_dataSource == nil || self.superview == nil) { return; }
     
     // Remove all currently visible pages from the scroll views
-    for (UIView *view in [self visiblePageViews]) {
+    for (UIView *view in _scrollView.subviews) {
         [self _reclaimPageView:view];
         [view removeFromSuperview];
     }
@@ -405,7 +410,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     [_queuedPages removeAllObjects];
 
     // Reset the content size of the scroll view content
-    _scrollView.contentSize = CGSizeZero;
+    [self _performWithoutLayout:^{
+        self->_scrollView.contentSize = CGSizeZero;
+    }];
 
     // Perform a fresh layout
     [self _layoutPages];
@@ -444,6 +451,26 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     }
 
     [self _updateEnabledPages];
+}
+
+- (void)turnToNextPageAnimated:(BOOL)animated
+{
+    const BOOL isDirectionReversed = [self _isDirectionReversed];
+    if (isDirectionReversed) {
+        [self turnToLeftPageAnimated:animated];
+    } else {
+        [self turnToRightPageAnimated:animated];
+    }
+}
+
+- (void)turnToPreviousPageAnimated:(BOOL)animated
+{
+    const BOOL isDirectionReversed = [self _isDirectionReversed];
+    if (isDirectionReversed) {
+        [self turnToRightPageAnimated:animated];
+    } else {
+        [self turnToLeftPageAnimated:animated];
+    }
 }
 
 - (void)turnToLeftPageAnimated:(BOOL)animated
@@ -676,6 +703,20 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         return;
     }
 
+    // If the scroll view delegate was set, define this block we can use when the animations completes.
+    // (Whether it succeeded, or got canceled)
+    __weak TOPagingView *weakSelf = self;
+    void (^scrollDidEndDelegateBlock)(void) = ^{
+        TOPagingView *strongSelf = weakSelf;
+        if (strongSelf == nil) { return; }
+        id<UIScrollViewDelegate> scrollViewDelegate = strongSelf->_scrollView.delegate;
+        if (scrollViewDelegate) {
+            if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
+                [scrollViewDelegate scrollViewDidEndScrollingAnimation:strongSelf->_scrollView];
+            }
+        }
+    };
+
     // If we're already in an animation, we can't queue up a new animation
     // before the old one completes, otherwise we'll overshoot the pages and cause visual glitching.
     // (There might be a better way to implement this down the line)
@@ -689,7 +730,10 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         // Cancel the current animation
         [scrollView.layer removeAllAnimations];
 
-        // Re-enable layout so we can
+        // Trigger the completed delegate
+        scrollDidEndDelegateBlock();
+
+        // Re-enable layout so when we change the content offset, we'll reset all of the pages
         _disableLayout = NO;
     }
 
@@ -726,13 +770,8 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         // (But in most cases, this should be a no-op)
         [self _layoutPages];
 
-        // If the scroll view delegate was set, tell it the animation completed
-        id<UIScrollViewDelegate> scrollViewDelegate = self->_scrollView.delegate;
-        if (scrollViewDelegate) {
-            if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
-                [scrollViewDelegate scrollViewDidEndScrollingAnimation:self->_scrollView];
-            }
-        }
+        // Trigger the animation completed delgate
+        scrollDidEndDelegateBlock();
     }];
 }
 
@@ -877,6 +916,11 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 {
     if (pageView == nil) { return; }
 
+    // Skip internal UIScrollView views
+    if ([NSStringFromClass([pageView class]) rangeOfString:@"_"].location == 0) {
+        return;
+    }
+
     // Fetch the protocol flags for this class
     TOPageViewProtocolFlags flags = [self _cachedProtocolFlagsForPageViewClass:pageView.class];
 
@@ -1002,10 +1046,12 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
                                                  pageViewForType:TOPagingViewPageTypeNext
                                                  currentPageView:_nextPageView];
 
-    // Insert the new page object and update its position (Will fall through if nil)
-    [self _insertPageView:nextPage];
-    _nextPageView = nextPage;
-    _nextPageView.frame = [self _nextPageViewFrame];
+    if (nextPage) {
+        // Insert the new page object and update its position (Will fall through if nil)
+        [self _insertPageView:nextPage];
+        _nextPageView = nextPage;
+        _nextPageView.frame = [self _nextPageViewFrame];
+    }
 
     // If the next page ended up being nil,
     // set a flag to prevent churning, and inset the scroll inset
@@ -1019,10 +1065,12 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
                                                      pageViewForType:TOPagingViewPageTypePrevious
                                                      currentPageView:_previousPageView];
 
-    // Insert the new page object and set its position (Will fall through if nil)
-    [self _insertPageView:previousPage];
-    _previousPageView = previousPage;
-    _previousPageView.frame = [self _previousPageViewFrame];
+    if (previousPage) {
+        // Insert the new page object and set its position (Will fall through if nil)
+        [self _insertPageView:previousPage];
+        _previousPageView = previousPage;
+        _previousPageView.frame = [self _previousPageViewFrame];
+    }
 
     // If the previous page ended up being nil, set a flag so we don't check again until we need to
     _hasPreviousPage = (previousPage != nil);
