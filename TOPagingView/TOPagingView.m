@@ -956,7 +956,7 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
     if (pageView == nil) { return; }
 
     // Skip internal UIScrollView views
-    if ([NSStringFromClass([pageView class]) rangeOfString:@"_"].location == 0) {
+    if ([NSStringFromClass([pageView class]) characterAtIndex:0] == '_') {
         return;
     }
 
