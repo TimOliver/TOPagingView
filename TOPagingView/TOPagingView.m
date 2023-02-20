@@ -309,10 +309,10 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
              @"Only UIView objects may be registered as pages.");
 
     // Cache the protocol methods this class implements to save checking each time
-    [self _cachedProtocolFlagsForPageViewClass:pageViewClass];
+    TOPagingViewCachedProtocolFlagsForPageViewClass(self, pageViewClass);
 
     // Fetch the page identifier (or use the default if none were 
-    const NSString *pageIdentifier = [self identifierForPageViewClass:pageViewClass];
+    const NSString *pageIdentifier = TOPagingViewIdentifierForPageViewClass(self, pageViewClass);
     
     // Lazily make the store for the first time
     if (_registeredPageViewClasses == nil) {
@@ -360,9 +360,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     return nil;
 }
 
-- (NSString *)identifierForPageViewClass:(Class)pageViewClass
+static inline NSString *TOPagingViewIdentifierForPageViewClass(TOPagingView *view, Class pageViewClass)
 {
-    TOPageViewProtocolFlags flags = [self _cachedProtocolFlagsForPageViewClass:pageViewClass];
+    TOPageViewProtocolFlags flags = TOPagingViewCachedProtocolFlagsForPageViewClass(view, pageViewClass);
     if (flags.protocolPageIdentifier) {
         return [pageViewClass pageIdentifier];
     } else {
@@ -370,12 +370,12 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     }
 }
 
-- (TOPageViewProtocolFlags)_cachedProtocolFlagsForPageViewClass:(Class)class
+static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageViewClass(TOPagingView *view, Class class)
 {
     // Skip if we already captured the protocols from this class
     NSValue const* classValue = TOPagingViewValueForClass(&class);
-    if (_pageViewProtocolFlags[(NSValue *)classValue] != nil) {
-        NSValue const* flagsValue = _pageViewProtocolFlags[(NSValue *)classValue];
+    if (view->_pageViewProtocolFlags[(NSValue *)classValue] != nil) {
+        NSValue const* flagsValue = view->_pageViewProtocolFlags[(NSValue *)classValue];
         return TOPagingViewProtocolFlagsForValue((NSValue *)flagsValue);
     }
 
@@ -390,7 +390,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
     // Store in the dictionary
     NSValue const* flagsValue = [NSValue valueWithBytes:&flags objCType:@encode(TOPageViewProtocolFlags)];
-    _pageViewProtocolFlags[classValue] = (NSValue *)flagsValue;
+    view->_pageViewProtocolFlags[classValue] = (NSValue *)flagsValue;
 
     // Return the flags
     return flags;
@@ -936,7 +936,7 @@ static void TOPagingViewInsertPageView(TOPagingView *view, UIView *pageView)
     pageView.hidden = NO;
 
     // Cache the page's protocol methods if it hasn't been done yet
-    TOPageViewProtocolFlags flags = [view _cachedProtocolFlagsForPageViewClass:pageView.class];
+    TOPageViewProtocolFlags flags = TOPagingViewCachedProtocolFlagsForPageViewClass(view, pageView.class);
 
     // If it has a unique identifier, store it so we can refer to it easily
     if (flags.protocolUniqueIdentifier) {
@@ -952,7 +952,7 @@ static void TOPagingViewInsertPageView(TOPagingView *view, UIView *pageView)
     }
 
     // Remove it from the pool of recycled pages
-    NSString *pageIdentifier = [view identifierForPageViewClass:pageView.class];
+    NSString *pageIdentifier = TOPagingViewIdentifierForPageViewClass(view, pageView.class);
     [view->_queuedPages[pageIdentifier] removeObject:pageView];
 }
 
@@ -966,7 +966,7 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView)
     }
 
     // Fetch the protocol flags for this class
-    TOPageViewProtocolFlags flags = [view _cachedProtocolFlagsForPageViewClass:pageView.class];
+    TOPageViewProtocolFlags flags = TOPagingViewCachedProtocolFlagsForPageViewClass(view, pageView.class);
 
     // If the page has a unique identifier, remove it from the dictionary
     if (flags.protocolUniqueIdentifier) {
@@ -982,7 +982,7 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView)
     pageView.hidden = YES;
 
     // Re-add it to the recycled pages pool
-    NSString *pageIdentifier = [view identifierForPageViewClass:pageView.class];
+    NSString *pageIdentifier = TOPagingViewIdentifierForPageViewClass(view, pageView.class);
     [view->_queuedPages[pageIdentifier] addObject:pageView];
 }
 
