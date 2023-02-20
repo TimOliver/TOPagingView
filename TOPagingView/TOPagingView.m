@@ -290,7 +290,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
                         change:(NSDictionary<NSKeyValueChangeKey,id> *)change
                        context:(void *)context
 {
-    [self _layoutPages];
+    TOPagingViewLayoutPages(self);
 }
 
 #pragma mark - Page Setup -
@@ -410,12 +410,12 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     [_queuedPages removeAllObjects];
 
     // Reset the content size of the scroll view content
-    [self _performWithoutLayout:^{
+    TOPagingViewPerformBlockWithoutLayout(self, ^{
         self->_scrollView.contentSize = CGSizeZero;
-    }];
+    });
 
     // Perform a fresh layout
-    [self _layoutPages];
+    TOPagingViewLayoutPages(self);
 }
 
 - (void)refreshAdjacentPages
@@ -521,80 +521,79 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 #pragma mark - Page Layout & Management -
 
-- (void)_layoutPages TOPAGINGVIEW_OBJC_DIRECT
-{
+static void TOPagingViewLayoutPages(TOPagingView *view) {
     // Only perform this overhead when we are in the appropriate state,
     // and we're not being disabled by an active animation.
-    if (_dataSource == nil || _disableLayout) { return; }
+    if (view->_dataSource == nil || view->_disableLayout) { return; }
 
-    const CGSize contentSize = _scrollView.contentSize;
+    const CGSize contentSize = view->_scrollView.contentSize;
 
     // On first run, set up the initial pages layout
-    if (_currentPageView == nil || contentSize.width < FLT_EPSILON) {
-        [self _performInitialLayout];
+    if (view->_currentPageView == nil || contentSize.width < FLT_EPSILON) {
+        TOPagingViewPerformInitialLayout(view);
         return;
     }
 
     // Check the offset of the scroll view, and when it passes over
     // the mid point between two pages, perform the page transition
-    [self _handlePageTransitions];
+    [view _handlePageTransitions];
 
     // Observe user interaction for triggering certain delegate callbacks
-    [self _updateDragInteraction];
+    [view _updateDragInteraction];
 
     // When the page offset crosses either the left or right threshold,
     // check if a page is ready or not and enable insetting at that point to
     // avoid any hitchy motion
-    [self _updateEnabledPages];
+    [view _updateEnabledPages];
 }
 
-- (void)_performInitialLayout TOPAGINGVIEW_OBJC_DIRECT
+static inline void TOPagingViewPerformInitialLayout(TOPagingView *view)
 {
     // Set these back to true for now, since we'll perform the check in here
-    _hasNextPage = YES;
-    _hasPreviousPage = YES;
+    view->_hasNextPage = YES;
+    view->_hasPreviousPage = YES;
 
     // Send a delegate event stating we're about to transition to the initial page
-    if (_delegateFlags.delegateWillTurnToPage) {
-        [_delegate pagingView:self willTurnToPageOfType:TOPagingViewPageTypeCurrent];
+    if (view->_delegateFlags.delegateWillTurnToPage) {
+        [view->_delegate pagingView:view willTurnToPageOfType:TOPagingViewPageTypeCurrent];
     }
 
     // Add the initial page
-    UIView<TOPagingViewPage> *pageView = [_dataSource pagingView:self
-                                                 pageViewForType:TOPagingViewPageTypeCurrent
-                                                 currentPageView:nil];
+    UIView<TOPagingViewPage> *pageView = [view->_dataSource pagingView:view
+                                                       pageViewForType:TOPagingViewPageTypeCurrent
+                                                       currentPageView:nil];
     if (pageView == nil) { return; }
-    _currentPageView = pageView;
-    [self _insertPageView:pageView];
-    _currentPageView.frame = [self _currentPageViewFrame];
+    view->_currentPageView = pageView;
+    [view _insertPageView:pageView];
+    view->_currentPageView.frame = [view _currentPageViewFrame];
 
     // Add the next & previous pages
-    [self _fetchNewNextPage];
-    [self _fetchNewPreviousPage];
+    [view _fetchNewNextPage];
+    [view _fetchNewPreviousPage];
 
     // Disable the observer while we manually place all elements
-    _disableLayout = YES;
+    view->_disableLayout = YES;
 
     // Update the content size for the scroll view
-    [self _updateContentSize];
+    [view _updateContentSize];
 
     // Set the initial scroll point to the current page
-    [self _resetContentOffset];
+    [view _resetContentOffset];
 
     // Re-enable the observer
-    _disableLayout = NO;
+    view->_disableLayout = NO;
 
     // Send a delegate event stating we've completed transitioning to the initial page
-    if (_delegateFlags.delegateDidTurnToPage) {
-        [_delegate pagingView:self didTurnToPageOfType:TOPagingViewPageTypeCurrent];
+    if (view->_delegateFlags.delegateDidTurnToPage) {
+        [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypeCurrent];
     }
 }
 
-- (void)_performWithoutLayout:(void (^)(void))block TOPAGINGVIEW_OBJC_DIRECT
+static inline void TOPagingViewPerformBlockWithoutLayout(TOPagingView *view, void (^block)(void))
 {
-    _disableLayout = YES;
+    view->_disableLayout = YES;
     if (block) { block(); }
-    _disableLayout = NO;
+    view->_disableLayout = NO;
 }
 
 - (void)_handlePageTransitions TOPAGINGVIEW_OBJC_DIRECT
@@ -669,6 +668,42 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         [self _setPageSlotEnabled:isEnabled edge:UIRectEdgeRight];
     }
 }
+
+- (void)_setPageSlotEnabled:(BOOL)enabled edge:(UIRectEdge)edge TOPAGINGVIEW_OBJC_DIRECT
+{
+    // Fetch the segment width. It will be used for either value
+    const CGFloat segmentWidth = [self _scrollViewPageWidth];
+
+    // Get the current insets of the scroll view
+    UIEdgeInsets insets = _scrollView.contentInset;
+
+    // Exit out if we don't need to set the state already
+    const BOOL isLeft = (edge == UIRectEdgeLeft);
+    CGFloat inset = isLeft ? insets.left : insets.right;
+    if (enabled && inset == segmentWidth) { return; }
+    else if (!enabled && inset == -segmentWidth) { return; }
+
+    // When the slot is enabled, expand the scrollable region an
+    // extra slot, so that it won't bump against the edge of the
+    // scroll region when scrolling rapidly.
+    // Otherwise, inset it a whole slot to disable it completely.
+    CGFloat value = enabled ? segmentWidth : -segmentWidth;
+
+    // Capture the content offset since changing the inset will change it
+    CGPoint contentOffset = _scrollView.contentOffset;
+
+    // Set the target inset value
+    if (isLeft) { insets.left = value; }
+    else { insets.right = value; }
+
+    // Set the inset and then restore the offset
+    _disableLayout = YES;
+    _scrollView.contentInset = insets;
+    _scrollView.contentOffset = contentOffset;
+    _disableLayout = NO;
+}
+
+#pragma mark - Animated Transitions -
 
 - (void)_turnToPageInDirection:(UIRectEdge)direction animated:(BOOL)animated TOPAGINGVIEW_OBJC_DIRECT
 {
@@ -764,7 +799,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
         // Perform a sanity layout just in case
         // (But in most cases, this should be a no-op)
-        [self _layoutPages];
+        TOPagingViewLayoutPages(self);
 
         // Trigger the animation completed delgate
         scrollDidEndDelegateBlock();
@@ -978,9 +1013,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     const CGFloat scrollViewPageWidth = [self _scrollViewPageWidth];
     if ([self _isDirectionReversed]) { contentOffset.x += scrollViewPageWidth; }
     else { contentOffset.x -= scrollViewPageWidth; }
-    [self _performWithoutLayout:^{
+    TOPagingViewPerformBlockWithoutLayout(self, ^{
         self->_scrollView.contentOffset = contentOffset;
-    }];
+    });
 
     // If we're dragging, reset the state
     if (_scrollView.isDragging) {
@@ -1025,9 +1060,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     const CGFloat scrollViewPageWidth = [self _scrollViewPageWidth];
     if ([self _isDirectionReversed]) { contentOffset.x -= [self _scrollViewPageWidth]; }
     else { contentOffset.x += scrollViewPageWidth; }
-    [self _performWithoutLayout:^{
+    TOPagingViewPerformBlockWithoutLayout(self, ^{
         self->_scrollView.contentOffset = contentOffset;
-    }];
+    });
 
     // If we're dragging, reset the state
     if (_scrollView.isDragging) {
@@ -1103,9 +1138,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     CGFloat leftInset = insets.left;
     insets.left = insets.right;
     insets.right = leftInset;
-    [self _performWithoutLayout:^{
+    TOPagingViewPerformBlockWithoutLayout(self, ^{
         self->_scrollView.contentInset = insets;
-    }];
+    });
 }
 
 - (void)_playBounceAnimationInDirection:(TOPagingViewDirection)direction TOPAGINGVIEW_OBJC_DIRECT
@@ -1158,40 +1193,6 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
                         options:kTOPagingViewAnimationOptions
                      animations:pullAnimationBlock
                      completion:pullAnimationCompletionBlock];
-}
-
-- (void)_setPageSlotEnabled:(BOOL)enabled edge:(UIRectEdge)edge TOPAGINGVIEW_OBJC_DIRECT
-{
-    // Fetch the segment width. It will be used for either value
-    const CGFloat segmentWidth = [self _scrollViewPageWidth];
-
-    // Get the current insets of the scroll view
-    UIEdgeInsets insets = _scrollView.contentInset;
-
-    // Exit out if we don't need to set the state already
-    const BOOL isLeft = (edge == UIRectEdgeLeft);
-    CGFloat inset = isLeft ? insets.left : insets.right;
-    if (enabled && inset == segmentWidth) { return; }
-    else if (!enabled && inset == -segmentWidth) { return; }
-
-    // When the slot is enabled, expand the scrollable region an
-    // extra slot, so that it won't bump against the edge of the
-    // scroll region when scrolling rapidly.
-    // Otherwise, inset it a whole slot to disable it completely.
-    CGFloat value = enabled ? segmentWidth : -segmentWidth;
-    
-    // Capture the content offset since changing the inset will change it
-    CGPoint contentOffset = _scrollView.contentOffset;
-
-    // Set the target inset value
-    if (isLeft) { insets.left = value; }
-    else { insets.right = value; }
-    
-    // Set the inset and then restore the offset
-    _disableLayout = YES;
-    _scrollView.contentInset = insets;
-    _scrollView.contentOffset = contentOffset;
-    _disableLayout = NO;
 }
 
 - (void)_requestPendingPages TOPAGINGVIEW_OBJC_DIRECT
