@@ -458,7 +458,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         }
     }
 
-    [self _updateEnabledPages];
+    [self _layoutPages];
 }
 
 - (void)turnToNextPageAnimated:(BOOL)animated
@@ -547,12 +547,12 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
     TOPagingViewHandlePageTransitions(view);
 
     // Observe user interaction for triggering certain delegate callbacks
-    [view _updateDragInteraction];
+    TOPagingViewUpdateDragInteractions(view);
 
     // When the page offset crosses either the left or right threshold,
     // check if a page is ready or not and enable insetting at that point to
     // avoid any hitchy motion
-    [view _updateEnabledPages];
+    TOPagingViewUpdateEnabledPages(view);
 }
 
 static inline void TOPagingViewPerformInitialLayout(TOPagingView *view)
@@ -621,59 +621,59 @@ static inline void TOPagingViewHandlePageTransitions(TOPagingView *view)
     }
 }
 
-- (void)_updateDragInteraction TOPAGINGVIEW_OBJC_DIRECT
+static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view)
 {
     // Exit out if we don't actually use the delegate
-    if (_delegateFlags.delegateWillTurnToPage == NO) { return; }
+    if (view->_delegateFlags.delegateWillTurnToPage == NO) { return; }
 
     // If we're not being dragged, reset the state
-    if (_scrollView.isTracking == NO) {
-        _draggingOrigin = -CGFLOAT_MAX;
+    if (view->_scrollView.isTracking == NO) {
+        view->_draggingOrigin = -CGFLOAT_MAX;
         return;
     }
 
     // If we just started dragging, capture the current offset and exit
-    if (_draggingOrigin <= -CGFLOAT_MAX + FLT_EPSILON) {
-        _draggingOrigin = _scrollView.contentOffset.x;
+    if (view->_draggingOrigin <= -CGFLOAT_MAX + FLT_EPSILON) {
+        view->_draggingOrigin = view->_scrollView.contentOffset.x;
         return;
     }
 
     // Check the direction of the next step
-    const CGFloat offset = _scrollView.contentOffset.x;
-    const BOOL isReversed = (_pageScrollDirection == TOPagingViewDirectionRightToLeft);
+    const CGFloat offset = view->_scrollView.contentOffset.x;
+    const BOOL isReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     TOPagingViewPageType directionType;
 
     // We dragged to the right
-    if (offset < _draggingOrigin - FLT_EPSILON) {
+    if (offset < view->_draggingOrigin - FLT_EPSILON) {
         directionType = isReversed ? TOPagingViewPageTypeNext : TOPagingViewPageTypePrevious;
-    } else if (offset > _draggingOrigin + FLT_EPSILON) { // We dragged to the left
+    } else if (offset > view->_draggingOrigin + FLT_EPSILON) { // We dragged to the left
         directionType = isReversed ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext;
     } else { return; }
 
     // If this is a new direction than before, inform the delegate, and then save to avoid repeating
-    if (directionType != _draggingDirectionType) {
+    if (directionType != view->_draggingDirectionType) {
         // Offload this delegate call to another run-loop to avoid any heavy operations as the data source
-        [self.delegate pagingView:self willTurnToPageOfType:directionType];
-        _draggingDirectionType = directionType;
+        [view->_delegate pagingView:view willTurnToPageOfType:directionType];
+        view->_draggingDirectionType = directionType;
     }
 
     // Update with the new offset
-    _draggingOrigin = offset;
+    view->_draggingOrigin = offset;
 }
 
-- (void)_updateEnabledPages TOPAGINGVIEW_OBJC_DIRECT
+static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
 {
-    const CGPoint offset = _scrollView.contentOffset;
-    const CGFloat segmentWidth = [self _scrollViewPageWidth];
-    const BOOL isReversed = (_pageScrollDirection == TOPagingViewDirectionRightToLeft);
+    const CGPoint offset = view->_scrollView.contentOffset;
+    const CGFloat segmentWidth = [view _scrollViewPageWidth];
+    const BOOL isReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
 
     // Check the offset and disable the adjancent slot if we've gone over the threshold
     if (offset.x < segmentWidth) { // Check the left page slot
-        const BOOL isEnabled = isReversed ? _hasNextPage : _hasPreviousPage;
-        [self _setPageSlotEnabled:isEnabled edge:UIRectEdgeLeft];
+        const BOOL isEnabled = isReversed ? view->_hasNextPage : view->_hasPreviousPage;
+        [view _setPageSlotEnabled:isEnabled edge:UIRectEdgeLeft];
     } else if (offset.x > segmentWidth) { // Check the right slot
-        const BOOL isEnabled = isReversed ? _hasPreviousPage : _hasNextPage;
-        [self _setPageSlotEnabled:isEnabled edge:UIRectEdgeRight];
+        const BOOL isEnabled = isReversed ? view->_hasPreviousPage : view->_hasNextPage;
+        [view _setPageSlotEnabled:isEnabled edge:UIRectEdgeRight];
     }
 }
 
