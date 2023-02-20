@@ -405,7 +405,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     
     // Remove all currently visible pages from the scroll views
     for (UIView *view in _scrollView.subviews) {
-        [self _reclaimPageView:view];
+        TOPagingViewReclaimPageView(self, view);
         [view removeFromSuperview];
     }
 
@@ -437,7 +437,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
                                                          currentPageView:_currentPageView];
         // Add the page view to the hierarchy
         if (previousPage) {
-            [self _insertPageView:previousPage];
+            TOPagingViewInsertPageView(self, previousPage);
             previousPage.frame = [self _previousPageViewFrame];
             _previousPageView = previousPage;
             _hasPreviousPage = YES;
@@ -451,7 +451,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
                                                      currentPageView:_currentPageView];
         // Add the page view to the hierarchy
         if (nextPage) {
-            [self _insertPageView:nextPage];
+            TOPagingViewInsertPageView(self, nextPage);
             nextPage.frame = [self _nextPageViewFrame];
             _nextPageView = nextPage;
             _hasNextPage = YES;
@@ -572,7 +572,7 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view)
                                                        currentPageView:nil];
     if (pageView == nil) { return; }
     view->_currentPageView = pageView;
-    [view _insertPageView:pageView];
+    TOPagingViewInsertPageView(view, pageView);
     view->_currentPageView.frame = [view _currentPageViewFrame];
 
     // Add the next & previous pages
@@ -825,8 +825,8 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
     }
 
     // Reclaim the next and previous pages since these will always need to be regenerated
-    [self _reclaimPageView:_nextPageView];
-    [self _reclaimPageView:_previousPageView];
+    TOPagingViewReclaimPageView(self, _nextPageView);
+    TOPagingViewReclaimPageView(self, _previousPageView);
 
     // Request the new page view that will become the new current page after this completes
     UIView<TOPagingViewPage> *newPageView = [_dataSource pagingView:self
@@ -846,12 +846,12 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
     // If we're not animating, we can rearrange everything statically and cancel out here
     if (!animated) {
         // Reclaim the current page since we'll swap over to the newly requested one
-        [self _reclaimPageView:_currentPageView];
+        TOPagingViewReclaimPageView(self, _currentPageView);
 
         // Insert the new current page view
         _currentPageView = newPageView;
         _currentPageView.frame = [self _currentPageViewFrame];
-        [self _insertPageView:_currentPageView];
+        TOPagingViewInsertPageView(self, _currentPageView);
 
         // Re-enable layout to trigger a check for the next pages
         _disableLayout = NO;
@@ -877,7 +877,7 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
     // Put the new view in the center point and promote it to new current
     _currentPageView = newPageView;
     _currentPageView.frame = [self _currentPageViewFrame];
-    [self _insertPageView:_currentPageView];
+    TOPagingViewInsertPageView(self, _currentPageView);
 
     // Define the animation block
     id animationBlock = ^{
@@ -887,7 +887,7 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
     // Define the completion block
     id completionBlock = ^(BOOL complete) {
         // Remove the previous page
-        [self _reclaimPageView:self->_previousPageView];
+        TOPagingViewReclaimPageView(self, self->_previousPageView);
         self->_previousPageView = nil;
 
         // Re-enable layout
@@ -922,36 +922,36 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
 
 #pragma mark - Page View Recycling -
 
-- (void)_insertPageView:(UIView *)pageView TOPAGINGVIEW_OBJC_DIRECT
+static void TOPagingViewInsertPageView(TOPagingView *view, UIView *pageView)
 {
     if (pageView == nil) { return; }
 
     // Add the view to the scroll view
-    if (pageView.superview == nil) { [_scrollView addSubview:pageView]; }
+    if (pageView.superview == nil) { [view->_scrollView addSubview:pageView]; }
     pageView.hidden = NO;
 
     // Cache the page's protocol methods if it hasn't been done yet
-    TOPageViewProtocolFlags flags = [self _cachedProtocolFlagsForPageViewClass:pageView.class];
+    TOPageViewProtocolFlags flags = [view _cachedProtocolFlagsForPageViewClass:pageView.class];
 
     // If it has a unique identifier, store it so we can refer to it easily
     if (flags.protocolUniqueIdentifier) {
         NSString *uniqueIdentifier = [(id)pageView uniqueIdentifier];
 
         // Lazily create the dictionary as needed
-        if (_uniqueIdentifierPages == nil) {
-            _uniqueIdentifierPages = [NSMutableDictionary dictionary];
+        if (view->_uniqueIdentifierPages == nil) {
+            view->_uniqueIdentifierPages = [NSMutableDictionary dictionary];
         }
 
         // Add to the dictionary
-        _uniqueIdentifierPages[uniqueIdentifier] = pageView;
+        view->_uniqueIdentifierPages[uniqueIdentifier] = pageView;
     }
 
     // Remove it from the pool of recycled pages
-    NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
-    [_queuedPages[pageIdentifier] removeObject:pageView];
+    NSString *pageIdentifier = [view identifierForPageViewClass:pageView.class];
+    [view->_queuedPages[pageIdentifier] removeObject:pageView];
 }
 
-- (void)_reclaimPageView:(UIView *)pageView TOPAGINGVIEW_OBJC_DIRECT
+static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView)
 {
     if (pageView == nil) { return; }
 
@@ -961,11 +961,11 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
     }
 
     // Fetch the protocol flags for this class
-    TOPageViewProtocolFlags flags = [self _cachedProtocolFlagsForPageViewClass:pageView.class];
+    TOPageViewProtocolFlags flags = [view _cachedProtocolFlagsForPageViewClass:pageView.class];
 
     // If the page has a unique identifier, remove it from the dictionary
     if (flags.protocolUniqueIdentifier) {
-        [_uniqueIdentifierPages removeObjectForKey:[(id)pageView uniqueIdentifier]];
+        [view->_uniqueIdentifierPages removeObjectForKey:[(id)pageView uniqueIdentifier]];
     }
 
     // If the class supports the clean up method, clean it up now
@@ -977,8 +977,8 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
     pageView.hidden = YES;
 
     // Re-add it to the recycled pages pool
-    NSString *pageIdentifier = [self identifierForPageViewClass:pageView.class];
-    [_queuedPages[pageIdentifier] addObject:pageView];
+    NSString *pageIdentifier = [view identifierForPageViewClass:pageView.class];
+    [view->_queuedPages[pageIdentifier] addObject:pageView];
 }
 
 #pragma mark - Page Transitions -
@@ -995,7 +995,7 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view)
     if (!view->_hasNextPage) { return; }
 
     // Reclaim the previous view
-    [view _reclaimPageView:view->_previousPageView];
+    TOPagingViewReclaimPageView(view, view->_previousPageView);
 
     // Update all of the references by pushing each view back
     view->_previousPageView = view->_currentPageView;
@@ -1043,7 +1043,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     if (!view->_hasPreviousPage) { return; }
 
     // Reclaim the next view
-    [view _reclaimPageView:view->_nextPageView];
+    TOPagingViewReclaimPageView(view, view->_nextPageView);
 
     // Update all of the references by pushing each view forward
     view->_nextPageView = view->_currentPageView;
@@ -1088,7 +1088,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
 
     if (nextPage) {
         // Insert the new page object and update its position (Will fall through if nil)
-        [self _insertPageView:nextPage];
+        TOPagingViewInsertPageView(self, nextPage);
         _nextPageView = nextPage;
         _nextPageView.frame = [self _nextPageViewFrame];
     }
@@ -1107,7 +1107,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
 
     if (previousPage) {
         // Insert the new page object and set its position (Will fall through if nil)
-        [self _insertPageView:previousPage];
+        TOPagingViewInsertPageView(self, previousPage);
         _previousPageView = previousPage;
         _previousPageView.frame = [self _previousPageViewFrame];
     }
@@ -1213,7 +1213,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     if (_needsNextPage) {
         // There should never be a next page by this point, but just in case.
         if (_nextPageView != nil) {
-            [self _reclaimPageView:_nextPageView];
+            TOPagingViewInsertPageView(self, _nextPageView);
         }
 
         // Request the new page
@@ -1232,7 +1232,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     if (_needsPreviousPage) {
         // There should never be a previous page by this point, but just in case.
         if (_previousPageView != nil) {
-            [self _reclaimPageView:_previousPageView];
+            TOPagingViewInsertPageView(self, _previousPageView);
         }
 
         // Request the new page
