@@ -668,22 +668,29 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
     const BOOL isReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
 
     // Check the offset and disable the adjancent slot if we've gone over the threshold
+    BOOL isEnabled = NO;
+    UIRectEdge edge = UIRectEdgeNone;
     if (offset.x < segmentWidth) { // Check the left page slot
-        const BOOL isEnabled = isReversed ? view->_hasNextPage : view->_hasPreviousPage;
-        [view _setPageSlotEnabled:isEnabled edge:UIRectEdgeLeft];
+        isEnabled = isReversed ? view->_hasNextPage : view->_hasPreviousPage;
+        edge = UIRectEdgeLeft;
     } else if (offset.x > segmentWidth) { // Check the right slot
-        const BOOL isEnabled = isReversed ? view->_hasPreviousPage : view->_hasNextPage;
-        [view _setPageSlotEnabled:isEnabled edge:UIRectEdgeRight];
+        isEnabled = isReversed ? view->_hasPreviousPage : view->_hasNextPage;
+        edge = UIRectEdgeRight;
+    }
+
+    // If we matched and edge, update its state
+    if (edge != UIRectEdgeNone) {
+        TOPagingViewSetPageSlotEnabled(view, isEnabled, edge);
     }
 }
 
-- (void)_setPageSlotEnabled:(BOOL)enabled edge:(UIRectEdge)edge TOPAGINGVIEW_OBJC_DIRECT
+static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabled, UIRectEdge edge)
 {
     // Fetch the segment width. It will be used for either value
-    const CGFloat segmentWidth = TOPagingViewScrollViewPageWidth(self);
+    const CGFloat segmentWidth = TOPagingViewScrollViewPageWidth(view);
 
     // Get the current insets of the scroll view
-    UIEdgeInsets insets = _scrollView.contentInset;
+    UIEdgeInsets insets = view->_scrollView.contentInset;
 
     // Exit out if we don't need to set the state already
     const BOOL isLeft = (edge == UIRectEdgeLeft);
@@ -698,17 +705,17 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view)
     CGFloat value = enabled ? segmentWidth : -segmentWidth;
 
     // Capture the content offset since changing the inset will change it
-    CGPoint contentOffset = _scrollView.contentOffset;
+    CGPoint contentOffset = view->_scrollView.contentOffset;
 
     // Set the target inset value
     if (isLeft) { insets.left = value; }
     else { insets.right = value; }
 
     // Set the inset and then restore the offset
-    _disableLayout = YES;
-    _scrollView.contentInset = insets;
-    _scrollView.contentOffset = contentOffset;
-    _disableLayout = NO;
+    view->_disableLayout = YES;
+    view->_scrollView.contentInset = insets;
+    view->_scrollView.contentOffset = contentOffset;
+    view->_disableLayout = NO;
 }
 
 #pragma mark - Animated Transitions -
