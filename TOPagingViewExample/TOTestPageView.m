@@ -22,7 +22,7 @@
     if (self = [super initWithFrame:frame]) {
         self.backgroundColor = [UIColor redColor];
         
-        self.numberLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+        self.numberLabel = [[UILabel alloc] initWithFrame:(CGRect){0,0,320,128}];
         self.numberLabel.textColor = [UIColor whiteColor];
         self.numberLabel.font = [UIFont boldSystemFontOfSize:100.0f];
         self.numberLabel.textAlignment = NSTextAlignmentCenter;
@@ -35,8 +35,7 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    
-    [self.numberLabel sizeToFit];
+
     self.numberLabel.center = (CGPoint){CGRectGetMidX(self.bounds),
                                         CGRectGetMidY(self.bounds)};
     self.numberLabel.frame = CGRectIntegral(self.numberLabel.frame);
