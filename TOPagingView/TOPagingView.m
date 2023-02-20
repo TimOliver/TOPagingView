@@ -604,15 +604,11 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     const CGFloat segmentWidth = [self _scrollViewPageWidth];
     const CGSize contentSize = _scrollView.contentSize;
 
-    // Define the X-offset thresholds that indicate a transition should occur
-    const CGFloat rightPageThreshold = contentSize.width - (segmentWidth * 1.5f);
-    const CGFloat leftPageThreshold = segmentWidth * 0.5f;
-
     // Check if we went over the right-hand threshold to start transitioning the pages
-    if (offset.x > rightPageThreshold) {
+    if (offset.x >= (contentSize.width - segmentWidth) - FLT_EPSILON) {
         if (isReversed) { [self _transitionOverToPreviousPage]; }
         else { [self _transitionOverToNextPage]; }
-    } else if (offset.x < leftPageThreshold) { // Check if we're over the left threshold
+    } else if (offset.x <= FLT_EPSILON) { // Check if we're over the left threshold
         if (isReversed) { [self _transitionOverToNextPage]; }
         else { [self _transitionOverToPreviousPage]; }
     }
@@ -1166,17 +1162,23 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 - (void)_setPageSlotEnabled:(BOOL)enabled edge:(UIRectEdge)edge TOPAGINGVIEW_OBJC_DIRECT
 {
+    // Fetch the segment width. It will be used for either value
+    const CGFloat segmentWidth = [self _scrollViewPageWidth];
+
     // Get the current insets of the scroll view
     UIEdgeInsets insets = _scrollView.contentInset;
 
     // Exit out if we don't need to set the state already
     const BOOL isLeft = (edge == UIRectEdgeLeft);
     CGFloat inset = isLeft ? insets.left : insets.right;
-    if (enabled && inset >= -FLT_EPSILON) { return; }
-    else if (!enabled && inset < -FLT_EPSILON) { return; }
+    if (enabled && inset == segmentWidth) { return; }
+    else if (!enabled && inset == -segmentWidth) { return; }
 
-    // Work out what the value should be
-    CGFloat value = enabled ? 0.0f : -[self _scrollViewPageWidth];
+    // When the slot is enabled, expand the scrollable region an
+    // extra slot, so that it won't bump against the edge of the
+    // scroll region when scrolling rapidly.
+    // Otherwise, inset it a whole slot to disable it completely.
+    CGFloat value = enabled ? segmentWidth : -segmentWidth;
     
     // Capture the content offset since changing the inset will change it
     CGPoint contentOffset = _scrollView.contentOffset;
