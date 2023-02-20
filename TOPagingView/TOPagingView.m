@@ -463,8 +463,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 - (void)turnToNextPageAnimated:(BOOL)animated
 {
-    const BOOL isDirectionReversed = [self _isDirectionReversed];
-    if (isDirectionReversed) {
+    if (TOPagingViewIsDirectionReversed(self)) {
         [self turnToLeftPageAnimated:animated];
     } else {
         [self turnToRightPageAnimated:animated];
@@ -473,8 +472,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 - (void)turnToPreviousPageAnimated:(BOOL)animated
 {
-    const BOOL isDirectionReversed = [self _isDirectionReversed];
-    if (isDirectionReversed) {
+    if (TOPagingViewIsDirectionReversed(self)) {
         [self turnToRightPageAnimated:animated];
     } else {
         [self turnToLeftPageAnimated:animated];
@@ -483,7 +481,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 - (void)turnToLeftPageAnimated:(BOOL)animated
 {
-    const BOOL isDirectionReversed = [self _isDirectionReversed];
+    const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
     const BOOL hasLeftPage = (isDirectionReversed && _hasNextPage) ||
                              (!isDirectionReversed && _hasPreviousPage);
 
@@ -500,7 +498,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 - (void)turnToRightPageAnimated:(BOOL)animated
 {
-    const BOOL isDirectionReversed = [self _isDirectionReversed];
+    const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
     const BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) ||
                                 (!isDirectionReversed && _hasNextPage);
 
@@ -517,13 +515,13 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 - (void)skipForwardToNewPageAnimated:(BOOL)animated
 {
-    UIRectEdge direction = [self _isDirectionReversed] ? UIRectEdgeLeft : UIRectEdgeRight;
+    UIRectEdge direction = TOPagingViewIsDirectionReversed(self) ? UIRectEdgeLeft : UIRectEdgeRight;
     [self _skipToNewPageInDirection:direction animated:animated];
 }
 
 - (void)skipBackwardToNewPageAnimated:(BOOL)animated
 {
-    UIRectEdge direction = [self _isDirectionReversed] ? UIRectEdgeRight : UIRectEdgeLeft;
+    UIRectEdge direction = TOPagingViewIsDirectionReversed(self) ? UIRectEdgeRight : UIRectEdgeLeft;
     [self _skipToNewPageInDirection:direction animated:animated];
 }
 
@@ -732,7 +730,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // Determine the direction we're heading for the delegate
     const BOOL isLeftDirection = (offset < FLT_EPSILON);
-    const BOOL isDirectionReversed = [self _isDirectionReversed];
+    const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
     const BOOL isPreviousPage = ((!isDirectionReversed && isLeftDirection) ||
                                  (isDirectionReversed && !isLeftDirection));
 
@@ -1334,9 +1332,9 @@ static inline CGFloat TOPagingViewScrollViewPageWidth(TOPagingView *view)
     return view.bounds.size.width + view->_pageSpacing;
 }
 
-- (BOOL)_isDirectionReversed TOPAGINGVIEW_OBJC_DIRECT
+static inline BOOL TOPagingViewIsDirectionReversed(TOPagingView *view)
 {
-    return (_pageScrollDirection == TOPagingViewDirectionRightToLeft);
+    return (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
 }
 
 - (CGRect)_scrollViewFrame TOPAGINGVIEW_OBJC_DIRECT
@@ -1357,14 +1355,14 @@ static inline CGFloat TOPagingViewScrollViewPageWidth(TOPagingView *view)
 {
     // Next frame is on the right side when non-reversed,
     // and on the right side when reversed
-    return [self _isDirectionReversed] ? [self _leftPageViewFrame] : [self _rightPageViewFrame];
+    return TOPagingViewIsDirectionReversed(self) ? [self _leftPageViewFrame] : [self _rightPageViewFrame];
 }
 
 - (CGRect)_previousPageViewFrame TOPAGINGVIEW_OBJC_DIRECT
 {
     // Previous frame is on the left side when non-reversed,
     // and on the right side when reversed
-    return [self _isDirectionReversed] ? [self _rightPageViewFrame] : [self _leftPageViewFrame];
+    return TOPagingViewIsDirectionReversed(self) ? [self _rightPageViewFrame] : [self _leftPageViewFrame];
 }
 
 - (CGRect)_leftPageViewFrame TOPAGINGVIEW_OBJC_DIRECT
