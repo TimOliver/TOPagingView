@@ -293,6 +293,14 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     TOPagingViewLayoutPages(self);
 }
 
+- (void)_layoutPages TOPAGINGVIEW_OBJC_DIRECT
+{
+    // Since `TOPagingViewLayoutPages` is inlined, the only call to it should be
+    // in the KVO callback method. For all other calls (That don't require frame-tick precision),
+    // we can proxy through this method to call it.
+    [self observeValueForKeyPath:nil ofObject:nil change:nil context:nil];
+}
+
 #pragma mark - Page Setup -
 
 - (void)registerPageViewClass:(Class)pageViewClass
@@ -415,7 +423,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     });
 
     // Perform a fresh layout
-    TOPagingViewLayoutPages(self);
+    [self _layoutPages];
 }
 
 - (void)refreshAdjacentPages
@@ -521,7 +529,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 #pragma mark - Page Layout & Management -
 
-static void TOPagingViewLayoutPages(TOPagingView *view) {
+static inline void TOPagingViewLayoutPages(TOPagingView *view) {
     // Only perform this overhead when we are in the appropriate state,
     // and we're not being disabled by an active animation.
     if (view->_dataSource == nil || view->_disableLayout) { return; }
@@ -536,7 +544,7 @@ static void TOPagingViewLayoutPages(TOPagingView *view) {
 
     // Check the offset of the scroll view, and when it passes over
     // the mid point between two pages, perform the page transition
-    [view _handlePageTransitions];
+    TOPagingViewHandlePageTransitions(view);
 
     // Observe user interaction for triggering certain delegate callbacks
     [view _updateDragInteraction];
@@ -596,20 +604,20 @@ static inline void TOPagingViewPerformBlockWithoutLayout(TOPagingView *view, voi
     view->_disableLayout = NO;
 }
 
-- (void)_handlePageTransitions TOPAGINGVIEW_OBJC_DIRECT
+static inline void TOPagingViewHandlePageTransitions(TOPagingView *view)
 {
-    const BOOL isReversed = (_pageScrollDirection == TOPagingViewDirectionRightToLeft);
-    const CGPoint offset = _scrollView.contentOffset;
-    const CGFloat segmentWidth = [self _scrollViewPageWidth];
-    const CGSize contentSize = _scrollView.contentSize;
+    const BOOL isReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
+    const CGPoint offset = view->_scrollView.contentOffset;
+    const CGFloat segmentWidth = [view _scrollViewPageWidth];
+    const CGSize contentSize = view->_scrollView.contentSize;
 
     // Check if we went over the right-hand threshold to start transitioning the pages
     if (offset.x >= (contentSize.width - segmentWidth) - FLT_EPSILON) {
-        if (isReversed) { [self _transitionOverToPreviousPage]; }
-        else { [self _transitionOverToNextPage]; }
+        if (isReversed) { [view _transitionOverToPreviousPage]; }
+        else { [view _transitionOverToNextPage]; }
     } else if (offset.x <= FLT_EPSILON) { // Check if we're over the left threshold
-        if (isReversed) { [self _transitionOverToNextPage]; }
-        else { [self _transitionOverToPreviousPage]; }
+        if (isReversed) { [view _transitionOverToNextPage]; }
+        else { [view _transitionOverToPreviousPage]; }
     }
 }
 
@@ -799,7 +807,7 @@ static inline void TOPagingViewPerformBlockWithoutLayout(TOPagingView *view, voi
 
         // Perform a sanity layout just in case
         // (But in most cases, this should be a no-op)
-        TOPagingViewLayoutPages(self);
+        [self _layoutPages];
 
         // Trigger the animation completed delgate
         scrollDidEndDelegateBlock();
