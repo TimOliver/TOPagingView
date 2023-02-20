@@ -609,10 +609,10 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     const CGFloat leftPageThreshold = segmentWidth * 0.5f;
 
     // Check if we went over the right-hand threshold to start transitioning the pages
-    if (offset.x > rightPageThreshold) {
+    if (offset.x >= (contentSize.width - segmentWidth) - FLT_EPSILON) {
         if (isReversed) { [self _transitionOverToPreviousPage]; }
         else { [self _transitionOverToNextPage]; }
-    } else if (offset.x < leftPageThreshold) { // Check if we're over the left threshold
+    } else if (offset.x <= FLT_EPSILON) { // Check if we're over the left threshold
         if (isReversed) { [self _transitionOverToNextPage]; }
         else { [self _transitionOverToPreviousPage]; }
     }
