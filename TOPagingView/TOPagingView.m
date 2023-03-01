@@ -39,9 +39,8 @@ static const CGFloat kTOPagingViewBumperWidthRegular = 96.0f;
 
 /// The timing parameters when playing a precanned transition animation
 static const CFTimeInterval kTOPagingViewAnimationDuration = 0.4f;
-static const CGFloat kTOPagingViewAnimationVelocity = 1.0f;
-static const NSInteger kTOPagingViewAnimationOptions = (UIViewAnimationOptionAllowUserInteraction
-                                                        |UIViewAnimationOptionCurveEaseOut);
+static const CGFloat kTOPagingViewAnimationVelocity = 8.0f;
+static const NSInteger kTOPagingViewAnimationOptions = (UIViewAnimationOptionAllowUserInteraction);
 
 // -----------------------------------------------------------------
 
