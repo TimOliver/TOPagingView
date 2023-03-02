@@ -761,6 +761,11 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     };
 
+    // If the scroll view is decelerating from a swipe, cancel it.
+    if (scrollView.isDecelerating) {
+        [scrollView setContentOffset:scrollView.contentOffset animated:NO];
+    }
+
     // If we're already in an animation, we can't queue up a new animation
     // before the old one completes, otherwise we'll overshoot the pages and cause visual glitching.
     // (There might be a better way to implement this down the line)
@@ -824,6 +829,11 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 {
     // Disable the layout since we'll handle everything beyond this point
     _disableLayout = YES;
+
+    // If the scroll view is decelerating from a swipe, cancel it.
+    if (_scrollView.isDecelerating) {
+        [_scrollView setContentOffset:_scrollView.contentOffset animated:NO];
+    }
 
     // If we're already in an animation, cancel it and reset the position
     if (_scrollView.layer.animationKeys.count > 0) {
