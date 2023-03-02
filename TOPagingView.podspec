@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.homepage = 'https://github.com/TimOliver/TOPagingView'
   s.author   = 'Tim Oliver'
   s.source   = { :git => 'https://github.com/TimOliver/TOPagingView.git', :tag => s.version }
-  s.platform = :ios, '8.0'
+  s.platform = :ios, '10.0'
   s.source_files = 'TOPagingView/**/*.{h,m}'
   s.requires_arc = true
 end

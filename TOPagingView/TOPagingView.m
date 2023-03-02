@@ -1,7 +1,7 @@
 //
 //  TOPagingView.m
 //
-//  Copyright 2018-2022 Timothy Oliver. All rights reserved.
+//  Copyright 2018-2023 Timothy Oliver. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to
@@ -39,6 +39,8 @@ static const CGFloat kTOPagingViewBumperWidthRegular = 96.0f;
 
 /// The timing parameters when playing a precanned transition animation
 static const CFTimeInterval kTOPagingViewAnimationDuration = 0.4f;
+static const CGPoint kTOPagingViewAnimationControlPoint1 = (CGPoint){0.3f, 0.9f};
+static const CGPoint kTOPagingViewAnimationControlPoint2 = (CGPoint){0.45f, 1.0f};
 static const CGFloat kTOPagingViewAnimationVelocity = 8.0f;
 static const NSInteger kTOPagingViewAnimationOptions = (UIViewAnimationOptionAllowUserInteraction);
 
@@ -797,15 +799,15 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         scrollView.contentOffset = (CGPoint){0.0f, 0.0f};
     }
 
-    // Perform the animation
-    [UIView animateWithDuration:kTOPagingViewAnimationDuration
-                          delay:0.0f
-         usingSpringWithDamping:1.0f
-          initialSpringVelocity:kTOPagingViewAnimationVelocity
-                        options:kTOPagingViewAnimationOptions
-                     animations:^{
+    // Perform a very tight transition animation to the next page
+    UICubicTimingParameters *cubicTiming = [[UICubicTimingParameters alloc] initWithControlPoint1:kTOPagingViewAnimationControlPoint1
+                                                                                    controlPoint2:kTOPagingViewAnimationControlPoint2];
+    UIViewPropertyAnimator *viewAnimator = [[UIViewPropertyAnimator alloc] initWithDuration:kTOPagingViewAnimationDuration
+                                                                           timingParameters:cubicTiming];
+    [viewAnimator addAnimations:^{
         scrollView.contentOffset = destOffset;
-    } completion:^(BOOL finished) {
+    }];
+    [viewAnimator addCompletion:^(UIViewAnimatingPosition finalPosition) {
         // Re-enable automatic layout
         self->_disableLayout = NO;
 
@@ -816,6 +818,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         // Trigger the animation completed delgate
         scrollDidEndDelegateBlock();
     }];
+    [viewAnimator startAnimation];
 }
 
 - (void)_skipToNewPageInDirection:(UIRectEdge)direction animated:(BOOL)animated TOPAGINGVIEW_OBJC_DIRECT
@@ -889,7 +892,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     };
 
     // Define the completion block
-    id completionBlock = ^(BOOL complete) {
+    id completionBlock = ^(UIViewAnimatingPosition finalPosition) {
         // Remove the previous page
         TOPagingViewReclaimPageView(self, self->_previousPageView);
         self->_previousPageView = nil;
@@ -909,14 +912,14 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     };
 
-    // Commit the animation
-    [UIView animateWithDuration:kTOPagingViewAnimationDuration
-                          delay:0.0f
-         usingSpringWithDamping:1.0f
-          initialSpringVelocity:kTOPagingViewAnimationVelocity
-                        options:kTOPagingViewAnimationOptions
-                     animations:animationBlock
-                     completion:completionBlock];
+    // Perform a very tight transition animation to the target page
+    UICubicTimingParameters *cubicTiming = [[UICubicTimingParameters alloc] initWithControlPoint1:kTOPagingViewAnimationControlPoint1
+                                                                                    controlPoint2:kTOPagingViewAnimationControlPoint2];
+    UIViewPropertyAnimator *viewAnimator = [[UIViewPropertyAnimator alloc] initWithDuration:kTOPagingViewAnimationDuration
+                                                                           timingParameters:cubicTiming];
+    [viewAnimator addAnimations:animationBlock];
+    [viewAnimator addCompletion:completionBlock];
+    [viewAnimator startAnimation];
 }
 
 - (nullable __kindof UIView *)pageViewForUniqueIdentifier:(NSString *)identifier
