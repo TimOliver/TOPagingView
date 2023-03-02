@@ -41,7 +41,6 @@ static const CGFloat kTOPagingViewBumperWidthRegular = 96.0f;
 static const CFTimeInterval kTOPagingViewAnimationDuration = 0.4f;
 static const CGPoint kTOPagingViewAnimationControlPoint1 = (CGPoint){0.3f, 0.9f};
 static const CGPoint kTOPagingViewAnimationControlPoint2 = (CGPoint){0.45f, 1.0f};
-static const CGFloat kTOPagingViewAnimationVelocity = 8.0f;
 static const NSInteger kTOPagingViewAnimationOptions = (UIViewAnimationOptionAllowUserInteraction);
 
 // -----------------------------------------------------------------
