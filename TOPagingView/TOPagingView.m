@@ -1001,14 +1001,16 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView)
 
 static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view)
 {
+    // Don't start churning if we already confirmed there is no page after this.
+    if (!view->_hasNextPage) { return; }
+
     // If we moved over to the threshold of the next page,
     // re-enable the previous page
     if (!view->_hasPreviousPage) {
         view->_hasPreviousPage = YES;
     }
-    
-    // Don't start churning if we already confirmed there is no page after this.
-    if (!view->_hasNextPage) { return; }
+
+    view->_disableLayout = YES;
 
     // Reclaim the previous view
     TOPagingViewReclaimPageView(view, view->_previousPageView);
@@ -1045,18 +1047,22 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view)
     if (view->_scrollView.isDragging) {
         view->_draggingOrigin = -CGFLOAT_MAX;
     }
+
+    view->_disableLayout = NO;
 }
 
 static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
 {
+    // Don't start churning if we already confirmed there is no page before this.
+    if (!view->_hasPreviousPage) { return; }
+
     // If we confirmed we moved away from the next page, re-enable
     // so we can query again next time
     if (!view->_hasNextPage) {
         view->_hasNextPage = YES;
     }
-        
-    // Don't start churning if we already confirmed there is no page before this.
-    if (!view->_hasPreviousPage) { return; }
+
+    view->_disableLayout = YES;
 
     // Reclaim the next view
     TOPagingViewReclaimPageView(view, view->_nextPageView);
@@ -1093,6 +1099,8 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     if (view->_scrollView.isDragging) {
         view->_draggingOrigin = -CGFLOAT_MAX;
     }
+
+    view->_disableLayout = NO;
 }
 
 - (void)_fetchNewNextPage TOPAGINGVIEW_OBJC_DIRECT
