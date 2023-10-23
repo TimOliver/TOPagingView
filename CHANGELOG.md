@@ -1,6 +1,15 @@
 x.y.z Release Notes (yyyy-MM-dd)
 =============================================================
 
+1.2.0 Release Notes (2023-10-23)
+=============================================================
+
+## Changes
+
+* For greater efficiency, all of the data source methods are combined into one.
+* More performance improvements.
+
+
 1.1.0 Release Notes (2022-02-04)
 =============================================================
 
