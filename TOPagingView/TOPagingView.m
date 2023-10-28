@@ -210,10 +210,21 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 
 #pragma mark - View Lifecycle -
 
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
+- (void)setFrame:(CGRect)frame {
+    const CGRect oldFrame = self.frame;
+    [super setFrame:frame];
+    if (!CGRectEqualToRect(frame, oldFrame)) {
+        [self layoutContent];
+    }
+}
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    [self layoutContent];
+}
+
+- (void)layoutContent
+{
     // If need be, request new next/previous pages
     [self _requestPendingPages];
 
@@ -240,7 +251,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     
     // Update the content size of the scroll view
     [self _updateContentSize];
-    
+
     // Update the content offset to match the amount that the width changed
     // (Only do this if there actually was an old content width, otherwise we might get a NaN error)
     if (oldContentWidth > FLT_EPSILON) {
@@ -248,10 +259,10 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
         const CGFloat contentOffset = newOffsetMid - (scrollView.frame.size.width * 0.5f);
         scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
     }
-
+    
     // Re-enable the observer
     _disableLayout = NO;
-    
+
     // Layout the page subviews
     _nextPageView.frame = TOPagingViewNextPageFrame(self);
     _currentPageView.frame = TOPagingViewCurrentPageFrame(self);
