@@ -357,7 +357,9 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     
     // If a page was found, set its bounds, and return it
     if (pageView) {
-        pageView.frame = self.bounds;
+        if (!CGSizeEqualToSize(pageView.frame.size, self.bounds.size)) {
+            pageView.frame = self.bounds;
+        }
         return pageView;
     }
     
