@@ -51,14 +51,21 @@ typedef struct {
     unsigned int delegateDidTurnToPage:1;
 } TOPagingViewDelegateFlags;
 
+// -----------------------------------------------------------------
 
 /// A struct to cache which methods each page view class implements.
-/// (We're using BOOL values here since C-struct bitfields don't work with NSValue)
 typedef struct {
-    BOOL protocolPageIdentifier;
-    BOOL protocolUniqueIdentifier;
-    BOOL protocolPrepareForReuse;
+    unsigned int protocolPageIdentifier:1;
+    unsigned int protocolUniqueIdentifier:1;
+    unsigned int protocolPrepareForReuse:1;
 } TOPageViewProtocolFlags;
+
+@interface TOPageViewProtocolCache : NSObject
+@property (nonatomic, assign) TOPageViewProtocolFlags flags;
+@end
+
+@implementation TOPageViewProtocolCache
+@end
 
 // -----------------------------------------------------------------
 // Convenience functions for easier mapping Objective-C and C constructs
@@ -71,11 +78,6 @@ static inline NSValue *TOPagingViewValueForClass(Class *class) {
 /// Convert an Objective-C class that was encoded to NSValue back out again
 static inline Class TOPagingViewClassForValue(NSValue *value) {
     Class class; [value getValue:&class]; return class;
-}
-
-/// Retrieve the delegate flags for a given page class from its encoded NSValue
-static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue *value) {
-    TOPageViewProtocolFlags flags; [value getValue:&flags]; return flags;
 }
 
 // -----------------------------------------------------------------
@@ -104,7 +106,7 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
 @property (nonatomic, assign) TOPagingViewDelegateFlags delegateFlags;
 
 /// Struct to cache the protocol state of each type of page view class used in this session.
-@property (nonatomic, strong) NSMutableDictionary<NSValue *, NSValue *> *pageViewProtocolFlags;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, TOPageViewProtocolCache *> *pageViewProtocolFlags;
 
 /// Disable automatic layout when manually laying out content.
 @property (nonatomic, assign) BOOL disableLayout;
@@ -355,7 +357,9 @@ static inline TOPageViewProtocolFlags TOPagingViewProtocolFlagsForValue(NSValue 
     
     // If a page was found, set its bounds, and return it
     if (pageView) {
-        pageView.frame = self.bounds;
+        if (!CGSizeEqualToSize(pageView.frame.size, self.bounds.size)) {
+            pageView.frame = self.bounds;
+        }
         return pageView;
     }
     
@@ -384,11 +388,8 @@ static inline NSString *TOPagingViewIdentifierForPageViewClass(TOPagingView *vie
 static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageViewClass(TOPagingView *view, Class class)
 {
     // Skip if we already captured the protocols from this class
-    NSValue const* classValue = TOPagingViewValueForClass(&class);
-    if (view->_pageViewProtocolFlags[(NSValue *)classValue] != nil) {
-        NSValue const* flagsValue = view->_pageViewProtocolFlags[(NSValue *)classValue];
-        return TOPagingViewProtocolFlagsForValue((NSValue *)flagsValue);
-    }
+    TOPageViewProtocolCache *cache = view->_pageViewProtocolFlags[NSStringFromClass(class)];
+    if (cache != nil) { return cache.flags; }
 
     // Create a new instance of the struct and prepare its memory
     TOPageViewProtocolFlags flags;
@@ -400,8 +401,9 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     flags.protocolPrepareForReuse = [class instancesRespondToSelector:@selector(prepareForReuse)];
 
     // Store in the dictionary
-    NSValue const* flagsValue = [NSValue valueWithBytes:&flags objCType:@encode(TOPageViewProtocolFlags)];
-    view->_pageViewProtocolFlags[classValue] = (NSValue *)flagsValue;
+    cache = [TOPageViewProtocolCache new];
+    cache.flags = flags;
+    view->_pageViewProtocolFlags[NSStringFromClass(class)] = cache;
 
     // Return the flags
     return flags;
@@ -411,9 +413,6 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (void)reload
 {
-    // Exit out if we're not ready to display any content yet
-    if (_dataSource == nil || self.superview == nil) { return; }
-    
     // Remove all currently visible pages from the scroll views
     for (UIView *view in _scrollView.subviews) {
         TOPagingViewReclaimPageView(self, view);
@@ -437,7 +436,22 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     [self _layoutPages];
 }
 
-- (void)refreshAdjacentPages
+- (void)reloadAdjacentPages {
+    // Reclaim the previous and next pages
+    TOPagingViewReclaimPageView(self, _nextPageView);
+    TOPagingViewReclaimPageView(self, _previousPageView);
+
+    _nextPageView = nil;
+    _previousPageView = nil;
+
+    _hasNextPage = YES;
+    _hasPreviousPage = YES;
+
+    [self _fetchNewNextPage];
+    [self _fetchNewPreviousPage];
+}
+
+- (void)fetchAdjacentPagesIfAvailable
 {
     if (_dataSource == nil) { return; }
     
@@ -887,7 +901,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         _scrollView.contentOffset = destinationPoint;
 
         // Trigger requesting replacement adjacent pages
-        [self refreshAdjacentPages];
+        [self fetchAdjacentPagesIfAvailable];
 
         return;
     }
@@ -921,7 +935,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         self->_disableLayout = NO;
 
         // Trigger requesting replacement adjacent pages
-        [self refreshAdjacentPages];
+        [self fetchAdjacentPagesIfAvailable];
 
         // If the scroll view delegate was set, tell it the animation completed
         id<UIScrollViewDelegate> scrollViewDelegate = self->_scrollView.delegate;
