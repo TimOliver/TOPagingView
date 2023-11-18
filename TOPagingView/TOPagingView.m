@@ -1358,7 +1358,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
 {
     if (dataSource == _dataSource) { return; }
     _dataSource = dataSource;
-    [self reload];
+    if (self.superview) { [self reload]; }
 }
 
 - (void)setDelegate:(id<TOPagingViewDelegate>)delegate
