@@ -77,6 +77,16 @@ NS_SWIFT_NAME(PagingViewPage)
 /// references to memory-heavy objects like images.
 - (void)prepareForReuse;
 
+/// The current page on screen is the first page in the current sequence.
+/// When dynamic page direction is enabled, scrolling past the initial page in either
+/// direction will increment pages in that direction.
+- (BOOL)isInitialPage;
+
+/// Passes the current reading direction from the hosting paging view to this page.
+/// Use this to re-arrange any sets of subviews that depend on the direction that the pages flow in.
+/// - Parameter direction: The ascending direction that the pages will flow in.
+- (void)setPageDirection:(TOPagingViewDirection)direction;
+
 @end
 
 // -------------------------------------------------------------------
