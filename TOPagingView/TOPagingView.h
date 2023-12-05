@@ -33,7 +33,7 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
     /// Pages ascend from the left, to the right.
     TOPagingViewDirectionLeftToRight = 0,
 
-    /// Pages ascend from the right, to the left.s
+    /// Pages ascend from the right, to the left.
     TOPagingViewDirectionRightToLeft = 1
 } NS_SWIFT_NAME(PagingViewDirection);
 
@@ -127,6 +127,12 @@ NS_SWIFT_NAME(PagingViewDataDelegate)
 /// @param pagingView The calling paging view instance.
 /// @param type The type of page that was turned to (This can include initial after a reload).
 - (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type;
+
+/// Called when dynamic page direction is enabled, and the user just swiped off the initial page in either
+/// direction, effectively committing to a new page direction. Use this to update any UI or persist the new direction
+/// @param pagingView The calling paging view instance.
+/// @param direction The new direction in which the pages are flowing.
+- (void)pagingView:(TOPagingView *)pagingView didChangeToPageDirection:(TOPagingViewDirection)direction;
 
 @end
 
