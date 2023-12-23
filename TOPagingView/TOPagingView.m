@@ -736,11 +736,15 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view)
 
     // Check the direction of the next step
     const CGFloat offset = view->_scrollView.contentOffset.x;
+    const BOOL isDetectingDirection = (view->_isDynamicPageDirectionEnabled
+                                       && TOPagingViewIsInitialPageForPageView(view, view->_currentPageView));
     const BOOL isReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     TOPagingViewPageType directionType;
 
-    // We dragged to the right
-    if (offset < view->_draggingOrigin - FLT_EPSILON) {
+    //If we're detecting the direction, it will be 'next' regardless
+    if (isDetectingDirection) {
+        directionType = TOPagingViewPageTypeNext;
+    } else if (offset < view->_draggingOrigin - FLT_EPSILON) { // We dragged to the right
         directionType = isReversed ? TOPagingViewPageTypeNext : TOPagingViewPageTypePrevious;
     } else if (offset > view->_draggingOrigin + FLT_EPSILON) { // We dragged to the left
         directionType = isReversed ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext;
