@@ -403,12 +403,14 @@ static inline NSString *TOPagingViewIdentifierForPageViewClass(TOPagingView *vie
 
 static inline BOOL TOPagingViewIsInitialPageForPageView(TOPagingView *view, UIView<TOPagingViewPage> *pageView)
 {
+    if (pageView == nil) { return NO; }
     TOPageViewProtocolFlags flags = TOPagingViewCachedProtocolFlagsForPageViewClass(view, pageView.class);
     return flags.protocolIsInitialPage ? [pageView isInitialPage] : NO;
 }
 
 static inline void TOPagingViewSetPageDirectionForPageView(TOPagingView *view, TOPagingViewDirection direction, UIView<TOPagingViewPage> *pageView)
 {
+    if (pageView == nil) { return; }
     TOPageViewProtocolFlags flags = TOPagingViewCachedProtocolFlagsForPageViewClass(view, pageView.class);
     if (flags.protocolSetPageDirection) { [pageView setPageDirection:direction]; }
 }
@@ -511,6 +513,11 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
             _nextPageView = nextPage;
             _hasNextPage = YES;
         }
+    }
+
+    // If we're on the initial page, set the previous page state to match whatever the next state is
+    if (_isDynamicPageDirectionEnabled && TOPagingViewIsInitialPageForPageView(self, _currentPageView)) {
+        _hasPreviousPage = _hasNextPage;
     }
 
     [self _layoutPages];
@@ -637,8 +644,13 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view)
 
     // Add the next & previous pages
     [view _fetchNewNextPage];
+
+    // When dynamic page detection is enabled, skip fetching the previous page, and assume we have one if we have
+    // a next page available.
     if (!view->_isDynamicPageDirectionEnabled || !TOPagingViewIsInitialPageForPageView(view, view->_currentPageView)) {
         [view _fetchNewPreviousPage];
+    } else {
+        view->_hasPreviousPage = view->_hasNextPage;
     }
 
     // Disable the observer while we manually place all elements
