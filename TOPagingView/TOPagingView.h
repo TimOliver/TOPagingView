@@ -79,7 +79,7 @@ NS_SWIFT_NAME(PagingViewPage)
 
 /// The current page on screen is the first page in the current sequence.
 /// When dynamic page direction is enabled, scrolling past the initial page in either
-/// direction will increment pages in that direction.
+/// direction will start incrementing pages in that direction.
 - (BOOL)isInitialPage;
 
 /// Passes the current reading direction from the hosting paging view to this page.
@@ -113,7 +113,6 @@ NS_SWIFT_NAME(PagingViewDataDelegate)
 @protocol TOPagingViewDelegate <NSObject>
 
 @optional
-
 
 /// Called when a transaction has started moving in a direction (eg, the user has
 /// started swiping in a direction, or an animation is about to start) that can potentially
