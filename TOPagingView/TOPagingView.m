@@ -833,8 +833,10 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     // Determine the direction we're heading for the delegate
     const BOOL isLeftDirection = (offset < FLT_EPSILON);
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
-    const BOOL isPreviousPage = ((!isDirectionReversed && isLeftDirection) ||
-                                 (isDirectionReversed && !isLeftDirection));
+    const BOOL isDetectingDirection = _isDynamicPageDirectionEnabled
+                                        && TOPagingViewIsInitialPageForPageView(self, _currentPageView);
+    const BOOL isPreviousPage = !isDetectingDirection && ((!isDirectionReversed && isLeftDirection) ||
+                                                          (isDirectionReversed && !isLeftDirection));
 
     // Send a delegate event stating the page is about to turn
     if (_delegateFlags.delegateWillTurnToPage) {
