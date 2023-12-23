@@ -159,7 +159,8 @@ NS_SWIFT_NAME(PagingView)
 /// The ascending layout direction of the page views in the scroll view.
 @property (nonatomic, assign) TOPagingViewDirection pageScrollDirection;
 
-/// Allows users to fluidly start scrolling in either direction, with `pageScrollDirection` automatically updating to match.
+/// Allows users to intuitively start scrolling in either direction,
+/// with `pageScrollDirection` automatically updating to match.
 @property (nonatomic, assign) BOOL isDynamicPageDirectionEnabled;
 
 /// Registers a page view class that can be automatically instantiated as needed.

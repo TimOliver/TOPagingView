@@ -1050,7 +1050,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
 #pragma mark - Page View Recycling -
 
-static void TOPagingViewInsertPageView(TOPagingView *view, UIView *pageView)
+static void TOPagingViewInsertPageView(TOPagingView *view, UIView<TOPagingViewPage> *pageView)
 {
     if (pageView == nil) { return; }
 
@@ -1072,6 +1072,11 @@ static void TOPagingViewInsertPageView(TOPagingView *view, UIView *pageView)
 
         // Add to the dictionary
         view->_uniqueIdentifierPages[uniqueIdentifier] = pageView;
+    }
+
+    // If the page view supports it, inform the delegate of the current page direction
+    if (flags.protocolSetPageDirection) {
+        [pageView setPageDirection:view->_pageScrollDirection];
     }
 
     // Remove it from the pool of recycled pages
@@ -1261,7 +1266,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     const CGFloat contentWidth = _scrollView.contentSize.width;
     const CGFloat halfSpacing = self.pageSpacing * 0.5f;
     const CGFloat rightOffset = (contentWidth - segmentWidth) + halfSpacing;
-    
+
     // Move the next page to the left if direction is left, or vice versa
     if (_nextPageView) {
         CGRect frame = _nextPageView.frame;
@@ -1278,6 +1283,11 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
         _previousPageView.frame = frame;
     }
     
+    // Inform all of the pages that the direction changed, so they can re-arrange their subviews as needed
+    TOPagingViewSetPageDirectionForPageView(self, direction, _currentPageView);
+    TOPagingViewSetPageDirectionForPageView(self, direction, _nextPageView);
+    TOPagingViewSetPageDirectionForPageView(self, direction, _previousPageView);
+
     // Flip the content insets if we were potentially at the end of the scroll view
     UIEdgeInsets insets = _scrollView.contentInset;
     CGFloat leftInset = insets.left;
