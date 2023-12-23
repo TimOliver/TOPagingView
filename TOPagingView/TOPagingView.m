@@ -480,7 +480,11 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     _hasPreviousPage = YES;
 
     [self _fetchNewNextPage];
-    [self _fetchNewPreviousPage];
+    if (!_isDynamicPageDirectionEnabled || !TOPagingViewIsInitialPageForPageView(self, _currentPageView)) {
+        [self _fetchNewPreviousPage];
+    } else {
+        _hasPreviousPage = _hasNextPage;
+    }
 }
 
 - (void)fetchAdjacentPagesIfAvailable
