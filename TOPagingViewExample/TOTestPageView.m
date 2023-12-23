@@ -55,4 +55,15 @@
     [self setNeedsLayout];
 }
 
+#pragma mark - TOPagingViewPage
+
+- (BOOL)isInitialPage {
+    return [self.numberLabel.text isEqualToString:@"0"];
+}
+
+- (void)setPageDirection:(TOPagingViewDirection)direction {
+    const BOOL isReversed = (direction == TOPagingViewDirectionRightToLeft);
+    NSLog(@"Page number %@ was set to: %@", self.numberLabel.text, (isReversed ? @"Left" : @"Right"));
+}
+
 @end

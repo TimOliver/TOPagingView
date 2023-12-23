@@ -33,7 +33,7 @@ typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
     /// Pages ascend from the left, to the right.
     TOPagingViewDirectionLeftToRight = 0,
 
-    /// Pages ascend from the right, to the left.s
+    /// Pages ascend from the right, to the left.
     TOPagingViewDirectionRightToLeft = 1
 } NS_SWIFT_NAME(PagingViewDirection);
 
@@ -77,6 +77,16 @@ NS_SWIFT_NAME(PagingViewPage)
 /// references to memory-heavy objects like images.
 - (void)prepareForReuse;
 
+/// The current page on screen is the first page in the current sequence.
+/// When dynamic page direction is enabled, scrolling past the initial page in either
+/// direction will start incrementing pages in that direction.
+- (BOOL)isInitialPage;
+
+/// Passes the current reading direction from the hosting paging view to this page.
+/// Use this to re-arrange any sets of subviews that depend on the direction that the pages flow in.
+/// - Parameter direction: The ascending direction that the pages will flow in.
+- (void)setPageDirection:(TOPagingViewDirection)direction;
+
 @end
 
 // -------------------------------------------------------------------
@@ -104,7 +114,6 @@ NS_SWIFT_NAME(PagingViewDataDelegate)
 
 @optional
 
-
 /// Called when a transaction has started moving in a direction (eg, the user has
 /// started swiping in a direction, or an animation is about to start) that can potentially
 /// end in a page transition. Use this to start preloading content in that direction.
@@ -117,6 +126,12 @@ NS_SWIFT_NAME(PagingViewDataDelegate)
 /// @param pagingView The calling paging view instance.
 /// @param type The type of page that was turned to (This can include initial after a reload).
 - (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type;
+
+/// Called when dynamic page direction is enabled, and the user just swiped off the initial page in either
+/// direction, effectively committing to a new page direction. Use this to update any UI or persist the new direction
+/// @param pagingView The calling paging view instance.
+/// @param direction The new direction in which the pages are flowing.
+- (void)pagingView:(TOPagingView *)pagingView didChangeToPageDirection:(TOPagingViewDirection)direction;
 
 @end
 
@@ -143,6 +158,10 @@ NS_SWIFT_NAME(PagingView)
 
 /// The ascending layout direction of the page views in the scroll view.
 @property (nonatomic, assign) TOPagingViewDirection pageScrollDirection;
+
+/// Allows users to intuitively start scrolling in either direction,
+/// with `pageScrollDirection` automatically updating to match.
+@property (nonatomic, assign) BOOL isDynamicPageDirectionEnabled;
 
 /// Registers a page view class that can be automatically instantiated as needed.
 /// If the class overrides `pageIdentifier`, new instances may automatically be created

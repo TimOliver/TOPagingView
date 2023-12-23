@@ -27,8 +27,7 @@
 
 - (TOTestPageView *)pagingView:(TOPagingView *)pagingView
                                   pageViewForType:(TOPagingViewPageType)type
-                                  currentPageView:(TOTestPageView *)currentPageView
-{
+                                  currentPageView:(TOTestPageView *)currentPageView {
     TOTestPageView *pageView = [pagingView dequeueReusablePageView];
 
     switch (type) {
@@ -48,8 +47,7 @@
 
 #pragma mark - Paging View Delegate -
 
--(void)pagingView:(TOPagingView *)pagingView willTurnToPageOfType:(TOPagingViewPageType)type
-{
+-(void)pagingView:(TOPagingView *)pagingView willTurnToPageOfType:(TOPagingViewPageType)type{
     // This delegate event is called quite liberally every time the user causes an action that
     // 'might' result in a page turn transaction occurring. This is useful as a catch to check the current
     // state of incoming data, and perform any new pre-loads that may have occurred in the meantime.
@@ -57,8 +55,7 @@
     NSLog(@"Paging view will to turn to: %@", [self stringForType:type]);
 }
 
-- (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type
-{
+- (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type{
     // This delegate event is called once it has been confirmed that the pages have crossed over the threshold
     // and a new page just officially became the "current" page. This is where any UI or state attached to this
     // view can be safely updated to match this view. This is called before the data source requests the next page
@@ -67,11 +64,20 @@
     if (type == TOPagingViewPageTypeNext) { _pageIndex++; }
     if (type == TOPagingViewPageTypePrevious) { _pageIndex--; }
 
-    NSLog(@"Paging view did to turn to: %@ at page %ld", [self stringForType:type], (long)self.pageIndex);
+    NSLog(@"Paging view did turn to: %@ at page %ld", [self stringForType:type], (long)self.pageIndex);
 }
 
-- (NSString *)stringForType:(TOPagingViewPageType)type
-{
+- (void)pagingView:(TOPagingView *)pagingView didChangeToPageDirection:(TOPagingViewDirection)direction {
+    // This delegate is called when dynamic page direction detection is enabled and the scroll view
+    // has determined the user has committed to a new page direction. It is only called once per interaction.
+    BOOL isReversed = (direction == TOPagingViewDirectionRightToLeft);
+    NSString *directionString = (isReversed ? @"Left" : @"Right");
+    [self.button setTitle:directionString forState:UIControlStateNormal];
+
+    NSLog(@"Paging view did change reading direction to: %@", directionString);
+}
+
+- (NSString *)stringForType:(TOPagingViewPageType)type {
     switch(type) {
         case TOPagingViewPageTypeCurrent: return @"Current";
         case TOPagingViewPageTypeNext: return @"Next";
@@ -82,8 +88,7 @@
 
 #pragma mark - Gesture Recognizer -
 
-- (void)tapGestureRecognized:(UITapGestureRecognizer *)recgonizer
-{
+- (void)tapGestureRecognized:(UITapGestureRecognizer *)recgonizer {
     CGPoint tapPoint = [recgonizer locationInView:self.view];
     CGFloat halfBoundWidth = CGRectGetWidth(self.view.bounds) / 2.0f;
     
@@ -97,8 +102,7 @@
 
 #pragma mark - View Controller Lifecycle -
 
-- (UIStatusBarStyle)preferredStatusBarStyle
-{
+- (UIStatusBarStyle)preferredStatusBarStyle {
     return UIStatusBarStyleLightContent;
 }
 
@@ -115,6 +119,7 @@
 
     // Paging view set-up and configuration
     self.pagingView = [[TOPagingView alloc] initWithFrame:self.view.bounds];
+    //self.pagingView.isDynamicPageDirectionEnabled = YES;
     self.pagingView.dataSource = self;
     self.pagingView.delegate = self;
     [self.pagingView registerPageViewClass:TOTestPageView.class];
@@ -141,8 +146,7 @@
     self.button = button;
 }
 
-- (void)buttonTapped
-{
+- (void)buttonTapped {
     TOPagingViewDirection direction = self.pagingView.pageScrollDirection;
     if (direction == TOPagingViewDirectionLeftToRight) {
         direction = TOPagingViewDirectionRightToLeft;
