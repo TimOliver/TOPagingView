@@ -724,6 +724,7 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view)
 
     // If we're not being dragged, reset the state
     if (view->_scrollView.isTracking == NO) {
+        view->_draggingDirectionType = TOPagingViewPageTypeCurrent;
         view->_draggingOrigin = -CGFLOAT_MAX;
         return;
     }
