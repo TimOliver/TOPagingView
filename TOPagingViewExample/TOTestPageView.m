@@ -55,4 +55,10 @@
     [self setNeedsLayout];
 }
 
+#pragma mark - TOPagingViewPage
+
+- (BOOL)isInitialPage {
+    return [self.numberLabel.text isEqualToString:@"0"];
+}
+
 @end

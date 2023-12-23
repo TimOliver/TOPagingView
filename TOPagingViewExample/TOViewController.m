@@ -115,6 +115,7 @@
 
     // Paging view set-up and configuration
     self.pagingView = [[TOPagingView alloc] initWithFrame:self.view.bounds];
+    self.pagingView.isDynamicPageDirectionEnabled = YES;
     self.pagingView.dataSource = self;
     self.pagingView.delegate = self;
     [self.pagingView registerPageViewClass:TOTestPageView.class];
