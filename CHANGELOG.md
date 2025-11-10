@@ -1,6 +1,18 @@
 x.y.z Release Notes (yyyy-MM-dd)
 =============================================================
 
+1.3.0 Release Notes (2025-11-10)
+=============================================================
+
+## Added
+
+* Dynamic page direction to allow the user to start advancing from either direction.
+
+## Enhancments
+
+* Refined the caching of delegate access checks for greater performance.
+
+
 1.2.0 Release Notes (2023-10-23)
 =============================================================
 
