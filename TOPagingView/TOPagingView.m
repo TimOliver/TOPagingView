@@ -72,6 +72,20 @@ typedef struct {
 @end
 
 // -----------------------------------------------------------------
+
+@class TOPagingView;
+
+/// A lightweight proxy that intercepts UIScrollViewDelegate calls.
+/// Uses NSProxy message forwarding to automatically forward all delegate methods
+/// to the external delegate, while intercepting scrollViewDidScroll: for internal use.
+/// This approach avoids manually implementing every UIScrollViewDelegate method.
+@interface TOScrollViewDelegateProxy : NSProxy <UIScrollViewDelegate>
+@property (nonatomic, weak) TOPagingView *pagingView;
+@property (nonatomic, weak) id<UIScrollViewDelegate> externalDelegate;
+- (instancetype)init;
+@end
+
+// -----------------------------------------------------------------
 // Convenience functions for easier mapping Objective-C and C constructs
 
 /// Convert an Objective-C class pointer into an NSValue that can be stored in a dictionary
@@ -130,6 +144,9 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
 /// The animator used to play smooth transitions when turning pages
 @property (nonatomic, strong) UIViewPropertyAnimator *pageViewAnimator;
 
+/// The delegate proxy that handles scroll view delegate calls
+@property (nonatomic, strong) TOScrollViewDelegateProxy *scrollViewDelegateProxy;
+
 @end
 
 // -----------------------------------------------------------------
@@ -172,6 +189,10 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     self.clipsToBounds = YES; // The scroll view intentionally overlaps, so this view MUST clip.
     self.backgroundColor = [UIColor clearColor];
     
+    // Create and configure the scroll view delegate proxy
+    _scrollViewDelegateProxy = [[TOScrollViewDelegateProxy alloc] init];
+    _scrollViewDelegateProxy.pagingView = self;
+
     // Create and configure the scroll view
     _scrollView = [[UIScrollView alloc] initWithFrame:CGRectZero];
     [self _configureScrollView];
@@ -203,10 +224,11 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     // Never show the indicators
     scrollView.showsHorizontalScrollIndicator = NO;
     scrollView.showsVerticalScrollIndicator = NO;
-    
-    // Register an observer to capture when the scroll view scrolls.
-    // Doing it this way lets us leave the delegate available for external objects to use.
-    [scrollView addObserver:self forKeyPath:@"contentOffset" options:0 context:(__bridge void *)self];
+
+    // Set our delegate proxy as the scroll view's delegate.
+    // The proxy forwards calls to an external delegate while also handling internal scroll tracking.
+    // This is faster than KVO (direct method dispatch vs KVO dictionary lookups).
+    scrollView.delegate = _scrollViewDelegateProxy;
 
     // Enable scrolling by clicking and dragging with the mouse
     // The only way to do this is via a private API. FB10593893 was filed to request this property is made public.
@@ -217,12 +239,6 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
             [scrollView performSelector:selector withObject:@(YES) afterDelay:0];
         }
     }
-}
-
-- (void)dealloc
-{
-    // Make sure to remove the observer before we deallocate otherwise it can potentially cause a crash.
-    [_scrollView removeObserver:self forKeyPath:@"contentOffset"];
 }
 
 #pragma mark - View Lifecycle -
@@ -313,24 +329,19 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     _scrollView.contentOffset = offset;
 }
 
-- (void)observeValueForKeyPath:(NSString *)keyPath
-                      ofObject:(id)object
-                        change:(NSDictionary<NSKeyValueChangeKey,id> *)change
-                       context:(void *)context
+/// Called by the scroll view delegate proxy when the scroll view scrolls.
+/// This replaces the KVO observer for better performance.
+- (void)_scrollViewDidScroll TOPAGINGVIEW_OBJC_DIRECT
 {
-    if ((__bridge id)context != self) {
-        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
-    } else if (!_disableLayout) {
+    if (!_disableLayout) {
         TOPagingViewLayoutPages(self);
     }
 }
 
 - (void)_layoutPages TOPAGINGVIEW_OBJC_DIRECT
 {
-    // Since `TOPagingViewLayoutPages` is inlined, the only call to it should be
-    // in the KVO callback method. For all other calls (That don't require frame-tick precision),
-    // we can proxy through this method to call it.
-    [self observeValueForKeyPath:nil ofObject:nil change:nil context:(__bridge void *)self];
+    // Proxy through to the scroll handler for layout updates
+    [self _scrollViewDidScroll];
 }
 
 #pragma mark - Page Setup -
@@ -870,11 +881,9 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     void (^scrollDidEndDelegateBlock)(void) = ^{
         __strong __typeof(self) strongSelf = weakSelf;
         if (strongSelf == nil) { return; }
-        id<UIScrollViewDelegate> scrollViewDelegate = strongSelf->_scrollView.delegate;
-        if (scrollViewDelegate) {
-            if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
-                [scrollViewDelegate scrollViewDidEndScrollingAnimation:strongSelf->_scrollView];
-            }
+        id<UIScrollViewDelegate> scrollViewDelegate = strongSelf->_scrollViewDelegateProxy.externalDelegate;
+        if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
+            [scrollViewDelegate scrollViewDidEndScrollingAnimation:strongSelf->_scrollView];
         }
     };
 
@@ -1042,11 +1051,9 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         [strongSelf fetchAdjacentPagesIfAvailable];
 
         // If the scroll view delegate was set, tell it the animation completed
-        id<UIScrollViewDelegate> scrollViewDelegate = strongSelf->_scrollView.delegate;
-        if (scrollViewDelegate) {
-            if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
-                [scrollViewDelegate scrollViewDidEndScrollingAnimation:strongSelf->_scrollView];
-            }
+        id<UIScrollViewDelegate> scrollViewDelegate = strongSelf->_scrollViewDelegateProxy.externalDelegate;
+        if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
+            [scrollViewDelegate scrollViewDidEndScrollingAnimation:strongSelf->_scrollView];
         }
     };
 
@@ -1540,6 +1547,92 @@ static inline CGRect TOPagingViewLeftPageFrame(TOPagingView *view)
 static inline CGRect TOPagingViewRightPageFrame(TOPagingView *view)
 {
     return CGRectOffset(view.bounds, (TOPagingViewScrollViewPageWidth(view) * 2.0f) + (view->_pageSpacing * 0.5f), 0.0f);
+}
+
+#pragma mark - Scroll View Delegate Accessor -
+
+- (void)setScrollViewDelegate:(id<UIScrollViewDelegate>)scrollViewDelegate
+{
+    _scrollViewDelegateProxy.externalDelegate = scrollViewDelegate;
+}
+
+- (id<UIScrollViewDelegate>)scrollViewDelegate
+{
+    return _scrollViewDelegateProxy.externalDelegate;
+}
+
+@end
+
+// -----------------------------------------------------------------
+
+#pragma mark - Scroll View Delegate Proxy Implementation -
+
+/// The one selector we intercept to notify the paging view of scroll events.
+static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
+    return sel == @selector(scrollViewDidScroll:);
+}
+
+@implementation TOScrollViewDelegateProxy
+
+- (instancetype)init
+{
+    // NSProxy doesn't have a default -init, so we just return self
+    return self;
+}
+
+#pragma mark - Intercepted Method
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    // Notify the paging view of scroll changes
+    [_pagingView _scrollViewDidScroll];
+
+    // Forward to external delegate
+    if ([_externalDelegate respondsToSelector:@selector(scrollViewDidScroll:)]) {
+        [_externalDelegate scrollViewDidScroll:scrollView];
+    }
+}
+
+#pragma mark - NSProxy Message Forwarding
+
+- (BOOL)respondsToSelector:(SEL)sel
+{
+    // We always respond to the intercepted selector
+    if (TOScrollViewDelegateProxyIsInterceptedSelector(sel)) {
+        return YES;
+    }
+    // Otherwise, forward to external delegate
+    return [_externalDelegate respondsToSelector:sel];
+}
+
+- (id)forwardingTargetForSelector:(SEL)sel
+{
+    // For non-intercepted selectors, forward directly to external delegate.
+    // This is the fast path - no NSInvocation boxing needed.
+    if (!TOScrollViewDelegateProxyIsInterceptedSelector(sel)) {
+        return _externalDelegate;
+    }
+    return nil;
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel
+{
+    // Try to get signature from external delegate
+    NSMethodSignature *signature = [(NSObject *)_externalDelegate methodSignatureForSelector:sel];
+    if (signature) {
+        return signature;
+    }
+    // Fallback: return a void signature to avoid crashing on unknown selectors
+    return [NSMethodSignature signatureWithObjCTypes:"v@:"];
+}
+
+- (void)forwardInvocation:(NSInvocation *)invocation
+{
+    // This is the slow path, only used if forwardingTargetForSelector: returns nil
+    // and the method wasn't intercepted. Forward to external delegate if it responds.
+    if ([_externalDelegate respondsToSelector:invocation.selector]) {
+        [invocation invokeWithTarget:_externalDelegate];
+    }
 }
 
 @end
