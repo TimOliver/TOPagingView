@@ -21,6 +21,7 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #import "TOPagingView.h"
+#import <objc/runtime.h>
 
 /// Mark methods as being statically called to increase performance
 #define TOPAGINGVIEW_OBJC_DIRECT __attribute__((objc_direct))
@@ -109,7 +110,8 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
 @property (nonatomic, assign) TOPagingViewDelegateFlags delegateFlags;
 
 /// Struct to cache the protocol state of each type of page view class used in this session.
-@property (nonatomic, strong) NSMutableDictionary<NSString *, TOPageViewProtocolCache *> *pageViewProtocolFlags;
+/// Uses NSMapTable with pointer keys to avoid NSStringFromClass allocations on lookup.
+@property (nonatomic, strong) NSMapTable<Class, TOPageViewProtocolCache *> *pageViewProtocolFlags;
 
 /// Disable automatic layout when manually laying out content.
 @property (nonatomic, assign) BOOL disableLayout;
@@ -162,7 +164,8 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     // Set default values
     _pageSpacing = 40.0f;
     _queuedPages = [NSMutableDictionary dictionary];
-    _pageViewProtocolFlags = [NSMutableDictionary dictionary];
+    _pageViewProtocolFlags = [NSMapTable mapTableWithKeyOptions:NSPointerFunctionsOpaqueMemory | NSPointerFunctionsOpaquePersonality
+                                                   valueOptions:NSPointerFunctionsStrongMemory];
     memset(&_delegateFlags, 0, sizeof(TOPagingViewDelegateFlags));
 
     // Configure the main properties of this view
@@ -417,8 +420,8 @@ static inline void TOPagingViewSetPageDirectionForPageView(TOPagingView *view, T
 
 static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageViewClass(TOPagingView *view, Class class)
 {
-    // Skip if we already captured the protocols from this class
-    TOPageViewProtocolCache *cache = view->_pageViewProtocolFlags[NSStringFromClass(class)];
+    // Skip if we already captured the protocols from this class (pointer-based lookup, no allocation)
+    TOPageViewProtocolCache *cache = [view->_pageViewProtocolFlags objectForKey:class];
     if (cache != nil) { return cache.flags; }
 
     // Create a new instance of the struct and prepare its memory
@@ -432,10 +435,10 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     flags.protocolIsInitialPage = [class instancesRespondToSelector:@selector(isInitialPage)];
     flags.protocolSetPageDirection = [class instancesRespondToSelector:@selector(setPageDirection:)];
 
-    // Store in the dictionary
+    // Store in the map table (pointer-based key, no allocation)
     cache = [TOPageViewProtocolCache new];
     cache.flags = flags;
-    view->_pageViewProtocolFlags[NSStringFromClass(class)] = cache;
+    [view->_pageViewProtocolFlags setObject:cache forKey:class];
 
     // Return the flags
     return flags;
@@ -460,9 +463,9 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     [_queuedPages removeAllObjects];
 
     // Reset the content size of the scroll view content
-    TOPagingViewPerformBlockWithoutLayout(self, ^{
-        self->_scrollView.contentSize = CGSizeZero;
-    });
+    _disableLayout = YES;
+    _scrollView.contentSize = CGSizeZero;
+    _disableLayout = NO;
 
     // Perform a fresh layout
     [self _layoutPages];
@@ -673,13 +676,6 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view)
     if (view->_delegateFlags.delegateDidTurnToPage) {
         [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypeCurrent];
     }
-}
-
-static inline void TOPagingViewPerformBlockWithoutLayout(TOPagingView *view, void (^block)(void))
-{
-    view->_disableLayout = YES;
-    if (block) { block(); }
-    view->_disableLayout = NO;
 }
 
 static inline void TOPagingViewHandleDynamicPageDirectionLayout(TOPagingView *view)
@@ -1105,8 +1101,8 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView)
 {
     if (pageView == nil) { return; }
 
-    // Skip internal UIScrollView views
-    if ([NSStringFromClass([pageView class]) characterAtIndex:0] == '_') {
+    // Skip internal UIScrollView views (use class_getName to avoid string allocation)
+    if (class_getName([pageView class])[0] == '_') {
         return;
     }
 
@@ -1173,9 +1169,7 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view)
     const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     if (isDirectionReversed) { contentOffset.x += scrollViewPageWidth; }
     else { contentOffset.x -= scrollViewPageWidth; }
-    TOPagingViewPerformBlockWithoutLayout(view, ^{
-        view->_scrollView.contentOffset = contentOffset;
-    });
+    view->_scrollView.contentOffset = contentOffset;
 
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {
@@ -1225,9 +1219,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     if (isDirectionReversed) { contentOffset.x -= TOPagingViewScrollViewPageWidth(view); }
     else { contentOffset.x += scrollViewPageWidth; }
-    TOPagingViewPerformBlockWithoutLayout(view, ^{
-        view->_scrollView.contentOffset = contentOffset;
-    });
+    view->_scrollView.contentOffset = contentOffset;
 
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {
@@ -1310,9 +1302,9 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     CGFloat leftInset = insets.left;
     insets.left = insets.right;
     insets.right = leftInset;
-    TOPagingViewPerformBlockWithoutLayout(self, ^{
-        self->_scrollView.contentInset = insets;
-    });
+    _disableLayout = YES;
+    _scrollView.contentInset = insets;
+    _disableLayout = NO;
 }
 
 - (void)_playBounceAnimationInDirection:(TOPagingViewDirection)direction TOPAGINGVIEW_OBJC_DIRECT
