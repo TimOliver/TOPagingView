@@ -1,7 +1,7 @@
 //
 //  TOPagingView.h
 //
-//  Copyright 2018-2023 Timothy Oliver. All rights reserved.
+//  Copyright 2018-2026 Timothy Oliver. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to
@@ -144,8 +144,11 @@ NS_SWIFT_NAME(PagingView)
 @interface TOPagingView : UIView
 
 /// The internal scroll view wrapped by this view that controls the scrolling content.
-/// The delegate is available for external objects to use.
 @property (nonatomic, strong, readonly) UIScrollView *scrollView;
+
+/// The delegate for the internal scroll view. Use this property instead of setting
+/// scrollView.delegate directly, as the paging view uses the delegate internally.
+@property (nonatomic, weak, nullable) id<UIScrollViewDelegate> scrollViewDelegate;
 
 /// The data source object that is in charge with configuring and providing views to this view.
 @property (nonatomic, weak, nullable) id <TOPagingViewDataSource> dataSource;
