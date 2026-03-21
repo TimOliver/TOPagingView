@@ -29,6 +29,7 @@
 		22C31631242899AB0063F6A6 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31630242899AB0063F6A6 /* main.m */; };
 		22C3163B242899AB0063F6A6 /* TODynamicPageViewTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */; };
 		22C3167F242A40F80063F6A6 /* TOPagingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3167E242A40F80063F6A6 /* TOPagingView.m */; };
+		22D4A7B3293F5E8A00B1C2D3 /* TOPagingViewAnimator.m in Sources */ = {isa = PBXBuildFile; fileRef = 22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +61,8 @@
 		22C3163C242899AB0063F6A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		22C3167D242A40F80063F6A6 /* TOPagingView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingView.h; sourceTree = "<group>"; };
 		22C3167E242A40F80063F6A6 /* TOPagingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingView.m; sourceTree = "<group>"; };
+		22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewAnimator.h; sourceTree = "<group>"; };
+		22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingViewAnimator.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +135,8 @@
 			children = (
 				22C3167D242A40F80063F6A6 /* TOPagingView.h */,
 				22C3167E242A40F80063F6A6 /* TOPagingView.m */,
+				22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */,
+				22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */,
 			);
 			path = TOPagingView;
 			sourceTree = "<group>";
@@ -281,6 +286,7 @@
 				22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */,
 				22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */,
 				22C3167F242A40F80063F6A6 /* TOPagingView.m in Sources */,
+				22D4A7B3293F5E8A00B1C2D3 /* TOPagingViewAnimator.m in Sources */,
 				22C31631242899AB0063F6A6 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
