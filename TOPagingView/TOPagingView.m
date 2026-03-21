@@ -891,12 +891,11 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     };
 
-    // Animate by one page width in the target direction via CADisplayLink.
-    // The per-frame deltas allow the paging view's scroll handling to process
-    // page transitions naturally. If already animating, the remaining distance
-    // is aggregated with the new page turn and the timer restarts.
-    const CGFloat distance = isLeftDirection ? -TOPagingViewScrollViewPageWidth(self) : TOPagingViewScrollViewPageWidth(self);
-    [_pageAnimator animateDistance:distance];
+    // Animate the page turn via CADisplayLink. The animator determines the
+    // destination from the page width and the number of turns already queued.
+    // If already animating, the turn count increments and the timer restarts.
+    _pageAnimator.pageWidth = TOPagingViewScrollViewPageWidth(self);
+    [_pageAnimator turnToPageInDirection:direction];
 }
 
 - (void)_skipToNewPageInDirection:(UIRectEdge)direction animated:(BOOL)animated TOPAGINGVIEW_OBJC_DIRECT
@@ -965,7 +964,9 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     TOPagingViewInsertPageView(self, _currentPageView);
 
     // Calculate the animation distance toward the center
-    const CGFloat distance = (direction == UIRectEdgeLeft) ? -TOPagingViewScrollViewPageWidth(self) : TOPagingViewScrollViewPageWidth(self);
+    const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
+    const CGFloat distance = (direction == UIRectEdgeLeft) ? -pageWidth : pageWidth;
+    _pageAnimator.pageWidth = pageWidth;
 
     // Set up the completion handler
     __weak __typeof(self) weakSelf = self;
@@ -991,7 +992,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     };
 
     // Perform the skip animation via CADisplayLink
-    [_pageAnimator animateDistance:distance];
+    [_pageAnimator animateOffset:distance];
 }
 
 - (nullable __kindof UIView *)pageViewForUniqueIdentifier:(NSString *)identifier

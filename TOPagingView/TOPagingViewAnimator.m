@@ -72,14 +72,35 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
 /// The display link driving the frame-by-frame animation.
 @property (nonatomic, strong, nullable) CADisplayLink *displayLink;
 
-/// The time at which the current animation cycle started.
+/// The time at which the current easing cycle started.
 @property (nonatomic, assign) CFTimeInterval startTime;
 
-/// The total distance to animate in the current cycle.
-@property (nonatomic, assign) CGFloat totalDistance;
+/// YES when running a one-shot offset animation (skip), NO for page turns.
+@property (nonatomic, assign) BOOL isOneShotAnimation;
 
-/// The cumulative eased distance applied to the content offset so far.
-@property (nonatomic, assign) CGFloat appliedDistance;
+// -- Page turn state --
+
+/// The total number of page turns requested during this animation.
+@property (nonatomic, assign) NSInteger targetTurns;
+
+/// The number of page turns fully completed (transitions fired).
+@property (nonatomic, assign) NSInteger completedTurns;
+
+/// The direction of the animation (+1 for right, -1 for left).
+@property (nonatomic, assign) CGFloat turnDirection;
+
+/// The fractional turn progress (0–1 within the current page) at the
+/// moment the easing timer was last reset. Used to avoid visual jumps
+/// when aggregating new page turns mid-animation.
+@property (nonatomic, assign) CGFloat turnFractionAtReset;
+
+// -- One-shot offset state --
+
+/// The starting content offset X for a one-shot animation.
+@property (nonatomic, assign) CGFloat offsetStartX;
+
+/// The total distance for a one-shot animation.
+@property (nonatomic, assign) CGFloat offsetDistance;
 
 @end
 
@@ -105,22 +126,50 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
 
 #pragma mark - Public Methods -
 
-- (void)animateDistance:(CGFloat)distance
+- (void)turnToPageInDirection:(UIRectEdge)direction
 {
-    if (_isAnimating) {
-        // Combine the remaining unapplied distance with the new distance
-        // and restart the timing curve from the current position
-        const CGFloat remainingDistance = _totalDistance - _appliedDistance;
-        _totalDistance = remainingDistance + distance;
-        _appliedDistance = 0.0f;
+    const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
+
+    if (_isAnimating && !_isOneShotAnimation && dir == _turnDirection) {
+        // Already animating page turns in the same direction.
+        // Capture the current visual position so the easing
+        // continues smoothly after the timer resets.
+        const CFTimeInterval elapsed = CACurrentMediaTime() - _startTime;
+        const CGFloat progress = (CGFloat)fmin(elapsed / _duration, 1.0);
+        const CGFloat easedProgress = TOPagingViewAnimatorEvaluateEasing(progress);
+        const NSInteger remainingTurns = _targetTurns - _completedTurns;
+        const CGFloat currentFraction = _turnFractionAtReset
+                                      + easedProgress * ((CGFloat)remainingTurns - _turnFractionAtReset);
+        _turnFractionAtReset = fmin(currentFraction, 1.0f);
+
+        // Queue one more turn and restart the easing timer
+        _targetTurns++;
         _startTime = CACurrentMediaTime();
     } else {
-        _totalDistance = distance;
-        _appliedDistance = 0.0f;
+        // Fresh page turn animation (or direction change)
+        if (_isAnimating) { [self stopAnimation]; }
+
+        _targetTurns = 1;
+        _completedTurns = 0;
+        _turnDirection = dir;
+        _turnFractionAtReset = 0.0f;
+        _isOneShotAnimation = NO;
         _startTime = CACurrentMediaTime();
         _isAnimating = YES;
         [self _createDisplayLink];
     }
+}
+
+- (void)animateOffset:(CGFloat)distance
+{
+    if (_isAnimating) { [self stopAnimation]; }
+
+    _offsetStartX = _scrollView.contentOffset.x;
+    _offsetDistance = distance;
+    _isOneShotAnimation = YES;
+    _startTime = CACurrentMediaTime();
+    _isAnimating = YES;
+    [self _createDisplayLink];
 }
 
 - (void)stopAnimation
@@ -154,22 +203,72 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
         return;
     }
 
-    // Calculate the current animation progress
+    if (_isOneShotAnimation) {
+        [self _updateOneShotAnimation:scrollView];
+    } else {
+        [self _updatePageTurnAnimation:scrollView];
+    }
+}
+
+#pragma mark - Page Turn Animation -
+
+- (void)_updatePageTurnAnimation:(UIScrollView *)scrollView
+{
+    const CGFloat center = _pageWidth;
+
+    // Calculate the current easing progress
     const CFTimeInterval elapsed = CACurrentMediaTime() - _startTime;
     const CGFloat progress = (CGFloat)fmin(elapsed / _duration, 1.0);
     const CGFloat easedProgress = TOPagingViewAnimatorEvaluateEasing(progress);
 
-    // Work out the delta since the last frame
-    const CGFloat targetApplied = _totalDistance * easedProgress;
-    const CGFloat delta = targetApplied - _appliedDistance;
-    _appliedDistance = targetApplied;
+    // The easing covers all remaining turns in one sweep.
+    // It interpolates from turnFractionAtReset (the visual position when
+    // the timer last reset) through the total remaining turns.
+    const NSInteger remainingTurns = _targetTurns - _completedTurns;
+    const CGFloat totalFraction = _turnFractionAtReset
+                                + easedProgress * ((CGFloat)remainingTurns - _turnFractionAtReset);
 
-    // Apply the delta to the scroll view's content offset
-    CGPoint offset = scrollView.contentOffset;
-    offset.x += delta;
-    scrollView.contentOffset = offset;
+    // Clamp to one page width — the offset can only reach the edge of
+    // the current page slot. The transition handles the rest.
+    const CGFloat currentTurnFraction = fmin(totalFraction, 1.0f);
 
-    // Complete the animation once the full duration has elapsed
+    // Compute the desired offset: center + fraction * pageWidth * direction
+    const CGFloat desiredOffset = center + currentTurnFraction * _pageWidth * _turnDirection;
+    scrollView.contentOffset = (CGPoint){desiredOffset, 0.0f};
+
+    // Check if a page transition fired (offset was adjusted by ~pageWidth)
+    const CGFloat actualOffset = scrollView.contentOffset.x;
+    if (fabs(actualOffset - desiredOffset) > _pageWidth * 0.5f) {
+        // Transition fired. Snap to exact center and advance the counter.
+        _completedTurns++;
+        _turnFractionAtReset = 0.0f;
+        scrollView.contentOffset = (CGPoint){center, 0.0f};
+    }
+
+    // Complete the animation once all queued turns are done
+    if (_completedTurns >= _targetTurns) {
+        [self _destroyDisplayLink];
+        _isAnimating = NO;
+        scrollView.contentOffset = (CGPoint){center, 0.0f};
+        if (_completionHandler) {
+            _completionHandler();
+        }
+    }
+}
+
+#pragma mark - One-Shot Offset Animation -
+
+- (void)_updateOneShotAnimation:(UIScrollView *)scrollView
+{
+    const CFTimeInterval elapsed = CACurrentMediaTime() - _startTime;
+    const CGFloat progress = (CGFloat)fmin(elapsed / _duration, 1.0);
+    const CGFloat easedProgress = TOPagingViewAnimatorEvaluateEasing(progress);
+
+    // Interpolate from start to destination
+    const CGFloat currentOffset = _offsetStartX + _offsetDistance * easedProgress;
+    scrollView.contentOffset = (CGPoint){currentOffset, 0.0f};
+
+    // Complete when the easing finishes
     if (progress >= 1.0f) {
         [self _destroyDisplayLink];
         _isAnimating = NO;
