@@ -26,16 +26,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Drives content offset animations for TOPagingView using CADisplayLink.
 ///
-/// Supports two modes of animation:
-///
-/// **Page turns** (`turnToPageInDirection:`) drive the offset from center toward
-/// the page edge each frame, letting the paging view's scroll handling fire
-/// transitions naturally. Multiple calls aggregate — each call adds one more
-/// page turn to the queue and restarts the easing timer from the current position.
-///
-/// **Offset animations** (`animateOffset:`) perform a simple one-shot slide
-/// of the content offset by a fixed distance, used for skip animations where
-/// the page layout is managed externally.
+/// Each call to `turnToPageInDirection:` queues one page turn. The animator
+/// drives the scroll view's content offset toward the target each frame,
+/// letting the paging view's transition logic fire naturally as page
+/// boundaries are crossed. Multiple rapid calls aggregate — each adds one
+/// more page to the target and restarts the timer from the current position.
 NS_SWIFT_NAME(PagingViewAnimator)
 @interface TOPagingViewAnimator : NSObject
 
@@ -55,25 +50,24 @@ NS_SWIFT_NAME(PagingViewAnimator)
 /// Called when the animation completes naturally (not when stopped mid-way).
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
 
+/// Called after a page transition fires and more turns are still pending.
+/// Use this to fire delegate callbacks (e.g. willTurnToPageOfType:) for
+/// the next page turn at the appropriate moment in the animation flow.
+@property (nonatomic, copy, nullable) void (^pageTransitionHandler)(void);
+
 /// Queues a page turn animation in the given direction.
 ///
-/// The animator determines the destination offset from the current scroll position,
-/// the page width, and the number of page turns already queued. If called while
-/// already animating in the same direction, the turn count increments and the
-/// easing timer restarts from the current visual position.
+/// The animator computes the destination from the current scroll position,
+/// the page width, and the number of page turns already queued. If called
+/// while already animating in the same direction, the turn count increments
+/// and the easing timer restarts from the current visual position.
+///
+/// Also used for skip animations — when layout is externally disabled,
+/// no transitions fire and the animator simply slides the offset by one
+/// page width over the duration.
 ///
 /// @param direction The edge to turn toward (UIRectEdgeLeft or UIRectEdgeRight).
 - (void)turnToPageInDirection:(UIRectEdge)direction;
-
-/// Performs a one-shot content offset animation by the given distance.
-///
-/// Unlike `turnToPageInDirection:`, this does not track page transitions
-/// or support aggregation. Used for skip animations where the caller
-/// manages page layout and disables automatic layout during the animation.
-///
-/// @param distance The horizontal distance to animate in points
-///                 (positive = right, negative = left).
-- (void)animateOffset:(CGFloat)distance;
 
 /// Immediately stops the current animation at its current position.
 - (void)stopAnimation;

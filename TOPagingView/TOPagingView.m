@@ -859,9 +859,12 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     }
 
-    // Send a delegate event stating the page is about to turn
-    if (_delegateFlags.delegateWillTurnToPage) {
-        TOPagingViewPageType type = (isPreviousPage ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext);
+    // Only send the willTurn delegate for the first turn in a sequence.
+    // For subsequent taps during an animation, the animator will notify
+    // us via pageTransitionHandler when each page boundary is crossed,
+    // and we fire willTurn for the next page at that point.
+    const TOPagingViewPageType type = (isPreviousPage ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext);
+    if (!_pageAnimator.isAnimating && _delegateFlags.delegateWillTurnToPage) {
         [_delegate pagingView:self willTurnToPageOfType:type];
     }
 
@@ -888,6 +891,17 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         id<UIScrollViewDelegate> scrollViewDelegate = strongSelf->_scrollViewDelegateProxy.externalDelegate;
         if ([scrollViewDelegate respondsToSelector:@selector(scrollViewDidEndScrollingAnimation:)]) {
             [scrollViewDelegate scrollViewDidEndScrollingAnimation:strongSelf->_scrollView];
+        }
+    };
+
+    // Set up the page transition handler — called after each page boundary
+    // crossing when more turns are still pending. This is where we fire
+    // willTurnToPageOfType: for the next page at the correct moment.
+    _pageAnimator.pageTransitionHandler = ^{
+        __strong __typeof(self) strongSelf = weakSelf;
+        if (strongSelf == nil) { return; }
+        if (strongSelf->_delegateFlags.delegateWillTurnToPage) {
+            [strongSelf->_delegate pagingView:strongSelf willTurnToPageOfType:type];
         }
     };
 
@@ -963,10 +977,8 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     _currentPageView.frame = TOPagingViewCurrentPageFrame(self);
     TOPagingViewInsertPageView(self, _currentPageView);
 
-    // Calculate the animation distance toward the center
-    const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
-    const CGFloat distance = (direction == UIRectEdgeLeft) ? -pageWidth : pageWidth;
-    _pageAnimator.pageWidth = pageWidth;
+    // Set up the animator
+    _pageAnimator.pageWidth = TOPagingViewScrollViewPageWidth(self);
 
     // Set up the completion handler
     __weak __typeof(self) weakSelf = self;
@@ -991,8 +1003,10 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     };
 
-    // Perform the skip animation via CADisplayLink
-    [_pageAnimator animateOffset:distance];
+    // Perform the skip animation via the same page turn mechanism.
+    // Since _disableLayout is YES, no transitions will fire — the
+    // animator simply slides the offset by one page width.
+    [_pageAnimator turnToPageInDirection:direction];
 }
 
 - (nullable __kindof UIView *)pageViewForUniqueIdentifier:(NSString *)identifier
