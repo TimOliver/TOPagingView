@@ -62,10 +62,6 @@ NS_SWIFT_NAME(PagingViewAnimator)
 /// while already animating in the same direction, the turn count increments
 /// and the easing timer restarts from the current visual position.
 ///
-/// Also used for skip animations — when layout is externally disabled,
-/// no transitions fire and the animator simply slides the offset by one
-/// page width over the duration.
-///
 /// @param direction The edge to turn toward (UIRectEdgeLeft or UIRectEdgeRight).
 - (void)turnToPageInDirection:(UIRectEdge)direction;
 

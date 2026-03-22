@@ -24,6 +24,10 @@
 #import "TOPagingViewAnimator.h"
 #import <objc/runtime.h>
 
+@interface TOPagingViewAnimator ()
+- (void)animateOffset:(CGFloat)distance;
+@end
+
 /// Mark methods as being statically called to increase performance
 #define TOPAGINGVIEW_OBJC_DIRECT __attribute__((objc_direct))
 
@@ -984,8 +988,11 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     _currentPageView.frame = TOPagingViewCurrentPageFrame(self);
     TOPagingViewInsertPageView(self, _currentPageView);
 
-    // Set up the animator
-    _pageAnimator.pageWidth = TOPagingViewScrollViewPageWidth(self);
+    // Calculate the animation distance toward the center.
+    const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
+    const CGFloat distance = (direction == UIRectEdgeLeft) ? -pageWidth : pageWidth;
+    _pageAnimator.pageWidth = pageWidth;
+    _pageAnimator.pageTransitionHandler = nil;
 
     // Set up the completion handler
     __weak __typeof(self) weakSelf = self;
@@ -1010,10 +1017,8 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     };
 
-    // Perform the skip animation via the same page turn mechanism.
-    // Since _disableLayout is YES, no transitions will fire — the
-    // animator simply slides the offset by one page width.
-    [_pageAnimator turnToPageInDirection:direction];
+    // Perform the skip animation as a one-shot offset change.
+    [_pageAnimator animateOffset:distance];
 }
 
 - (nullable __kindof UIView *)pageViewForUniqueIdentifier:(NSString *)identifier
