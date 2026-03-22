@@ -134,7 +134,7 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     const CGFloat offsetFromCenter = (_currentOffset - _pageWidth) * dir;
     _startDistance = 0.0f;
     _currentDistance = 0.0f;
-    _endDistance = _pageWidth + (_pageWidth - offsetFromCenter);
+    _endDistance = _pageWidth + offsetFromCenter;
 
     _startTime = now;
     _isAnimating = YES;
