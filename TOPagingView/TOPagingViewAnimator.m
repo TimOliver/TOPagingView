@@ -36,11 +36,17 @@ static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
 /// The time at which the current animation cycle started (reset on each tap).
 @property (nonatomic, assign) CFTimeInterval startTime;
 
-/// The starting content offset X for the current animation.
-@property (nonatomic, assign) CGFloat startOffsetX;
+/// The direction multiplier (+1 for right, -1 for left).
+@property (nonatomic, assign) CGFloat turnDirection;
 
-/// The destination content offset X for the current animation.
-@property (nonatomic, assign) CGFloat targetOffsetX;
+/// The animated distance at the start of the current easing cycle.
+@property (nonatomic, assign) CGFloat startDistance;
+
+/// The total target distance for the current animation sequence.
+@property (nonatomic, assign) CGFloat endDistance;
+
+/// The amount of distance already applied to the scroll view.
+@property (nonatomic, assign) CGFloat currentDistance;
 
 @end
 
@@ -69,13 +75,25 @@ static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
 - (void)turnToPageInDirection:(UIRectEdge)direction
 {
     UIScrollView *const scrollView = _scrollView;
-    if (scrollView == nil) { return; }
+    if (scrollView == nil || _pageWidth <= FLT_EPSILON) { return; }
+
+    const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
+    const CFTimeInterval now = CACurrentMediaTime();
+
+    if (_isAnimating && dir == _turnDirection) {
+        _startDistance = _currentDistance;
+        _endDistance += _pageWidth;
+        _startTime = now;
+        return;
+    }
 
     if (_isAnimating) { [self stopAnimation]; }
 
-    _startOffsetX = scrollView.contentOffset.x;
-    _targetOffsetX = (direction == UIRectEdgeRight) ? (_pageWidth * 2.0f) : 0.0f;
-    _startTime = CACurrentMediaTime();
+    _turnDirection = dir;
+    _startDistance = 0.0f;
+    _currentDistance = 0.0f;
+    _endDistance = _pageWidth;
+    _startTime = now;
     _isAnimating = YES;
     [self _createDisplayLink];
 }
@@ -111,18 +129,31 @@ static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
         return;
     }
 
-    const CFTimeInterval elapsed = CACurrentMediaTime() - _startTime;
-    const CGFloat progress = (CGFloat)fmin(elapsed / _duration, 1.0);
-    const CGFloat currentOffset = _startOffsetX + ((_targetOffsetX - _startOffsetX) * progress);
-    scrollView.contentOffset = (CGPoint){currentOffset, 0.0f};
+    const CFTimeInterval now = CACurrentMediaTime();
+    const CGFloat targetDistance = [self _currentAnimatedDistanceAtTime:now];
+    const CGFloat delta = targetDistance - _currentDistance;
+    _currentDistance = targetDistance;
 
-    if (progress >= 1.0f) {
+    CGPoint contentOffset = scrollView.contentOffset;
+    contentOffset.x += delta * _turnDirection;
+    scrollView.contentOffset = contentOffset;
+
+    if (_currentDistance >= _endDistance - FLT_EPSILON) {
         [self _destroyDisplayLink];
         _isAnimating = NO;
         if (_completionHandler) {
             _completionHandler();
         }
     }
+}
+
+#pragma mark - Helpers -
+
+- (CGFloat)_currentAnimatedDistanceAtTime:(CFTimeInterval)time
+{
+    const CFTimeInterval elapsed = time - _startTime;
+    const CGFloat progress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
+    return _startDistance + ((_endDistance - _startDistance) * progress);
 }
 
 @end

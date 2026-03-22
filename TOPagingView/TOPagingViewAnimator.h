@@ -24,10 +24,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// Drives fixed content offset animations for TOPagingView using CADisplayLink.
+/// Drives content offset animations for TOPagingView using CADisplayLink.
 ///
-/// Each call to `turnToPageInDirection:` animates the scroll view from its
-/// current offset to the predetermined edge for that direction.
+/// The animator keeps its own logical distance state and applies only the
+/// per-frame delta to the scroll view. This keeps the animation continuous
+/// even if TOPagingView recenters the content offset during page transitions.
 NS_SWIFT_NAME(PagingViewAnimator)
 @interface TOPagingViewAnimator : NSObject
 
@@ -47,7 +48,7 @@ NS_SWIFT_NAME(PagingViewAnimator)
 /// Called when the animation completes naturally (not when stopped mid-way).
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
 
-/// Animates to the predetermined page offset in the given direction.
+/// Animates toward the next page in the given direction.
 ///
 /// @param direction The edge to turn toward (UIRectEdgeLeft or UIRectEdgeRight).
 - (void)turnToPageInDirection:(UIRectEdge)direction;
