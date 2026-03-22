@@ -135,7 +135,6 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     _delta = 0.0;
     _currentOffset = _scrollView.contentOffset.x;
     [self _createDisplayLink];
-    _scrollView.scrollEnabled = NO;
 }
 
 - (void)stopAnimation
@@ -143,7 +142,6 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     if (!_isAnimating) { return; }
     [self _destroyDisplayLink];
     _isAnimating = NO;
-    _scrollView.scrollEnabled = YES;
 }
 
 #pragma mark - Display Link -
@@ -177,18 +175,26 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     const CGFloat delta = targetDistance - _currentDistance;
     _currentDistance = targetDistance;
 
-    _delta += delta;
-    NSLog(@"delta: %f totalDelta: %f linearProgress: %f progress: %f offset: %f", delta, _delta, linearProgress, progress, _scrollView.contentOffset.x);
-
     // Track the offset at full precision to avoid sub-pixel rounding
     // losses from reading back contentOffset each frame.
     _currentOffset += delta * _turnDirection;
     scrollView.contentOffset = (CGPoint){_currentOffset, 0.0f};
 
+    NSLog(@"delta: %f totalDelta: %f linearProgress: %f progress: %f current: %f, scrolloffset: %f",
+          delta, _delta, linearProgress, progress, _currentOffset, _scrollView.contentOffset.x);
+
+    // When the offset crosses a page boundary, wrap it back to center.
+    // This keeps our tracked offset in sync with the scroll view's
+    // transition logic which resets the offset after a page turn.
+    const CGFloat rightEdge = _pageWidth * 2.0f;
+    if (rightEdge - _currentOffset < 0.5f ||
+        _currentOffset < 0.5f + FLT_EPSILON) {
+        _currentOffset = _scrollView.contentOffset.x;
+    }
+
     if (_currentDistance >= _endDistance - FLT_EPSILON) {
         [self _destroyDisplayLink];
         _isAnimating = NO;
-        _scrollView.scrollEnabled = YES;
         if (_completionHandler) {
             _completionHandler();
         }
