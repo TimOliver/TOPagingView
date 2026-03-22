@@ -26,7 +26,7 @@
 // -----------------------------------------------------------------
 
 /// Default duration for page turn animations.
-static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
+static const CFTimeInterval kTOAnimatorDefaultDuration = 1.4;
 
 @interface TOPagingViewAnimator ()
 
@@ -129,13 +129,20 @@ static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
         return;
     }
 
-    const CFTimeInterval now = CACurrentMediaTime();
-    const CGFloat targetDistance = [self _currentAnimatedDistanceAtTime:now];
+    const CFTimeInterval elapsed = CACurrentMediaTime() - _startTime;
+    const CGFloat progress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
+    const CGFloat targetDistance = _startDistance + ((_endDistance - _startDistance) * progress);
     const CGFloat delta = targetDistance - _currentDistance;
     _currentDistance = targetDistance;
 
+    NSLog(@"delta: %f progress: %f offset: %f", delta, progress, _scrollView.contentOffset.x);
+
     CGPoint contentOffset = scrollView.contentOffset;
-    contentOffset.x += delta * _turnDirection;
+    if (progress < 1.0f - FLT_EPSILON) {
+        contentOffset.x += delta * _turnDirection;
+    } else {
+        contentOffset.x = _scrollView.frame.size.width * 2.0f;
+    }
     scrollView.contentOffset = contentOffset;
 
     if (_currentDistance >= _endDistance - FLT_EPSILON) {
@@ -145,15 +152,6 @@ static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
             _completionHandler();
         }
     }
-}
-
-#pragma mark - Helpers -
-
-- (CGFloat)_currentAnimatedDistanceAtTime:(CFTimeInterval)time
-{
-    const CFTimeInterval elapsed = time - _startTime;
-    const CGFloat progress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
-    return _startDistance + ((_endDistance - _startDistance) * progress);
 }
 
 @end
