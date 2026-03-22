@@ -24,10 +24,6 @@
 #import "TOPagingViewAnimator.h"
 #import <objc/runtime.h>
 
-@interface TOPagingViewAnimator ()
-- (void)animateOffset:(CGFloat)distance;
-@end
-
 /// Mark methods as being statically called to increase performance
 #define TOPAGINGVIEW_OBJC_DIRECT __attribute__((objc_direct))
 
@@ -870,12 +866,9 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     }
 
-    // Only send the willTurn delegate for the first turn in a sequence.
-    // For subsequent taps during an animation, the animator will notify
-    // us via pageTransitionHandler when each page boundary is crossed,
-    // and we fire willTurn for the next page at that point.
+    // Fire the willTurn delegate for each requested animated turn.
     const TOPagingViewPageType type = (isPreviousPage ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext);
-    if (!_pageAnimator.isAnimating && _delegateFlags.delegateWillTurnToPage) {
+    if (_delegateFlags.delegateWillTurnToPage) {
         [_delegate pagingView:self willTurnToPageOfType:type];
     }
 
@@ -905,20 +898,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     };
 
-    // Set up the page transition handler — called after each page boundary
-    // crossing when more turns are still pending. This is where we fire
-    // willTurnToPageOfType: for the next page at the correct moment.
-    _pageAnimator.pageTransitionHandler = ^{
-        __strong __typeof(self) strongSelf = weakSelf;
-        if (strongSelf == nil) { return; }
-        if (strongSelf->_delegateFlags.delegateWillTurnToPage) {
-            [strongSelf->_delegate pagingView:strongSelf willTurnToPageOfType:type];
-        }
-    };
-
-    // Animate the page turn via CADisplayLink. The animator determines the
-    // destination from the page width and the number of turns already queued.
-    // If already animating, the turn count increments and the timer restarts.
+    // Animate the page turn via CADisplayLink toward the predetermined edge.
     _pageAnimator.pageWidth = TOPagingViewScrollViewPageWidth(self);
     [_pageAnimator turnToPageInDirection:direction];
 }
@@ -927,6 +907,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 {
     // Stop any ongoing animation
     [_pageAnimator stopAnimation];
+    _pageAnimator.completionHandler = nil;
 
     // Disable the layout since we'll handle everything beyond this point
     _disableLayout = YES;
@@ -988,15 +969,9 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     _currentPageView.frame = TOPagingViewCurrentPageFrame(self);
     TOPagingViewInsertPageView(self, _currentPageView);
 
-    // Calculate the animation distance toward the center.
-    const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
-    const CGFloat distance = (direction == UIRectEdgeLeft) ? -pageWidth : pageWidth;
-    _pageAnimator.pageWidth = pageWidth;
-    _pageAnimator.pageTransitionHandler = nil;
-
     // Set up the completion handler
     __weak __typeof(self) weakSelf = self;
-    _pageAnimator.completionHandler = ^{
+    void (^completionBlock)(BOOL) = ^(BOOL finished) {
         __strong __typeof(self) strongSelf = weakSelf;
         if (!strongSelf) { return; }
 
@@ -1017,8 +992,15 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     };
 
-    // Perform the skip animation as a one-shot offset change.
-    [_pageAnimator animateOffset:distance];
+    // Animate the scroll view back to the center slot with a standard view animation.
+    const CGPoint centerOffset = (CGPoint){TOPagingViewScrollViewPageWidth(self), 0.0f};
+    [UIView animateWithDuration:_pageAnimator.duration
+                          delay:0.0f
+                        options:kTOPagingViewAnimationOptions
+                     animations:^{
+                         [self->_scrollView setContentOffset:centerOffset animated:NO];
+                     }
+                     completion:completionBlock];
 }
 
 - (nullable __kindof UIView *)pageViewForUniqueIdentifier:(NSString *)identifier

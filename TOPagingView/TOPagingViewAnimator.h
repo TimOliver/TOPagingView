@@ -24,13 +24,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// Drives content offset animations for TOPagingView using CADisplayLink.
+/// Drives fixed content offset animations for TOPagingView using CADisplayLink.
 ///
-/// Each call to `turnToPageInDirection:` queues one page turn. The animator
-/// drives the scroll view's content offset toward the target each frame,
-/// letting the paging view's transition logic fire naturally as page
-/// boundaries are crossed. Multiple rapid calls aggregate — each adds one
-/// more page to the target and restarts the timer from the current position.
+/// Each call to `turnToPageInDirection:` animates the scroll view from its
+/// current offset to the predetermined edge for that direction.
 NS_SWIFT_NAME(PagingViewAnimator)
 @interface TOPagingViewAnimator : NSObject
 
@@ -50,17 +47,7 @@ NS_SWIFT_NAME(PagingViewAnimator)
 /// Called when the animation completes naturally (not when stopped mid-way).
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
 
-/// Called after a page transition fires and more turns are still pending.
-/// Use this to fire delegate callbacks (e.g. willTurnToPageOfType:) for
-/// the next page turn at the appropriate moment in the animation flow.
-@property (nonatomic, copy, nullable) void (^pageTransitionHandler)(void);
-
-/// Queues a page turn animation in the given direction.
-///
-/// The animator computes the destination from the current scroll position,
-/// the page width, and the number of page turns already queued. If called
-/// while already animating in the same direction, the turn count increments
-/// and the easing timer restarts from the current visual position.
+/// Animates to the predetermined page offset in the given direction.
 ///
 /// @param direction The edge to turn toward (UIRectEdgeLeft or UIRectEdgeRight).
 - (void)turnToPageInDirection:(UIRectEdge)direction;
