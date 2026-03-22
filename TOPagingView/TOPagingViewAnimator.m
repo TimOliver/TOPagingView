@@ -63,7 +63,6 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
 // -----------------------------------------------------------------
 
 @interface TOPagingViewAnimator () {
-    CGFloat _delta;
     CGFloat _currentOffset;
 }
 
@@ -120,6 +119,7 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     if (_isAnimating && dir == _turnDirection) {
         _startDistance = _currentDistance;
         _endDistance += _pageWidth;
+        _endDistance = round(_endDistance / _pageWidth) * _pageWidth;
         _startTime = now;
         return;
     }
@@ -138,7 +138,6 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
 
     _startTime = now;
     _isAnimating = YES;
-    _delta = 0.0;
     [self _createDisplayLink];
 }
 
@@ -182,18 +181,17 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
 
     // Track the offset at full precision to avoid sub-pixel rounding
     // losses from reading back contentOffset each frame.
-    _currentOffset += delta * _turnDirection;
+    if (progress < 1.0f - FLT_EPSILON) {
+        _currentOffset += delta * _turnDirection;
+    } else if (progress >= 1.0f && (_currentOffset < (_pageWidth * 0.5f) || _currentOffset > (_pageWidth * 1.5f))) {
+        // In the off chance the progression finishes, but we didn't hit the end threshold,
+        _currentOffset = _pageWidth + (_pageWidth * _turnDirection);
+    }
     scrollView.contentOffset = (CGPoint){_currentOffset, 0.0f};
 
-    NSLog(@"delta: %f totalDelta: %f linearProgress: %f progress: %f current: %f, scrolloffset: %f",
-          delta, _delta, linearProgress, progress, _currentOffset, _scrollView.contentOffset.x);
-
-    // When the offset crosses a page boundary, wrap it back to center.
-    // This keeps our tracked offset in sync with the scroll view's
-    // transition logic which resets the offset after a page turn.
-    const CGFloat rightEdge = _pageWidth * 2.0f;
-    if (rightEdge - _currentOffset < 0.5f ||
-        _currentOffset < 0.5f + FLT_EPSILON) {
+    // Once the scroll view goes over its boundary, it performs the transition and jumps
+    // back to the middle. This can happen in the final few ticks, so we'll use a fuzzy check here to stay in sync.
+    if (fabs(_currentOffset - scrollView.contentOffset.x) > (_pageWidth * 0.5f)) {
         _currentOffset = _scrollView.contentOffset.x;
     }
 
