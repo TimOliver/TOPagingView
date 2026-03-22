@@ -26,7 +26,41 @@
 // -----------------------------------------------------------------
 
 /// Default duration for page turn animations.
-static const CFTimeInterval kTOAnimatorDefaultDuration = 1.4;
+static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
+
+/// Cubic bezier control points for the ease-out curve.
+static const CGFloat kTOAnimatorControlPoint1X = 0.3f;
+static const CGFloat kTOAnimatorControlPoint1Y = 0.9f;
+static const CGFloat kTOAnimatorControlPoint2X = 0.45f;
+static const CGFloat kTOAnimatorControlPoint2Y = 1.0f;
+
+// -----------------------------------------------------------------
+
+/// Evaluates a cubic bezier easing curve for the given linear time progress.
+/// @param t Linear time progress from 0.0 to 1.0.
+/// @return Eased progress from 0.0 to 1.0.
+static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
+    CGFloat u = t;
+    for (int i = 0; i < 8; i++) {
+        const CGFloat oneMinusU = 1.0f - u;
+        const CGFloat x = 3.0f * oneMinusU * oneMinusU * u * kTOAnimatorControlPoint1X
+                        + 3.0f * oneMinusU * u * u * kTOAnimatorControlPoint2X
+                        + u * u * u
+                        - t;
+        const CGFloat dx = 3.0f * oneMinusU * oneMinusU * kTOAnimatorControlPoint1X
+                         + 6.0f * oneMinusU * u * (kTOAnimatorControlPoint2X - kTOAnimatorControlPoint1X)
+                         + 3.0f * u * u * (1.0f - kTOAnimatorControlPoint2X);
+        if (fabs(dx) < 1e-6f) { break; }
+        u -= x / dx;
+    }
+    u = fmax(0.0f, fmin(1.0f, u));
+    const CGFloat oneMinusU = 1.0f - u;
+    return 3.0f * oneMinusU * oneMinusU * u * kTOAnimatorControlPoint1Y
+         + 3.0f * oneMinusU * u * u * kTOAnimatorControlPoint2Y
+         + u * u * u;
+}
+
+// -----------------------------------------------------------------
 
 @interface TOPagingViewAnimator ()
 
@@ -130,7 +164,8 @@ static const CFTimeInterval kTOAnimatorDefaultDuration = 1.4;
     }
 
     const CFTimeInterval elapsed = CACurrentMediaTime() - _startTime;
-    const CGFloat progress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
+    const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
+    const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     const CGFloat targetDistance = _startDistance + ((_endDistance - _startDistance) * progress);
     const CGFloat delta = targetDistance - _currentDistance;
     _currentDistance = targetDistance;
@@ -138,10 +173,10 @@ static const CFTimeInterval kTOAnimatorDefaultDuration = 1.4;
     NSLog(@"delta: %f progress: %f offset: %f", delta, progress, _scrollView.contentOffset.x);
 
     CGPoint contentOffset = scrollView.contentOffset;
-    if (progress < 1.0f - FLT_EPSILON) {
+    if (linearProgress < 1.0f - FLT_EPSILON) {
         contentOffset.x += delta * _turnDirection;
     } else {
-        contentOffset.x = _scrollView.frame.size.width * 2.0f;
+        contentOffset.x = _scrollView.frame.size.width;
     }
     scrollView.contentOffset = contentOffset;
 
