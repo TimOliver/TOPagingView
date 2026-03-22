@@ -64,6 +64,7 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
 
 @interface TOPagingViewAnimator () {
     CGFloat _delta;
+    CGFloat _currentOffset;
 }
 
 /// The display link driving the frame-by-frame animation.
@@ -132,7 +133,9 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     _startTime = now;
     _isAnimating = YES;
     _delta = 0.0;
+    _currentOffset = _scrollView.contentOffset.x;
     [self _createDisplayLink];
+    _scrollView.scrollEnabled = NO;
 }
 
 - (void)stopAnimation
@@ -140,6 +143,7 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     if (!_isAnimating) { return; }
     [self _destroyDisplayLink];
     _isAnimating = NO;
+    _scrollView.scrollEnabled = YES;
 }
 
 #pragma mark - Display Link -
@@ -174,17 +178,17 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     _currentDistance = targetDistance;
 
     _delta += delta;
-
     NSLog(@"delta: %f totalDelta: %f linearProgress: %f progress: %f offset: %f", delta, _delta, linearProgress, progress, _scrollView.contentOffset.x);
 
-    CGPoint contentOffset = scrollView.contentOffset;
-    contentOffset.x += delta * _turnDirection;
-    scrollView.contentOffset = contentOffset;
+    // Track the offset at full precision to avoid sub-pixel rounding
+    // losses from reading back contentOffset each frame.
+    _currentOffset += delta * _turnDirection;
+    scrollView.contentOffset = (CGPoint){_currentOffset, 0.0f};
 
     if (_currentDistance >= _endDistance - FLT_EPSILON) {
         [self _destroyDisplayLink];
-        contentOffset.x = _scrollView.frame.size.width;
         _isAnimating = NO;
+        _scrollView.scrollEnabled = YES;
         if (_completionHandler) {
             _completionHandler();
         }
