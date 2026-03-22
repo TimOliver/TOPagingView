@@ -62,7 +62,9 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
 
 // -----------------------------------------------------------------
 
-@interface TOPagingViewAnimator ()
+@interface TOPagingViewAnimator () {
+    CGFloat _delta;
+}
 
 /// The display link driving the frame-by-frame animation.
 @property (nonatomic, strong, nullable) CADisplayLink *displayLink;
@@ -129,6 +131,7 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     _endDistance = _pageWidth;
     _startTime = now;
     _isAnimating = YES;
+    _delta = 0.0;
     [self _createDisplayLink];
 }
 
@@ -170,18 +173,17 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     const CGFloat delta = targetDistance - _currentDistance;
     _currentDistance = targetDistance;
 
-    NSLog(@"delta: %f progress: %f offset: %f", delta, progress, _scrollView.contentOffset.x);
+    _delta += delta;
+
+    NSLog(@"delta: %f totalDelta: %f linearProgress: %f progress: %f offset: %f", delta, _delta, linearProgress, progress, _scrollView.contentOffset.x);
 
     CGPoint contentOffset = scrollView.contentOffset;
-    if (linearProgress < 1.0f - FLT_EPSILON) {
-        contentOffset.x += delta * _turnDirection;
-    } else {
-        contentOffset.x = _scrollView.frame.size.width;
-    }
+    contentOffset.x += delta * _turnDirection;
     scrollView.contentOffset = contentOffset;
 
     if (_currentDistance >= _endDistance - FLT_EPSILON) {
         [self _destroyDisplayLink];
+        contentOffset.x = _scrollView.frame.size.width;
         _isAnimating = NO;
         if (_completionHandler) {
             _completionHandler();
