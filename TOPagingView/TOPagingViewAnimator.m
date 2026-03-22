@@ -126,14 +126,19 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
 
     if (_isAnimating) { [self stopAnimation]; }
 
+    _currentOffset = _scrollView.contentOffset.x;
     _turnDirection = dir;
+
+    // If we're starting mid-page (e.g. from a swipe), account for the
+    // existing offset from center so we land exactly on the boundary.
+    const CGFloat offsetFromCenter = (_currentOffset - _pageWidth) * dir;
     _startDistance = 0.0f;
     _currentDistance = 0.0f;
-    _endDistance = _pageWidth;
+    _endDistance = _pageWidth + (_pageWidth - offsetFromCenter);
+
     _startTime = now;
     _isAnimating = YES;
     _delta = 0.0;
-    _currentOffset = _scrollView.contentOffset.x;
     [self _createDisplayLink];
 }
 
