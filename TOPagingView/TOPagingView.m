@@ -304,6 +304,13 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     [self reload];
 }
 
+- (void)addGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer {
+    if ([gestureRecognizer isKindOfClass:UITapGestureRecognizer.class]) {
+        [_scrollView.panGestureRecognizer requireGestureRecognizerToFail:gestureRecognizer];
+    }
+    [super addGestureRecognizer:gestureRecognizer];
+}
+
 #pragma mark - Scroll View Management -
 
 - (void)_updateContentSize TOPAGINGVIEW_OBJC_DIRECT
