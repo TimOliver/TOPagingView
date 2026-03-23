@@ -88,6 +88,14 @@ static inline CGFloat TOPagingViewAnimatorClampNearZero(CGFloat value, CGFloat s
     return (fabs(value) <= pixelSize) ? 0.0f : value;
 }
 
+/// The maximum distance that can be safely consumed in one frame without
+/// risking the pager jumping across multiple page boundaries before it can
+/// process the next scroll event.
+static inline CGFloat TOPagingViewAnimatorMaximumFrameDelta(CGFloat pageWidth, CGFloat scale) {
+    const CGFloat pixelSize = 1.0f / fmax(scale, 1.0f);
+    return fmax(pageWidth - pixelSize, 0.0f);
+}
+
 // -----------------------------------------------------------------
 
 @interface TOPagingViewAnimator () {
@@ -203,6 +211,11 @@ static inline CGFloat TOPagingViewAnimatorClampNearZero(CGFloat value, CGFloat s
     if (_endDistance < _currentDistance) {
         _endDistance = _currentDistance;
     }
+
+    // Restart the easing cycle from the rebased position so the next frame
+    // doesn't evaluate the old progress value against the new bounds.
+    _startDistance = _currentDistance;
+    _startTime = CACurrentMediaTime();
 }
 
 #pragma mark - Display Link -
@@ -233,8 +246,15 @@ static inline CGFloat TOPagingViewAnimatorClampNearZero(CGFloat value, CGFloat s
     const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     const CGFloat targetDistance = _startDistance + ((_endDistance - _startDistance) * progress);
-    const CGFloat delta = targetDistance - _currentDistance;
-    _currentDistance = targetDistance;
+    CGFloat delta = targetDistance - _currentDistance;
+    const CGFloat maxDelta = TOPagingViewAnimatorMaximumFrameDelta(_pageWidth,
+                                                                   TOPagingViewAnimatorDisplayScale(scrollView));
+    if (delta > maxDelta) {
+        delta = maxDelta;
+    } else if (delta < -maxDelta) {
+        delta = -maxDelta;
+    }
+    _currentDistance += delta;
 
     // Track the offset at full precision to avoid sub-pixel rounding
     // losses from reading back contentOffset each frame.
