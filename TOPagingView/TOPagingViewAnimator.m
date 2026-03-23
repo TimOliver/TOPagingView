@@ -248,6 +248,10 @@ static inline CGFloat TOPagingViewAnimatorMaximumFrameDelta(CGFloat pageWidth, C
     // back to the middle. This can happen in the final few ticks, so we'll use a fuzzy check here to stay in sync.
     if (fabs(_currentOffset - scrollView.contentOffset.x) > (_pageWidth * 0.5f)) {
         _currentOffset = _scrollView.contentOffset.x;
+        // Recalculate _currentDistance from the clean page count plus
+        // the actual partial offset from center, eliminating FP drift.
+        const CGFloat pagesCompleted = round(_currentDistance / _pageWidth);
+        _currentDistance = (pagesCompleted * _pageWidth) + ((_currentOffset - _pageWidth) * _turnDirection);
     }
 
     if (_currentDistance >= _endDistance - FLT_EPSILON) {
