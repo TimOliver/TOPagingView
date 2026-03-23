@@ -513,7 +513,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TOPagingViewTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TOPagingView.app/TOPagingView";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TOPagingViewExample.app/TOPagingViewExample";
 			};
 			name = Debug;
 		};
@@ -533,7 +533,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TOPagingViewTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TOPagingView.app/TOPagingView";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TOPagingViewExample.app/TOPagingViewExample";
 			};
 			name = Release;
 		};
