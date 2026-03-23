@@ -26,7 +26,7 @@
 // -----------------------------------------------------------------
 
 /// Default duration for page turn animations.
-static const CFTimeInterval kTOAnimatorDefaultDuration = 1.4;
+static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
 
 /// Cubic bezier control points for the ease-out curve.
 static const CGFloat kTOAnimatorControlPoint1X = 0.3f;
@@ -211,11 +211,6 @@ static inline CGFloat TOPagingViewAnimatorMaximumFrameDelta(CGFloat pageWidth, C
     if (_endDistance < _currentDistance) {
         _endDistance = _currentDistance;
     }
-
-    // Restart the easing cycle from the rebased position so the next frame
-    // doesn't evaluate the old progress value against the new bounds.
-    _startDistance = _currentDistance;
-    _startTime = CACurrentMediaTime();
 }
 
 #pragma mark - Display Link -
