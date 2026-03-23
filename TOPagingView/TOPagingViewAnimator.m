@@ -152,11 +152,26 @@ static inline CGFloat TOPagingViewAnimatorMaximumFrameDelta(CGFloat pageWidth, C
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
     const CFTimeInterval now = CACurrentMediaTime();
     const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
+    const CGFloat centerOffset = _pageWidth;
+    const CGFloat distanceFromCenter = scrollView.contentOffset.x - centerOffset;
+    const CGFloat pixelSize = 1.0f / fmax(scale, 1.0f);
 
     if (_isAnimating && dir == _turnDirection) {
         _startDistance = _currentDistance;
         _endDistance += _pageWidth;
         _endDistance = TOPagingViewAnimatorSnapToPageBoundary(_endDistance, _pageWidth, scale);
+        _startTime = now;
+        return;
+    }
+
+    if (_isAnimating && fabs(distanceFromCenter) > pixelSize) {
+        // When reversing direction mid-turn, first settle back onto the
+        // currently committed page before allowing a full turn the other way.
+        _currentOffset = scrollView.contentOffset.x;
+        _turnDirection = (distanceFromCenter > 0.0f) ? -1.0f : 1.0f;
+        _startDistance = 0.0f;
+        _currentDistance = 0.0f;
+        _endDistance = TOPagingViewAnimatorClampNearZero(fabs(distanceFromCenter), scale);
         _startTime = now;
         return;
     }
