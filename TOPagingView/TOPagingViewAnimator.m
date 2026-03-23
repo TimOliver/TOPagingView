@@ -223,6 +223,15 @@ static inline CGFloat TOPagingViewAnimatorMaximumFrameDelta(CGFloat pageWidth, C
     _currentDistance = TOPagingViewAnimatorClampNearZero(_currentDistance, scale);
     _endDistance = TOPagingViewAnimatorClampNearZero(_endDistance, scale);
 
+    // If the last requested page has already committed, clear any residual
+    // logical drift so the scroll view stays centered after rebasing.
+    if (_endDistance <= FLT_EPSILON) {
+        _startDistance = 0.0f;
+        _currentDistance = 0.0f;
+        _endDistance = 0.0f;
+        return;
+    }
+
     if (_endDistance < _currentDistance) {
         _endDistance = _currentDistance;
     }
