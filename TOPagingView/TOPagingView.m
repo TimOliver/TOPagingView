@@ -83,6 +83,10 @@ typedef struct {
 - (instancetype)init;
 @end
 
+@interface TOPagingViewAnimator (Internal)
+- (void)didTransition;
+@end
+
 // -----------------------------------------------------------------
 // Convenience functions for easier mapping Objective-C and C constructs
 
@@ -899,7 +903,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     };
 
     // Animate the page turn via CADisplayLink using logical distance and per-frame deltas.
-    _pageAnimator.pageWidth = _scrollView.frame.size.width;
+    _pageAnimator.pageWidth = TOPagingViewScrollViewPageWidth(self);
     [_pageAnimator turnToPageInDirection:direction];
 }
 
@@ -1117,6 +1121,7 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view)
     if (isDirectionReversed) { contentOffset.x += scrollViewPageWidth; }
     else { contentOffset.x -= scrollViewPageWidth; }
     view->_scrollView.contentOffset = contentOffset;
+    [view->_pageAnimator didTransition];
 
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {
@@ -1167,6 +1172,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     if (isDirectionReversed) { contentOffset.x -= TOPagingViewScrollViewPageWidth(view); }
     else { contentOffset.x += scrollViewPageWidth; }
     view->_scrollView.contentOffset = contentOffset;
+    [view->_pageAnimator didTransition];
 
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {

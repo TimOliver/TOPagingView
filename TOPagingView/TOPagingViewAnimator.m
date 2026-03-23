@@ -26,7 +26,7 @@
 // -----------------------------------------------------------------
 
 /// Default duration for page turn animations.
-static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
+static const CFTimeInterval kTOAnimatorDefaultDuration = 1.4;
 
 /// Cubic bezier control points for the ease-out curve.
 static const CGFloat kTOAnimatorControlPoint1X = 0.3f;
@@ -58,6 +58,34 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     return 3.0f * oneMinusU * oneMinusU * u * kTOAnimatorControlPoint1Y
          + 3.0f * oneMinusU * u * u * kTOAnimatorControlPoint2Y
          + u * u * u;
+}
+
+/// Returns the display scale used by the hosting scroll view, or the main screen as a fallback.
+static inline CGFloat TOPagingViewAnimatorDisplayScale(UIScrollView * _Nullable scrollView) {
+    CGFloat scale = scrollView.window.screen.scale;
+    if (scale <= FLT_EPSILON) {
+        scale = scrollView.traitCollection.displayScale;
+    }
+    return (scale <= FLT_EPSILON) ? 1.0f : scale;
+}
+
+/// Snaps a value to the nearest page boundary only when already within one pixel of that boundary.
+static inline CGFloat TOPagingViewAnimatorSnapToPageBoundary(CGFloat value, CGFloat pageWidth, CGFloat scale) {
+    if (pageWidth <= FLT_EPSILON) { return value; }
+
+    const CGFloat nearestPageBoundary = round(value / pageWidth) * pageWidth;
+    const CGFloat pixelSize = 1.0f / fmax(scale, 1.0f);
+    if (fabs(value - nearestPageBoundary) <= pixelSize) {
+        return nearestPageBoundary;
+    }
+
+    return value;
+}
+
+/// Clamps extremely small values to zero using a one-pixel tolerance.
+static inline CGFloat TOPagingViewAnimatorClampNearZero(CGFloat value, CGFloat scale) {
+    const CGFloat pixelSize = 1.0f / fmax(scale, 1.0f);
+    return (fabs(value) <= pixelSize) ? 0.0f : value;
 }
 
 // -----------------------------------------------------------------
@@ -115,11 +143,12 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
 
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
     const CFTimeInterval now = CACurrentMediaTime();
+    const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
 
     if (_isAnimating && dir == _turnDirection) {
         _startDistance = _currentDistance;
         _endDistance += _pageWidth;
-        _endDistance = round(_endDistance / _pageWidth) * _pageWidth;
+        _endDistance = TOPagingViewAnimatorSnapToPageBoundary(_endDistance, _pageWidth, scale);
         _startTime = now;
         return;
     }
@@ -129,12 +158,13 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     _currentOffset = _scrollView.contentOffset.x;
     _turnDirection = dir;
 
-    // If we're starting mid-page (e.g. from a swipe), account for the
-    // existing offset from center so we land exactly on the boundary.
-    const CGFloat offsetFromCenter = (_currentOffset - _pageWidth) * dir;
+    // If we're starting mid-page (e.g. from a swipe), target the remaining
+    // distance to the nearest page-turn boundary in this direction.
+    const CGFloat boundaryOffset = _pageWidth + (_pageWidth * dir);
+    const CGFloat remainingDistance = (boundaryOffset - _currentOffset) * dir;
     _startDistance = 0.0f;
     _currentDistance = 0.0f;
-    _endDistance = _pageWidth + offsetFromCenter;
+    _endDistance = TOPagingViewAnimatorClampNearZero(fmax(remainingDistance, 0.0f), scale);
 
     _startTime = now;
     _isAnimating = YES;
@@ -146,6 +176,33 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     if (!_isAnimating) { return; }
     [self _destroyDisplayLink];
     _isAnimating = NO;
+}
+
+- (void)didTransition
+{
+    UIScrollView *const scrollView = _scrollView;
+    if (!_isAnimating || scrollView == nil || _pageWidth <= FLT_EPSILON) { return; }
+
+    const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
+
+    // Re-base the logical distances whenever TOPagingView recenters the
+    // scroll view so that any overshoot is preserved, but stale page widths
+    // don't keep accumulating in the remaining target distance.
+    _currentOffset = scrollView.contentOffset.x;
+    _startDistance -= _pageWidth;
+    _currentDistance -= _pageWidth;
+    _endDistance -= _pageWidth;
+
+    _startDistance = TOPagingViewAnimatorSnapToPageBoundary(_startDistance, _pageWidth, scale);
+    _currentDistance = TOPagingViewAnimatorSnapToPageBoundary(_currentDistance, _pageWidth, scale);
+    _endDistance = TOPagingViewAnimatorSnapToPageBoundary(_endDistance, _pageWidth, scale);
+
+    _currentDistance = TOPagingViewAnimatorClampNearZero(_currentDistance, scale);
+    _endDistance = TOPagingViewAnimatorClampNearZero(_endDistance, scale);
+
+    if (_endDistance < _currentDistance) {
+        _endDistance = _currentDistance;
+    }
 }
 
 #pragma mark - Display Link -
