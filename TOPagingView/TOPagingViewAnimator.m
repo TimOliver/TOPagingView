@@ -88,12 +88,9 @@ static inline CGFloat TOPagingViewAnimatorClampNearZero(CGFloat value, CGFloat s
     return (fabs(value) <= pixelSize) ? 0.0f : value;
 }
 
-/// The maximum distance that can be safely consumed in one frame without
-/// risking the pager jumping across multiple page boundaries before it can
-/// process the next scroll event.
-static inline CGFloat TOPagingViewAnimatorMaximumFrameDelta(CGFloat pageWidth, CGFloat scale) {
-    const CGFloat pixelSize = 1.0f / fmax(scale, 1.0f);
-    return fmax(pageWidth - pixelSize, 0.0f);
+/// Rounds a value to the nearest screen pixel for the given display scale.
+static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat scale) {
+    return round(value * scale) / scale;
 }
 
 // -----------------------------------------------------------------
