@@ -1121,7 +1121,6 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view)
     if (isDirectionReversed) { contentOffset.x += scrollViewPageWidth; }
     else { contentOffset.x -= scrollViewPageWidth; }
     view->_scrollView.contentOffset = contentOffset;
-    [view->_pageAnimator didTransition];
 
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {
@@ -1172,7 +1171,6 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     if (isDirectionReversed) { contentOffset.x -= TOPagingViewScrollViewPageWidth(view); }
     else { contentOffset.x += scrollViewPageWidth; }
     view->_scrollView.contentOffset = contentOffset;
-    [view->_pageAnimator didTransition];
 
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {

@@ -201,42 +201,6 @@ static inline CGFloat TOPagingViewAnimatorMaximumFrameDelta(CGFloat pageWidth, C
     _isAnimating = NO;
 }
 
-- (void)didTransition
-{
-    UIScrollView *const scrollView = _scrollView;
-    if (!_isAnimating || scrollView == nil || _pageWidth <= FLT_EPSILON) { return; }
-
-    const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
-
-    // Re-base the logical distances whenever TOPagingView recenters the
-    // scroll view so that any overshoot is preserved, but stale page widths
-    // don't keep accumulating in the remaining target distance.
-    _currentOffset = scrollView.contentOffset.x;
-    _startDistance -= _pageWidth;
-    _currentDistance -= _pageWidth;
-    _endDistance -= _pageWidth;
-
-    _startDistance = TOPagingViewAnimatorSnapToPageBoundary(_startDistance, _pageWidth, scale);
-    _currentDistance = TOPagingViewAnimatorSnapToPageBoundary(_currentDistance, _pageWidth, scale);
-    _endDistance = TOPagingViewAnimatorSnapToPageBoundary(_endDistance, _pageWidth, scale);
-
-    _currentDistance = TOPagingViewAnimatorClampNearZero(_currentDistance, scale);
-    _endDistance = TOPagingViewAnimatorClampNearZero(_endDistance, scale);
-
-    // If the last requested page has already committed, clear any residual
-    // logical drift so the scroll view stays centered after rebasing.
-    if (_endDistance <= FLT_EPSILON) {
-        _startDistance = 0.0f;
-        _currentDistance = 0.0f;
-        _endDistance = 0.0f;
-        return;
-    }
-
-    if (_endDistance < _currentDistance) {
-        _endDistance = _currentDistance;
-    }
-}
-
 #pragma mark - Display Link -
 
 - (void)_createDisplayLink
@@ -267,13 +231,6 @@ static inline CGFloat TOPagingViewAnimatorMaximumFrameDelta(CGFloat pageWidth, C
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     const CGFloat targetDistance = _startDistance + ((_endDistance - _startDistance) * progress);
     CGFloat delta = targetDistance - _currentDistance;
-    const CGFloat maxDelta = TOPagingViewAnimatorMaximumFrameDelta(_pageWidth,
-                                                                   TOPagingViewAnimatorDisplayScale(scrollView));
-    if (delta > maxDelta) {
-        delta = maxDelta;
-    } else if (delta < -maxDelta) {
-        delta = -maxDelta;
-    }
     _currentDistance += delta;
 
     // Track the offset at full precision to avoid sub-pixel rounding
@@ -284,6 +241,7 @@ static inline CGFloat TOPagingViewAnimatorMaximumFrameDelta(CGFloat pageWidth, C
         // In the off chance the progression finishes, but we didn't hit the end threshold,
         _currentOffset = _pageWidth + (_pageWidth * _turnDirection);
     }
+    CGFloat previousOffset = scrollView.contentOffset.x;
     scrollView.contentOffset = (CGPoint){_currentOffset, 0.0f};
 
     // Once the scroll view goes over its boundary, it performs the transition and jumps
