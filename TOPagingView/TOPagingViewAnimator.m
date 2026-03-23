@@ -234,6 +234,7 @@ static inline CGFloat TOPagingViewAnimatorMaximumFrameDelta(CGFloat pageWidth, C
 {
     _displayLink = [CADisplayLink displayLinkWithTarget:self
                                               selector:@selector(_displayLinkDidFire:)];
+    _displayLink.preferredFramesPerSecond = 120;
     [_displayLink addToRunLoop:[NSRunLoop mainRunLoop]
                        forMode:NSRunLoopCommonModes];
 }
