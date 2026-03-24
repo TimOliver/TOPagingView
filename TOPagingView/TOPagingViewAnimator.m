@@ -211,7 +211,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
         return;
     }
 
-    const CFTimeInterval elapsed = CACurrentMediaTime() - _startTime;
+    const CFTimeInterval elapsed = displayLink.targetTimestamp - _startTime;
     const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     const CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
