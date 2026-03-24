@@ -143,12 +143,10 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
     const CFTimeInterval now = CACurrentMediaTime();
-    const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
 
     if (_isAnimating && dir == _turnDirection) {
         // Extend the animation one more page in the same direction.
         _endOffset += _pageWidth;
-        _endOffset = TOPagingViewAnimatorSnapToPageBoundary(_endOffset, _pageWidth, scale);
         _startOffset = scrollView.contentOffset.x;
         _startTime = now;
         return;
