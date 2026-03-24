@@ -22,6 +22,7 @@
 
 /* Begin PBXBuildFile section */
 		227BEDFA27AC1867009D6B6D /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 227BEDF927AC1867009D6B6D /* CHANGELOG.md */; };
+		24F0A0012F24000100000001 /* TOPagingViewUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 24F0A0042F24000100000001 /* TOPagingViewUITests.m */; };
 		22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22ADED23242B2ADD004A7854 /* TOTestPageView.m */; };
 		22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3161F242899AA0063F6A6 /* TOAppDelegate.m */; };
 		22C31626242899AA0063F6A6 /* TOViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31625242899AA0063F6A6 /* TOViewController.m */; };
@@ -33,6 +34,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		24F0A0022F24000100000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 22C31613242899AA0063F6A6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 22C3161A242899AA0063F6A6;
+			remoteInfo = TOPagingViewExample;
+		};
 		22C31637242899AB0063F6A6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 22C31613242899AA0063F6A6 /* Project object */;
@@ -46,6 +54,9 @@
 		227BEDF927AC1867009D6B6D /* CHANGELOG.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		227BEDFB27AC186F009D6B6D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		227BEDFC27AC1879009D6B6D /* TOPagingView.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = TOPagingView.podspec; sourceTree = "<group>"; };
+		24F0A0032F24000100000001 /* TOPagingViewUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TOPagingViewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		24F0A0042F24000100000001 /* TOPagingViewUITests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingViewUITests.m; sourceTree = "<group>"; };
+		24F0A0052F24000100000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		22ADED22242B2ADD004A7854 /* TOTestPageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOTestPageView.h; sourceTree = "<group>"; };
 		22ADED23242B2ADD004A7854 /* TOTestPageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOTestPageView.m; sourceTree = "<group>"; };
 		22C3161B242899AA0063F6A6 /* TOPagingViewExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TOPagingViewExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -66,6 +77,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		24F0A0082F24000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		22C31618242899AA0063F6A6 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -89,6 +107,7 @@
 				22C3167C242A3C460063F6A6 /* TOPagingView */,
 				22C3161D242899AA0063F6A6 /* TOPagingViewExample */,
 				22C31639242899AB0063F6A6 /* TOPagingViewTests */,
+				24F0A0062F24000100000001 /* TOPagingViewUITests */,
 				227BEDFC27AC1879009D6B6D /* TOPagingView.podspec */,
 				227BEDFB27AC186F009D6B6D /* README.md */,
 				227BEDF927AC1867009D6B6D /* CHANGELOG.md */,
@@ -101,6 +120,7 @@
 			children = (
 				22C3161B242899AA0063F6A6 /* TOPagingViewExample.app */,
 				22C31636242899AB0063F6A6 /* TOPagingViewTests.xctest */,
+				24F0A0032F24000100000001 /* TOPagingViewUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -130,6 +150,15 @@
 			path = TOPagingViewTests;
 			sourceTree = "<group>";
 		};
+		24F0A0062F24000100000001 /* TOPagingViewUITests */ = {
+			isa = PBXGroup;
+			children = (
+				24F0A0042F24000100000001 /* TOPagingViewUITests.m */,
+				24F0A0052F24000100000001 /* Info.plist */,
+			);
+			path = TOPagingViewUITests;
+			sourceTree = "<group>";
+		};
 		22C3167C242A3C460063F6A6 /* TOPagingView */ = {
 			isa = PBXGroup;
 			children = (
@@ -144,6 +173,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		24F0A0072F24000100000001 /* TOPagingViewUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 24F0A00E2F24000100000001 /* Build configuration list for PBXNativeTarget "TOPagingViewUITests" */;
+			buildPhases = (
+				24F0A00A2F24000100000001 /* Sources */,
+				24F0A0082F24000100000001 /* Frameworks */,
+				24F0A0092F24000100000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				24F0A00B2F24000100000001 /* PBXTargetDependency */,
+			);
+			name = TOPagingViewUITests;
+			productName = TOPagingViewUITests;
+			productReference = 24F0A0032F24000100000001 /* TOPagingViewUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		22C3161A242899AA0063F6A6 /* TOPagingViewExample */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 22C3163F242899AB0063F6A6 /* Build configuration list for PBXNativeTarget "TOPagingViewExample" */;
@@ -200,6 +247,10 @@
 						CreatedOnToolsVersion = 11.3.1;
 						TestTargetID = 22C3161A242899AA0063F6A6;
 					};
+					24F0A0072F24000100000001 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 22C3161A242899AA0063F6A6;
+					};
 				};
 			};
 			buildConfigurationList = 22C31616242899AA0063F6A6 /* Build configuration list for PBXProject "TOPagingView" */;
@@ -217,12 +268,20 @@
 			targets = (
 				22C3161A242899AA0063F6A6 /* TOPagingViewExample */,
 				22C31635242899AB0063F6A6 /* TOPagingViewTests */,
+				24F0A0072F24000100000001 /* TOPagingViewUITests */,
 				22AD8C13284B25C6009F6265 /* OCLint */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		24F0A0092F24000100000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		22C31619242899AA0063F6A6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -279,6 +338,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		24F0A00A2F24000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				24F0A0012F24000100000001 /* TOPagingViewUITests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		22C31617242899AA0063F6A6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -303,6 +370,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		24F0A00B2F24000100000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 22C3161A242899AA0063F6A6 /* TOPagingViewExample */;
+			targetProxy = 24F0A0022F24000100000001 /* PBXContainerItemProxy */;
+		};
 		22C31638242899AB0063F6A6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 22C3161A242899AA0063F6A6 /* TOPagingViewExample */;
@@ -538,6 +610,32 @@
 			};
 			name = Release;
 		};
+		24F0A00C2F24000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = TOPagingViewUITests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TOPagingViewUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = TOPagingViewExample;
+			};
+			name = Debug;
+		};
+		24F0A00D2F24000100000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = TOPagingViewUITests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TOPagingViewUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = TOPagingViewExample;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -573,6 +671,15 @@
 			buildConfigurations = (
 				22C31643242899AB0063F6A6 /* Debug */,
 				22C31644242899AB0063F6A6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		24F0A00E2F24000100000001 /* Build configuration list for PBXNativeTarget "TOPagingViewUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				24F0A00C2F24000100000001 /* Debug */,
+				24F0A00D2F24000100000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

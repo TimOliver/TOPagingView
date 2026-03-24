@@ -84,7 +84,7 @@ typedef struct {
 @end
 
 @interface TOPagingViewAnimator (Internal)
-- (void)didTransition;
+- (void)didTransitionWithOffset:(CGFloat)offset;
 @end
 
 // -----------------------------------------------------------------
@@ -1115,13 +1115,17 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view)
     [view setNeedsLayout];
 
     // Move the scroll view back one segment
+    const CGFloat previousOffsetX = view->_scrollView.contentOffset.x;
     CGPoint contentOffset = view->_scrollView.contentOffset;
     const CGFloat scrollViewPageWidth = TOPagingViewScrollViewPageWidth(view);
     const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? 1.0f : -1.0f);
     contentOffset.x += offset;
+    if (view->_pageAnimator.isAnimating) {
+        contentOffset.x = scrollViewPageWidth;
+    }
     view->_scrollView.contentOffset = contentOffset;
-    [view->_pageAnimator didTransitionWithOffset:offset];
+    [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
 
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {
@@ -1166,13 +1170,17 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     [view setNeedsLayout];
 
     // Move the scroll view forward one segment
+    const CGFloat previousOffsetX = view->_scrollView.contentOffset.x;
     CGPoint contentOffset = view->_scrollView.contentOffset;
     const CGFloat scrollViewPageWidth = TOPagingViewScrollViewPageWidth(view);
     const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? -1.0f : 1.0f);
     contentOffset.x += offset;
+    if (view->_pageAnimator.isAnimating) {
+        contentOffset.x = scrollViewPageWidth;
+    }
     view->_scrollView.contentOffset = contentOffset;
-    [view->_pageAnimator didTransitionWithOffset:offset];
+    [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
     
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {

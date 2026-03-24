@@ -38,6 +38,16 @@
                ReferencedContainer = "container:TOPagingView.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "24F0A0072F24000100000001"
+               BuildableName = "TOPagingViewUITests.xctest"
+               BlueprintName = "TOPagingViewUITests"
+               ReferencedContainer = "container:TOPagingView.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
