@@ -95,9 +95,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
 // -----------------------------------------------------------------
 
-@interface TOPagingViewAnimator () {
-    CGFloat _currentOffset;
-}
+@interface TOPagingViewAnimator ()
 
 /// The display link driving the frame-by-frame animation.
 @property (nonatomic, strong, nullable) CADisplayLink *displayLink;
@@ -108,14 +106,11 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 /// The direction multiplier (+1 for right, -1 for left).
 @property (nonatomic, assign) CGFloat turnDirection;
 
-/// The animated distance at the start of the current easing cycle.
-@property (nonatomic, assign) CGFloat startDistance;
+/// The offset value when we started.
+@property (nonatomic, assign) CGFloat startOffset;
 
-/// The total target distance for the current animation sequence.
-@property (nonatomic, assign) CGFloat endDistance;
-
-/// The amount of distance already applied to the scroll view.
-@property (nonatomic, assign) CGFloat currentDistance;
+/// The total target distance. This gets shrunk as we transition over boundaries.
+@property (nonatomic, assign) CGFloat endOffset;
 
 @end
 
@@ -154,37 +149,29 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     const CGFloat pixelSize = 1.0f / fmax(scale, 1.0f);
 
     if (_isAnimating && dir == _turnDirection) {
-        _startDistance = _currentDistance;
-        _endDistance += _pageWidth;
-        _endDistance = TOPagingViewAnimatorSnapToPageBoundary(_endDistance, _pageWidth, scale);
+        _endOffset += _pageWidth;
+        _endOffset = TOPagingViewAnimatorSnapToPageBoundary(_endOffset, _pageWidth, scale);
         _startTime = now;
         return;
     }
 
     if (_isAnimating && fabs(distanceFromCenter) > pixelSize) {
-        // When reversing direction mid-turn, first settle back onto the
-        // currently committed page before allowing a full turn the other way.
-        _currentOffset = scrollView.contentOffset.x;
         _turnDirection = (distanceFromCenter > 0.0f) ? -1.0f : 1.0f;
-        _startDistance = 0.0f;
-        _currentDistance = 0.0f;
-        _endDistance = TOPagingViewAnimatorClampNearZero(fabs(distanceFromCenter), scale);
+        _startOffset = _scrollView.contentOffset.x;
+        _endOffset = TOPagingViewAnimatorClampNearZero(fabs(distanceFromCenter), scale);
         _startTime = now;
         return;
     }
 
     if (_isAnimating) { [self stopAnimation]; }
 
-    _currentOffset = _scrollView.contentOffset.x;
     _turnDirection = dir;
 
     // If we're starting mid-page (e.g. from a swipe), target the remaining
     // distance to the nearest page-turn boundary in this direction.
     const CGFloat boundaryOffset = _pageWidth + (_pageWidth * dir);
-    const CGFloat remainingDistance = (boundaryOffset - _currentOffset) * dir;
-    _startDistance = 0.0f;
-    _currentDistance = 0.0f;
-    _endDistance = TOPagingViewAnimatorClampNearZero(fmax(remainingDistance, 0.0f), scale);
+    const CGFloat remainingDistance = (boundaryOffset - _scrollView.contentOffset.x) * dir;
+    _endOffset = TOPagingViewAnimatorClampNearZero(fmax(remainingDistance, 0.0f), scale);
 
     _startTime = now;
     _isAnimating = YES;
@@ -196,6 +183,10 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     if (!_isAnimating) { return; }
     [self _destroyDisplayLink];
     _isAnimating = NO;
+}
+
+- (void)didTransitionWithOffset:(CGFloat)offset {
+    
 }
 
 #pragma mark - Display Link -
@@ -226,32 +217,10 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     const CFTimeInterval elapsed = CACurrentMediaTime() - _startTime;
     const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
-    const CGFloat targetDistance = _startDistance + ((_endDistance - _startDistance) * progress);
-    CGFloat delta = targetDistance - _currentDistance;
-    _currentDistance += delta;
+    const CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
+    scrollView.contentOffset = (CGPoint){targetOffset * _turnDirection, 0.0f};
 
-    // Track the offset at full precision to avoid sub-pixel rounding
-    // losses from reading back contentOffset each frame.
-    if (progress < 1.0f - FLT_EPSILON) {
-        _currentOffset += delta * _turnDirection;
-    } else if (progress >= 1.0f && (_currentOffset < (_pageWidth * 0.5f) || _currentOffset > (_pageWidth * 1.5f))) {
-        // In the off chance the progression finishes, but we didn't hit the end threshold,
-        _currentOffset = _pageWidth + (_pageWidth * _turnDirection);
-    }
-    CGFloat previousOffset = scrollView.contentOffset.x;
-    scrollView.contentOffset = (CGPoint){_currentOffset, 0.0f};
-
-    // Once the scroll view goes over its boundary, it performs the transition and jumps
-    // back to the middle. This can happen in the final few ticks, so we'll use a fuzzy check here to stay in sync.
-    if (fabs(_currentOffset - scrollView.contentOffset.x) > (_pageWidth * 0.5f)) {
-        _currentOffset = _scrollView.contentOffset.x;
-        // Recalculate _currentDistance from the clean page count plus
-        // the actual partial offset from center, eliminating FP drift.
-        const CGFloat pagesCompleted = round(_currentDistance / _pageWidth);
-        _currentDistance = (pagesCompleted * _pageWidth) + ((_currentOffset - _pageWidth) * _turnDirection);
-    }
-
-    if (_currentDistance >= _endDistance - FLT_EPSILON) {
+    if (progress >= 1.0f - FLT_EPSILON) {
         [self _destroyDisplayLink];
         _isAnimating = NO;
         if (_completionHandler) {

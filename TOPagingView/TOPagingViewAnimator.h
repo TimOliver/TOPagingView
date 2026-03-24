@@ -56,6 +56,10 @@ NS_SWIFT_NAME(PagingViewAnimator)
 /// Immediately stops the current animation at its current position.
 - (void)stopAnimation;
 
+/// Called when the paging mechanism has performed a transition and all of the pages
+/// were offset. We pass the offset here so we can adjust our animation distance to match.
+- (void)didTransitionWithOffset:(CGFloat)offset;
+
 @end
 
 NS_ASSUME_NONNULL_END
