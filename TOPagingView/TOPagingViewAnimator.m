@@ -178,8 +178,14 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
 - (void)didTransitionWithOffset:(CGFloat)offset {
     if (!_isAnimating) { return; }
-    _startOffset += offset;
     _endOffset += offset;
+
+    // After the scroll view recenters, restart the easing clock from the new
+    // contentOffset. This keeps each animation segment's range equal to one
+    // page width, giving consistent velocity and deceleration regardless of
+    // how many taps were queued — identical feel to a single-tap animation.
+    _startOffset = _scrollView.contentOffset.x;
+    _startTime = CACurrentMediaTime();
 }
 
 #pragma mark - Display Link -
@@ -211,7 +217,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
         return;
     }
 
-    const CFTimeInterval elapsed = displayLink.targetTimestamp - _startTime;
+    const CFTimeInterval elapsed = CACurrentMediaTime() - _startTime;
     const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     const CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
