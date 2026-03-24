@@ -1118,9 +1118,10 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view)
     CGPoint contentOffset = view->_scrollView.contentOffset;
     const CGFloat scrollViewPageWidth = TOPagingViewScrollViewPageWidth(view);
     const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
-    if (isDirectionReversed) { contentOffset.x += scrollViewPageWidth; }
-    else { contentOffset.x -= scrollViewPageWidth; }
+    const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? 1.0f : -1.0f);
+    contentOffset.x += offset;
     view->_scrollView.contentOffset = contentOffset;
+    [view->_pageAnimator didTransitionWithOffset:offset];
 
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {
@@ -1168,10 +1169,11 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     CGPoint contentOffset = view->_scrollView.contentOffset;
     const CGFloat scrollViewPageWidth = TOPagingViewScrollViewPageWidth(view);
     const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
-    if (isDirectionReversed) { contentOffset.x -= TOPagingViewScrollViewPageWidth(view); }
-    else { contentOffset.x += scrollViewPageWidth; }
+    const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? -1.0f : 1.0f);
+    contentOffset.x += offset;
     view->_scrollView.contentOffset = contentOffset;
-
+    [view->_pageAnimator didTransitionWithOffset:offset];
+    
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {
         view->_draggingOrigin = -CGFLOAT_MAX;
