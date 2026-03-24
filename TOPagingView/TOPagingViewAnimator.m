@@ -202,6 +202,12 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
     _scrollView.pagingEnabled = _originalPagingEnabled;
 }
 
+- (BOOL)hasRunwayInDirection:(UIRectEdge)direction {
+    if (!_isAnimating) { return NO; }
+    const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
+    return (_turnDirection != dir);
+}
+
 - (void)stopAnimationInDirection:(UIRectEdge)direction {
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
     if (_turnDirection != dir) { return; }

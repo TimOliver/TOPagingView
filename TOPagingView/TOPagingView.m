@@ -580,8 +580,9 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     const BOOL hasLeftPage = (isDirectionReversed && _hasNextPage) ||
                              (!isDirectionReversed && _hasPreviousPage);
 
-    // Play a bouncy animation if there's no incoming page
-    if (!hasLeftPage) {
+    // Play a bouncy animation if there's no incoming page and the animator
+    // doesn't have runway (which indicates a page exists despite stale flags).
+    if (!hasLeftPage && ![_pageAnimator hasRunwayInDirection:UIRectEdgeLeft]) {
         if (!animated) { return; }
         [self _playBounceAnimationInDirection:TOPagingViewDirectionRightToLeft];
         return;
@@ -597,8 +598,9 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     const BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) ||
                                 (!isDirectionReversed && _hasNextPage);
 
-    // Play a bouncy animation if there's no incoming page
-    if (!hasRightPage) {
+    // Play a bouncy animation if there's no incoming page and the animator
+    // doesn't have runway (which indicates a page exists despite stale flags).
+    if (!hasRightPage && ![_pageAnimator hasRunwayInDirection:UIRectEdgeRight]) {
         if (!animated) { return; }
         [self _playBounceAnimationInDirection:TOPagingViewDirectionLeftToRight];
         return;
@@ -870,13 +872,6 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
                                         && TOPagingViewIsInitialPageForPageView(self, _currentPageView);
     const BOOL isPreviousPage = !isDetectingDirection && ((!isDirectionReversed && isLeftDirection) ||
                                                           (isDirectionReversed && !isLeftDirection));
-
-    // If we're already animating toward the last available page, don't extend the animation
-    if (_pageAnimator.isAnimating) {
-        if ((isPreviousPage && !_hasPreviousPage) || (!isPreviousPage && !_hasNextPage)) {
-            return;
-        }
-    }
 
     // Fire the willTurn delegate for each requested animated turn.
     const TOPagingViewPageType type = (isPreviousPage ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext);
