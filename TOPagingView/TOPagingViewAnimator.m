@@ -144,11 +144,9 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
     const CFTimeInterval now = CACurrentMediaTime();
     const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
-    const CGFloat centerOffset = _pageWidth;
-    const CGFloat distanceFromCenter = scrollView.contentOffset.x - centerOffset;
-    const CGFloat pixelSize = 1.0f / fmax(scale, 1.0f);
 
     if (_isAnimating && dir == _turnDirection) {
+        // Extend the animation one more page in the same direction.
         _endOffset += _pageWidth;
         _endOffset = TOPagingViewAnimatorSnapToPageBoundary(_endOffset, _pageWidth, scale);
         _startOffset = scrollView.contentOffset.x;
@@ -156,23 +154,21 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
         return;
     }
 
-    if (_isAnimating && fabs(distanceFromCenter) > pixelSize) {
-        _turnDirection = (distanceFromCenter > 0.0f) ? -1.0f : 1.0f;
-        _startOffset = scrollView.contentOffset.x;
-        _endOffset = centerOffset;
-        _startTime = now;
-        return;
-    }
-
-    if (_isAnimating) { [self stopAnimation]; }
-
+    // New direction or fresh start: animate from the current position to the nearest
+    // page boundary in the requested direction. This naturally handles reversal
+    // (tap left while going right snaps back to the page on screen) as well as
+    // re-initiating the original direction mid-reversal without drift.
     _turnDirection = dir;
     _startOffset = scrollView.contentOffset.x;
-    _endOffset = _pageWidth + (_pageWidth * dir);
-
+    _endOffset = (dir > 0.0f)
+        ? ceil(_startOffset / _pageWidth + FLT_EPSILON) * _pageWidth
+        : floor(_startOffset / _pageWidth - FLT_EPSILON) * _pageWidth;
     _startTime = now;
-    _isAnimating = YES;
-    [self _createDisplayLink];
+
+    if (!_isAnimating) {
+        _isAnimating = YES;
+        [self _createDisplayLink];
+    }
 }
 
 - (void)stopAnimation
