@@ -902,7 +902,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     };
 
-    // Animate the page turn via CADisplayLink using logical distance and per-frame deltas.
+    // Animate the page turn via CADisplayLink using logical offsets relative to the center slot.
     _pageAnimator.pageWidth = TOPagingViewScrollViewPageWidth(self);
     [_pageAnimator turnToPageInDirection:direction];
 }
