@@ -1529,7 +1529,7 @@ static inline CGRect TOPagingViewRightPageFrame(TOPagingView *view)
 
 #pragma mark - Scroll View Delegate Proxy Implementation -
 
-/// The one selector we intercept to notify the paging view of scroll events.
+/// The delegate selectors we intercept to notify the paging view of scroll events.
 static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
     return sel == @selector(scrollViewDidScroll:)
         || sel == @selector(scrollViewWillBeginDragging:);
