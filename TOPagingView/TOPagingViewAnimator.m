@@ -208,10 +208,23 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
     return (_turnDirection != dir);
 }
 
-- (void)stopAnimationInDirection:(UIRectEdge)direction {
+- (BOOL)stopAnimationInDirection:(UIRectEdge)direction {
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
-    if (_turnDirection != dir) { return; }
-    [self stopAnimation];
+    if (!_isAnimating || _turnDirection != dir) { return NO; }
+
+    const CGFloat scale = TOPagingViewAnimatorDisplayScale(_scrollView);
+    const CFTimeInterval elapsed = (_displayLink != nil) ? (_displayLink.targetTimestamp - _startTime)
+                                                         : (CACurrentMediaTime() - _startTime);
+    const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
+    const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
+
+    const CGFloat remainingProgress = 1.0f - progress;
+    if (remainingProgress <= FLT_EPSILON) {
+        [self stopAnimation];
+        return YES;
+    }
+
+    return NO;
 }
 
 - (void)didTransitionWithOffset:(CGFloat)offset {

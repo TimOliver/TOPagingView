@@ -58,7 +58,8 @@ NS_SWIFT_NAME(PagingViewAnimator)
 - (void)stopAnimation;
 
 /// Stops the animation if we are heading in a given direction (ie, we're about to run out of pages)
-- (void)stopAnimationInDirection:(UIRectEdge)direction;
+/// @return Whether it sucessfully canceled the animation or not. If true, a bounce animation should play.
+- (BOOL)stopAnimationInDirection:(UIRectEdge)direction;
 
 /// Returns YES if the animator is currently heading away from the given direction,
 /// meaning a page exists on that side even if hasNext/hasPrevious flags are stale.

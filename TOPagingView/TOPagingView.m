@@ -584,7 +584,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     // doesn't have runway (which indicates a page exists despite stale flags).
     if (!hasLeftPage && ![_pageAnimator hasRunwayInDirection:UIRectEdgeLeft]) {
         if (!animated) { return; }
-        [self _playBounceAnimationInDirection:TOPagingViewDirectionRightToLeft];
+        [self _playBounceAnimationInDirection:UIRectEdgeLeft];
         return;
     }
 
@@ -602,7 +602,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     // doesn't have runway (which indicates a page exists despite stale flags).
     if (!hasRightPage && ![_pageAnimator hasRunwayInDirection:UIRectEdgeRight]) {
         if (!animated) { return; }
-        [self _playBounceAnimationInDirection:TOPagingViewDirectionLeftToRight];
+        [self _playBounceAnimationInDirection:UIRectEdgeRight];
         return;
     }
 
@@ -1209,7 +1209,9 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
         // If we're about to continue scrolling in that direction, short circuit the animator.
         const UIRectEdge direction = _pageScrollDirection == TOPagingViewDirectionLeftToRight ?
                                         UIRectEdgeRight : UIRectEdgeLeft;
-        [_pageAnimator stopAnimationInDirection:direction];
+        if ([_pageAnimator stopAnimationInDirection:direction]) {
+            [self _playBounceAnimationInDirection:direction];
+        }
     }
 
     // If the next page ended up being nil,
@@ -1233,7 +1235,9 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
         // If we're about to continue scrolling in that direction, short circuit the animator.
         const UIRectEdge direction = _pageScrollDirection == TOPagingViewDirectionLeftToRight ?
                                         UIRectEdgeLeft : UIRectEdgeRight;
-        [_pageAnimator stopAnimationInDirection:direction];
+        if ([_pageAnimator stopAnimationInDirection:direction]) {
+            [self _playBounceAnimationInDirection:direction];
+        }
     }
 
     // If the previous page ended up being nil, set a flag so we don't check again until we need to
@@ -1281,9 +1285,9 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     _disableLayout = NO;
 }
 
-- (void)_playBounceAnimationInDirection:(TOPagingViewDirection)direction TOPAGINGVIEW_OBJC_DIRECT
+- (void)_playBounceAnimationInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT
 {
-    const CGFloat offsetModifier = (direction == TOPagingViewDirectionLeftToRight) ? 1.0f : -1.0f;
+    const CGFloat offsetModifier = (direction == UIRectEdgeLeft) ? -1.0f : 1.0f;
     const BOOL isCompactSizeClass = self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact;
     const CGFloat bumperPadding = (isCompactSizeClass ? kTOPagingViewBumperWidthCompact :
                                                         kTOPagingViewBumperWidthRegular) * offsetModifier;
