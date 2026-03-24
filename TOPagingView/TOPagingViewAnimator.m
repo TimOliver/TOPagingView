@@ -151,14 +151,15 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     if (_isAnimating && dir == _turnDirection) {
         _endOffset += _pageWidth;
         _endOffset = TOPagingViewAnimatorSnapToPageBoundary(_endOffset, _pageWidth, scale);
+        _startOffset = scrollView.contentOffset.x;
         _startTime = now;
         return;
     }
 
     if (_isAnimating && fabs(distanceFromCenter) > pixelSize) {
         _turnDirection = (distanceFromCenter > 0.0f) ? -1.0f : 1.0f;
-        _startOffset = _scrollView.contentOffset.x;
-        _endOffset = TOPagingViewAnimatorClampNearZero(fabs(distanceFromCenter), scale);
+        _startOffset = scrollView.contentOffset.x;
+        _endOffset = centerOffset;
         _startTime = now;
         return;
     }
@@ -166,12 +167,8 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     if (_isAnimating) { [self stopAnimation]; }
 
     _turnDirection = dir;
-
-    // If we're starting mid-page (e.g. from a swipe), target the remaining
-    // distance to the nearest page-turn boundary in this direction.
-    const CGFloat boundaryOffset = _pageWidth + (_pageWidth * dir);
-    const CGFloat remainingDistance = (boundaryOffset - _scrollView.contentOffset.x) * dir;
-    _endOffset = TOPagingViewAnimatorClampNearZero(fmax(remainingDistance, 0.0f), scale);
+    _startOffset = scrollView.contentOffset.x;
+    _endOffset = _pageWidth + (_pageWidth * dir);
 
     _startTime = now;
     _isAnimating = YES;
@@ -186,7 +183,9 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 }
 
 - (void)didTransitionWithOffset:(CGFloat)offset {
-    
+    if (!_isAnimating) { return; }
+    _startOffset += offset;
+    _endOffset += offset;
 }
 
 #pragma mark - Display Link -
@@ -195,7 +194,11 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 {
     _displayLink = [CADisplayLink displayLinkWithTarget:self
                                               selector:@selector(_displayLinkDidFire:)];
-    _displayLink.preferredFramesPerSecond = 120;
+    if (@available(iOS 15.0, *)) {
+        _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(80.0, 120.0f, 120.0f);
+    } else {
+        _displayLink.preferredFramesPerSecond = 120;
+    }
     [_displayLink addToRunLoop:[NSRunLoop mainRunLoop]
                        forMode:NSRunLoopCommonModes];
 }
@@ -218,7 +221,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     const CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
-    scrollView.contentOffset = (CGPoint){targetOffset * _turnDirection, 0.0f};
+    scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
 
     if (progress >= 1.0f - FLT_EPSILON) {
         [self _destroyDisplayLink];
