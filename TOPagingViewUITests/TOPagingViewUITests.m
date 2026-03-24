@@ -78,6 +78,27 @@ static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
     return NO;
 }
 
+- (BOOL)waitForPagingView:(XCUIElement *)pagingView
+    toExceedOffsetError:(CGFloat)minimumOffsetError
+                timeout:(NSTimeInterval)timeout
+{
+    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:timeout];
+
+    while (deadline.timeIntervalSinceNow > 0.0) {
+        NSDictionary<NSString *, NSNumber *> *state = [self pagingStateForElement:pagingView];
+        if (state != nil) {
+            const CGFloat offset = state[@"offset"].doubleValue;
+            if (fabs(offset) >= minimumOffsetError) {
+                return YES;
+            }
+        }
+
+        [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+    }
+
+    return NO;
+}
+
 - (void)testRapidRightTapsLandOnExpectedPageInLandscape
 {
     XCUIElement *pagingView = self.app.otherElements[kTOPagingViewAccessibilityIdentifier];
@@ -90,6 +111,25 @@ static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
 
     XCTAssertTrue([self waitForPagingView:pagingView toReachPage:10 maxOffsetError:0.5f timeout:5.0],
                   @"Final paging state was %@", pagingView.value);
+}
+
+- (void)testDraggingMidAnimationCancelsProgrammaticTurnAndHandsOffToPaging
+{
+    XCUIElement *pagingView = self.app.otherElements[kTOPagingViewAccessibilityIdentifier];
+    XCTAssertTrue([pagingView waitForExistenceWithTimeout:5.0]);
+
+    XCUICoordinate *rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
+    [rightTapCoordinate tap];
+
+    XCTAssertTrue([self waitForPagingView:pagingView toExceedOffsetError:20.0f timeout:1.0],
+                  @"Paging view never moved far enough off center. State was %@", pagingView.value);
+
+    XCUICoordinate *dragStart = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.35, 0.5)];
+    XCUICoordinate *dragEnd = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.95, 0.5)];
+    [dragStart pressForDuration:0.05 thenDragToCoordinate:dragEnd];
+
+    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:0 maxOffsetError:0.5f timeout:5.0],
+                  @"Final paging state after drag handoff was %@", pagingView.value);
 }
 
 @end
