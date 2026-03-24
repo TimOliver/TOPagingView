@@ -93,6 +93,17 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     return round(value * scale) / scale;
 }
 
+/// Converts an absolute content offset into a logical offset relative to the middle slot.
+static inline CGFloat TOPagingViewAnimatorLogicalOffset(CGFloat contentOffset, CGFloat pageWidth, CGFloat scale) {
+    const CGFloat logicalOffset = TOPagingViewAnimatorRoundToPixel(contentOffset - pageWidth, scale);
+    return TOPagingViewAnimatorClampNearZero(logicalOffset, scale);
+}
+
+/// Converts a logical offset relative to the middle slot back into an absolute content offset.
+static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, CGFloat pageWidth, CGFloat scale) {
+    return TOPagingViewAnimatorRoundToPixel(pageWidth + logicalOffset, scale);
+}
+
 // -----------------------------------------------------------------
 
 @interface TOPagingViewAnimator ()
@@ -106,10 +117,10 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 /// The direction multiplier (+1 for right, -1 for left).
 @property (nonatomic, assign) CGFloat turnDirection;
 
-/// The offset value when we started.
+/// The logical offset from the middle slot when we started.
 @property (nonatomic, assign) CGFloat startOffset;
 
-/// The total target distance. This gets shrunk as we transition over boundaries.
+/// The logical offset from the middle slot where this animation should end.
 @property (nonatomic, assign) CGFloat endOffset;
 
 @end
@@ -152,7 +163,9 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
         const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
         const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
         _startOffset = TOPagingViewAnimatorRoundToPixel(_startOffset + ((_endOffset - _startOffset) * progress), scale);
-        _endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset + _pageWidth, scale);
+        _startOffset = TOPagingViewAnimatorClampNearZero(_startOffset, scale);
+        _endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset + (dir * _pageWidth), scale);
+        _endOffset = TOPagingViewAnimatorClampNearZero(_endOffset, scale);
         _startTime = now;
         return;
     }
@@ -162,11 +175,12 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     // (tap left while going right snaps back to the page on screen) as well as
     // re-initiating the original direction mid-reversal without drift.
     _turnDirection = dir;
-    _startOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, scale);
+    _startOffset = TOPagingViewAnimatorLogicalOffset(scrollView.contentOffset.x, _pageWidth, scale);
     _endOffset = (dir > 0.0f)
         ? ceil(_startOffset / _pageWidth + FLT_EPSILON) * _pageWidth
         : floor(_startOffset / _pageWidth - FLT_EPSILON) * _pageWidth;
     _endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset, scale);
+    _endOffset = TOPagingViewAnimatorClampNearZero(_endOffset, scale);
     _startTime = now;
 
     if (!_isAnimating) {
@@ -185,7 +199,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 - (void)didTransitionWithOffset:(CGFloat)offset {
     if (!_isAnimating) { return; }
     const CGFloat scale = TOPagingViewAnimatorDisplayScale(_scrollView);
-    const CGFloat actualOffset = TOPagingViewAnimatorRoundToPixel(_scrollView.contentOffset.x, scale);
+    const CGFloat actualOffset = TOPagingViewAnimatorLogicalOffset(_scrollView.contentOffset.x, _pageWidth, scale);
     const CFTimeInterval elapsed = (_displayLink != nil) ? (_displayLink.targetTimestamp - _startTime)
                                                          : (CACurrentMediaTime() - _startTime);
     const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
@@ -200,17 +214,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     _endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset, scale);
     _endOffset = TOPagingViewAnimatorClampNearZero(_endOffset, scale);
 
-    // Keep the final destination locked to the newly rebased boundary so we
-    // don't reintroduce overshoot, and solve a synthetic start offset that
-    // makes the current presentation position continuous at the existing
-    // eased progress.
     const CGFloat remainingProgress = 1.0f - progress;
-    if (remainingProgress <= FLT_EPSILON) {
-        _startOffset = actualOffset;
-        _endOffset = actualOffset;
-        return;
-    }
-
     _startOffset = (actualOffset - (_endOffset * progress)) / remainingProgress;
     _startOffset = TOPagingViewAnimatorRoundToPixel(_startOffset, scale);
     _startOffset = TOPagingViewAnimatorSnapToPageBoundary(_startOffset, _pageWidth, scale);
@@ -250,16 +254,12 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
-    if (_turnDirection > 0.0f) {
-        targetOffset = fmin(targetOffset, _pageWidth * 2.0f);
-    } else {
-        targetOffset = fmax(targetOffset, 0.0f);
-    }
-    scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
-
+    scrollView.contentOffset = (CGPoint){TOPagingViewAnimatorAbsoluteOffset(targetOffset, _pageWidth, TOPagingViewAnimatorDisplayScale(scrollView)), 0.0f};
+    NSLog(@"target %f, scroll offset: %f", targetOffset, scrollView.contentOffset.x);
+    
     const CGFloat pixelSize = 1.0f / TOPagingViewAnimatorDisplayScale(scrollView);
     if (progress >= 1.0f - FLT_EPSILON
-        && fabs(scrollView.contentOffset.x - _endOffset) <= pixelSize) {
+        && fabs(TOPagingViewAnimatorLogicalOffset(scrollView.contentOffset.x, _pageWidth, TOPagingViewAnimatorDisplayScale(scrollView)) - _endOffset) <= pixelSize) {
         [self _destroyDisplayLink];
         _isAnimating = NO;
         if (_completionHandler) {
