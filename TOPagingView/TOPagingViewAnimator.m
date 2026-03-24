@@ -123,6 +123,9 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
 /// The logical offset from the middle slot where this animation should end.
 @property (nonatomic, assign) CGFloat endOffset;
 
+/// The original scrollEnabled state before this animator temporarily disabled scrolling.
+@property (nonatomic, assign) BOOL originalScrollEnabled;
+
 @end
 
 // -----------------------------------------------------------------
@@ -185,6 +188,8 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
 
     if (!_isAnimating) {
         _isAnimating = YES;
+        _originalScrollEnabled = scrollView.scrollEnabled;
+        scrollView.scrollEnabled = NO;
         [self _createDisplayLink];
     }
 }
@@ -194,6 +199,7 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
     if (!_isAnimating) { return; }
     [self _destroyDisplayLink];
     _isAnimating = NO;
+    _scrollView.scrollEnabled = _originalScrollEnabled;
 }
 
 - (void)didTransitionWithOffset:(CGFloat)offset {
@@ -215,6 +221,12 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
     _endOffset = TOPagingViewAnimatorClampNearZero(_endOffset, scale);
 
     const CGFloat remainingProgress = 1.0f - progress;
+    if (remainingProgress <= FLT_EPSILON) {
+        _startOffset = actualOffset;
+        _endOffset = actualOffset;
+        return;
+    }
+
     _startOffset = (actualOffset - (_endOffset * progress)) / remainingProgress;
     _startOffset = TOPagingViewAnimatorRoundToPixel(_startOffset, scale);
     _startOffset = TOPagingViewAnimatorSnapToPageBoundary(_startOffset, _pageWidth, scale);
@@ -255,13 +267,13 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
     scrollView.contentOffset = (CGPoint){TOPagingViewAnimatorAbsoluteOffset(targetOffset, _pageWidth, TOPagingViewAnimatorDisplayScale(scrollView)), 0.0f};
-    NSLog(@"target %f, scroll offset: %f", targetOffset, scrollView.contentOffset.x);
     
     const CGFloat pixelSize = 1.0f / TOPagingViewAnimatorDisplayScale(scrollView);
     if (progress >= 1.0f - FLT_EPSILON
         && fabs(TOPagingViewAnimatorLogicalOffset(scrollView.contentOffset.x, _pageWidth, TOPagingViewAnimatorDisplayScale(scrollView)) - _endOffset) <= pixelSize) {
         [self _destroyDisplayLink];
         _isAnimating = NO;
+        _scrollView.scrollEnabled = _originalScrollEnabled;
         if (_completionHandler) {
             _completionHandler();
         }
