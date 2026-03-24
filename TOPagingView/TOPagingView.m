@@ -345,6 +345,14 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     }
 }
 
+/// Called by the scroll view delegate proxy when the user begins dragging.
+- (void)_scrollViewWillBeginDragging TOPAGINGVIEW_OBJC_DIRECT
+{
+    if (_pageAnimator.isAnimating) {
+        [_pageAnimator stopAnimation];
+    }
+}
+
 - (void)_layoutPages TOPAGINGVIEW_OBJC_DIRECT
 {
     // Proxy through to the scroll handler for layout updates
@@ -1523,7 +1531,8 @@ static inline CGRect TOPagingViewRightPageFrame(TOPagingView *view)
 
 /// The one selector we intercept to notify the paging view of scroll events.
 static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
-    return sel == @selector(scrollViewDidScroll:);
+    return sel == @selector(scrollViewDidScroll:)
+        || sel == @selector(scrollViewWillBeginDragging:);
 }
 
 @implementation TOScrollViewDelegateProxy
@@ -1544,6 +1553,17 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
     // Forward to external delegate
     if ([_externalDelegate respondsToSelector:@selector(scrollViewDidScroll:)]) {
         [_externalDelegate scrollViewDidScroll:scrollView];
+    }
+}
+
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
+{
+    // Stop any programmatic turn so the user's gesture takes over immediately.
+    [_pagingView _scrollViewWillBeginDragging];
+
+    // Forward to external delegate
+    if ([_externalDelegate respondsToSelector:@selector(scrollViewWillBeginDragging:)]) {
+        [_externalDelegate scrollViewWillBeginDragging:scrollView];
     }
 }
 

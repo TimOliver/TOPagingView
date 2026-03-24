@@ -123,8 +123,8 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
 /// The logical offset from the middle slot where this animation should end.
 @property (nonatomic, assign) CGFloat endOffset;
 
-/// The original scrollEnabled state before this animator temporarily disabled scrolling.
-@property (nonatomic, assign) BOOL originalScrollEnabled;
+/// The original pagingEnabled state before this animator temporarily disabled paging.
+@property (nonatomic, assign) BOOL originalPagingEnabled;
 
 @end
 
@@ -188,8 +188,8 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
 
     if (!_isAnimating) {
         _isAnimating = YES;
-        _originalScrollEnabled = scrollView.scrollEnabled;
-        scrollView.scrollEnabled = NO;
+        _originalPagingEnabled = scrollView.pagingEnabled;
+        scrollView.pagingEnabled = NO;
         [self _createDisplayLink];
     }
 }
@@ -199,7 +199,7 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
     if (!_isAnimating) { return; }
     [self _destroyDisplayLink];
     _isAnimating = NO;
-    _scrollView.scrollEnabled = _originalScrollEnabled;
+    _scrollView.pagingEnabled = _originalPagingEnabled;
 }
 
 - (void)didTransitionWithOffset:(CGFloat)offset {
@@ -273,7 +273,7 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
         && fabs(TOPagingViewAnimatorLogicalOffset(scrollView.contentOffset.x, _pageWidth, TOPagingViewAnimatorDisplayScale(scrollView)) - _endOffset) <= pixelSize) {
         [self _destroyDisplayLink];
         _isAnimating = NO;
-        _scrollView.scrollEnabled = _originalScrollEnabled;
+        _scrollView.pagingEnabled = _originalPagingEnabled;
         if (_completionHandler) {
             _completionHandler();
         }
