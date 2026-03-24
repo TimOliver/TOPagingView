@@ -202,6 +202,12 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
     _scrollView.pagingEnabled = _originalPagingEnabled;
 }
 
+- (void)stopAnimationInDirection:(UIRectEdge)direction {
+    const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
+    if (_turnDirection != dir) { return; }
+    [self stopAnimation];
+}
+
 - (void)didTransitionWithOffset:(CGFloat)offset {
     if (!_isAnimating) { return; }
     const CGFloat scale = TOPagingViewAnimatorDisplayScale(_scrollView);
