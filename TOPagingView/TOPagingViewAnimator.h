@@ -46,6 +46,9 @@ NS_SWIFT_NAME(PagingViewAnimator)
 /// Whether an animation is currently in progress.
 @property (nonatomic, readonly) BOOL isAnimating;
 
+/// The velocity (in points/second) of the animation at the moment it was last stopped.
+@property (nonatomic, readonly) CGFloat velocity;
+
 /// Called when the animation completes naturally (not when stopped mid-way).
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
 
@@ -59,7 +62,7 @@ NS_SWIFT_NAME(PagingViewAnimator)
 
 /// Stops the animation if we are heading in a given direction (ie, we're about to run out of pages)
 /// @return Whether it sucessfully canceled the animation or not. If true, a bounce animation should play.
-- (BOOL)stopAnimationInDirection:(UIRectEdge)direction;
+- (void)stopAnimationInDirection:(UIRectEdge)direction;
 
 /// Returns YES if the animator is currently heading away from the given direction,
 /// meaning a page exists on that side even if hasNext/hasPrevious flags are stale.

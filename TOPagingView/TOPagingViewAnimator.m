@@ -203,28 +203,47 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
 }
 
 - (BOOL)hasRunwayInDirection:(UIRectEdge)direction {
-    if (!_isAnimating) { return NO; }
-    const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
-    return (_turnDirection != dir);
+    UIScrollView *scrollView = _scrollView;
+    if (scrollView == nil || _pageWidth <= FLT_EPSILON) { return NO; }
+
+    const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
+    const CGFloat pixelSize = 1.0f / fmax(scale, 1.0f);
+    const CGFloat offset = scrollView.contentOffset.x;
+    const CGFloat maxOffset = scrollView.contentSize.width - CGRectGetWidth(scrollView.bounds);
+
+    if (direction == UIRectEdgeRight) {
+        return offset < maxOffset - pixelSize;
+    } else {
+        return offset > pixelSize;
+    }
 }
 
-- (BOOL)stopAnimationInDirection:(UIRectEdge)direction {
+- (void)stopAnimationInDirection:(UIRectEdge)direction {
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
-    if (!_isAnimating || _turnDirection != dir) { return NO; }
+    UIScrollView *const scrollView = _scrollView;
+    if (!scrollView || !_isAnimating || _turnDirection != dir) { return; }
 
-    const CGFloat scale = TOPagingViewAnimatorDisplayScale(_scrollView);
+    // Capture the current velocity before stopping.
     const CFTimeInterval elapsed = (_displayLink != nil) ? (_displayLink.targetTimestamp - _startTime)
                                                          : (CACurrentMediaTime() - _startTime);
     const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
-    const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
+    const CGFloat dp = 0.001f;
+    const CGFloat easingNow = TOPagingViewAnimatorEvaluateEasing(linearProgress);
+    const CGFloat easingNext = TOPagingViewAnimatorEvaluateEasing(fmin(linearProgress + dp, 1.0f));
+    const CGFloat easingSlope = (easingNext - easingNow) / dp;
+    _velocity = (_endOffset - _startOffset) * easingSlope / (CGFloat)_duration;
 
-    const CGFloat remainingProgress = 1.0f - progress;
-    if (remainingProgress <= FLT_EPSILON) {
-        [self stopAnimation];
-        return YES;
-    }
+    [self stopAnimation];
 
-    return NO;
+    [UIView animateWithDuration:0.25f delay:0.0 usingSpringWithDamping:1.0 initialSpringVelocity:_velocity / 65.0f
+                        options:0 animations:^{
+        scrollView.contentOffset = (CGPoint){scrollView.contentOffset.x + (65.0f * dir), 0.0f};
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.4f delay:0.0 usingSpringWithDamping:1.0 initialSpringVelocity:1.0f
+                            options:0 animations:^{
+            scrollView.contentOffset = (CGPoint){self->_pageWidth, 0.0f};
+        } completion:nil];
+    }];
 }
 
 - (void)didTransitionWithOffset:(CGFloat)offset {

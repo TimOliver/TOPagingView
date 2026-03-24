@@ -1209,9 +1209,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
         // If we're about to continue scrolling in that direction, short circuit the animator.
         const UIRectEdge direction = _pageScrollDirection == TOPagingViewDirectionLeftToRight ?
                                         UIRectEdgeRight : UIRectEdgeLeft;
-        if ([_pageAnimator stopAnimationInDirection:direction]) {
-            [self _playBounceAnimationInDirection:direction];
-        }
+        [_pageAnimator stopAnimationInDirection:direction];
     }
 
     // If the next page ended up being nil,
@@ -1235,9 +1233,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
         // If we're about to continue scrolling in that direction, short circuit the animator.
         const UIRectEdge direction = _pageScrollDirection == TOPagingViewDirectionLeftToRight ?
                                         UIRectEdgeLeft : UIRectEdgeRight;
-        if ([_pageAnimator stopAnimationInDirection:direction]) {
-            [self _playBounceAnimationInDirection:direction];
-        }
+        [_pageAnimator stopAnimationInDirection:direction];
     }
 
     // If the previous page ended up being nil, set a flag so we don't check again until we need to
