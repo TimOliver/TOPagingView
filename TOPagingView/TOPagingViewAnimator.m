@@ -102,14 +102,24 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 }
 
 /// Returns the active simulator animation drag coefficient when Slow Animations is enabled.
-static inline CFTimeInterval TOPagingViewAnimatorEffectiveDuration(CFTimeInterval duration) {
+static inline CGFloat TOPagingViewAnimatorAnimationDragCoefficient(void) {
 #if TARGET_OS_SIMULATOR
     extern float UIAnimationDragCoefficient(void) __attribute__((weak_import));
     const float dragCoefficient = (UIAnimationDragCoefficient != NULL) ? UIAnimationDragCoefficient() : 1.0f;
-    return duration * ((dragCoefficient > FLT_EPSILON) ? dragCoefficient : 1.0f);
+    return (dragCoefficient > FLT_EPSILON) ? dragCoefficient : 1.0f;
 #else
-    return duration;
+    return 1.0f;
 #endif
+}
+
+/// Returns the active simulator animation drag coefficient when Slow Animations is enabled.
+static inline CFTimeInterval TOPagingViewAnimatorEffectiveDuration(CFTimeInterval duration) {
+    return duration * TOPagingViewAnimatorAnimationDragCoefficient();
+}
+
+/// Converts a wall-clock duration back into the animator's base duration space.
+static inline CFTimeInterval TOPagingViewAnimatorBaseDuration(CFTimeInterval effectiveDuration) {
+    return effectiveDuration / TOPagingViewAnimatorAnimationDragCoefficient();
 }
 
 /// Converts elapsed time into clamped linear animation progress.
@@ -120,8 +130,7 @@ static inline CGFloat TOPagingViewAnimatorLinearProgress(CFTimeInterval elapsed,
 
 /// Clamps a duration into the short settle window used when an in-flight turn is cut short.
 static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInterval duration) {
-    const CFTimeInterval maxDuration = fmin(duration, 0.22);
-    return fmax(0.08, maxDuration);
+    return fmax(0.05, duration);
 }
 
 // -----------------------------------------------------------------
@@ -246,9 +255,10 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
     const CGFloat actualOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, scale);
     const CFTimeInterval now = CACurrentMediaTime();
-    const CFTimeInterval elapsed = (_displayLink != nil) ? (_displayLink.targetTimestamp - _startTime)
-                                                         : (now - _startTime);
+    const CFTimeInterval referenceTime = (_displayLink != nil) ? _displayLink.targetTimestamp : now;
+    const CFTimeInterval elapsed = referenceTime - _startTime;
     const CGFloat linearProgress = TOPagingViewAnimatorLinearProgress(elapsed, _activeDuration);
+    const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     const CGFloat easingSlope = TOPagingViewAnimatorEvaluateEasingSlope(linearProgress);
     const CFTimeInterval effectiveDuration = TOPagingViewAnimatorEffectiveDuration(_activeDuration);
     const CGFloat currentVelocity = (effectiveDuration <= FLT_EPSILON)
@@ -256,24 +266,42 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
         : (((_endOffset - _startOffset) * easingSlope) / effectiveDuration);
     const CGFloat remainingDistance = _pageWidth - actualOffset;
 
-    // Re-seed the in-flight segment from the live on-screen position so clamping doesn't jump.
-    _startOffset = actualOffset;
-    _endOffset = _pageWidth;
-    _startTime = now;
-
     const CGFloat velocityTowardTarget = currentVelocity * ((remainingDistance >= 0.0f) ? 1.0f : -1.0f);
     if (fabs(remainingDistance) <= (1.0f / fmax(scale, 1.0f))) {
+        _startOffset = actualOffset;
+        _endOffset = _pageWidth;
+        _startTime = referenceTime;
         _activeDuration = 0.0;
         return;
     }
 
-    if (velocityTowardTarget > FLT_EPSILON) {
-        const CGFloat startSlope = fmax(TOPagingViewAnimatorEvaluateEasingSlope(0.0f), 1.0f);
-        const CFTimeInterval settleDuration = (fabs(remainingDistance) * startSlope) / velocityTowardTarget;
-        _activeDuration = TOPagingViewAnimatorClampSettleDuration(settleDuration);
-    } else {
-        _activeDuration = TOPagingViewAnimatorClampSettleDuration(_duration * 0.45);
+    const CGFloat remainingProgress = 1.0f - progress;
+    if (velocityTowardTarget > FLT_EPSILON
+        && remainingProgress > FLT_EPSILON
+        && easingSlope > FLT_EPSILON) {
+        // Preserve the current easing phase so the clamp continues smoothly instead of restarting.
+        CGFloat syntheticStartOffset = (actualOffset - (_pageWidth * progress)) / remainingProgress;
+        syntheticStartOffset = TOPagingViewAnimatorRoundToPixel(syntheticStartOffset, scale);
+
+        const CGFloat totalDistance = _pageWidth - syntheticStartOffset;
+        if (fabs(totalDistance) > FLT_EPSILON
+            && ((totalDistance >= 0.0f) == (remainingDistance >= 0.0f))) {
+            const CFTimeInterval effectiveSettleDuration = (fabs(totalDistance) * easingSlope) / velocityTowardTarget;
+            const CFTimeInterval baseSettleDuration = TOPagingViewAnimatorClampSettleDuration(TOPagingViewAnimatorBaseDuration(effectiveSettleDuration));
+            const CFTimeInterval adjustedEffectiveDuration = TOPagingViewAnimatorEffectiveDuration(baseSettleDuration);
+
+            _startOffset = syntheticStartOffset;
+            _endOffset = _pageWidth;
+            _startTime = referenceTime - (linearProgress * adjustedEffectiveDuration);
+            _activeDuration = baseSettleDuration;
+            return;
+        }
     }
+
+    _startOffset = actualOffset;
+    _endOffset = _pageWidth;
+    _startTime = referenceTime;
+    _activeDuration = TOPagingViewAnimatorClampSettleDuration(_duration * 0.45);
 }
 
 - (void)didTransitionWithOffset:(CGFloat)offset
