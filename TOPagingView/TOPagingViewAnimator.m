@@ -22,6 +22,7 @@
 
 #import "TOPagingViewAnimator.h"
 #import <QuartzCore/QuartzCore.h>
+#import <TargetConditionals.h>
 
 /// Mark implementation-only methods as being statically called to increase performance.
 #define TOPAGINGVIEWANIMATOR_OBJC_DIRECT __attribute__((objc_direct))
@@ -90,6 +91,23 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     return round(value * scale) / scale;
 }
 
+/// Returns the active simulator animation drag coefficient when Slow Animations is enabled.
+static inline CFTimeInterval TOPagingViewAnimatorEffectiveDuration(CFTimeInterval duration) {
+#if TARGET_OS_SIMULATOR
+    extern float UIAnimationDragCoefficient(void) __attribute__((weak_import));
+    const float dragCoefficient = (UIAnimationDragCoefficient != NULL) ? UIAnimationDragCoefficient() : 1.0f;
+    return duration * ((dragCoefficient > FLT_EPSILON) ? dragCoefficient : 1.0f);
+#else
+    return duration;
+#endif
+}
+
+/// Converts elapsed time into clamped linear animation progress.
+static inline CGFloat TOPagingViewAnimatorLinearProgress(CFTimeInterval elapsed, CFTimeInterval duration) {
+    const CFTimeInterval effectiveDuration = TOPagingViewAnimatorEffectiveDuration(duration);
+    return (effectiveDuration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / effectiveDuration, 1.0);
+}
+
 // -----------------------------------------------------------------
 
 @interface TOPagingViewAnimator ()
@@ -155,7 +173,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
         // Extend the animation one more page in the same direction.
         const CFTimeInterval elapsed = (_displayLink != nil) ? (_displayLink.targetTimestamp - _startTime)
                                                              : (now - _startTime);
-        const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
+        const CGFloat linearProgress = TOPagingViewAnimatorLinearProgress(elapsed, _duration);
         const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
         _startOffset = TOPagingViewAnimatorRoundToPixel(_startOffset + ((_endOffset - _startOffset) * progress), scale);
         _endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset + (dir * _pageWidth), scale);
@@ -213,7 +231,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     const CGFloat actualOffset = TOPagingViewAnimatorRoundToPixel(_scrollView.contentOffset.x, scale);
     const CFTimeInterval elapsed = (_displayLink != nil) ? (_displayLink.targetTimestamp - _startTime)
                                                          : (CACurrentMediaTime() - _startTime);
-    const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
+    const CGFloat linearProgress = TOPagingViewAnimatorLinearProgress(elapsed, _duration);
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
 
     _endOffset += offset;
@@ -262,7 +280,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     }
 
     const CFTimeInterval elapsed = displayLink.targetTimestamp - _startTime;
-    const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
+    const CGFloat linearProgress = TOPagingViewAnimatorLinearProgress(elapsed, _duration);
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
     targetOffset = TOPagingViewAnimatorRoundToPixel(targetOffset, TOPagingViewAnimatorDisplayScale(scrollView));
