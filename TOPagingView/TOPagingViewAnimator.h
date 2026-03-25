@@ -46,7 +46,7 @@ NS_SWIFT_NAME(PagingViewAnimator)
 /// Whether an animation is currently in progress.
 @property (nonatomic, readonly) BOOL isAnimating;
 
-/// The direction we're currently turning in
+/// The direction we're currently turning in.
 @property (nonatomic, readonly) UIRectEdge direction;
 
 /// Called when the animation completes naturally (not when stopped mid-way).

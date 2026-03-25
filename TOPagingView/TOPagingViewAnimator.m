@@ -23,6 +23,9 @@
 #import "TOPagingViewAnimator.h"
 #import <QuartzCore/QuartzCore.h>
 
+/// Mark implementation-only methods as being statically called to increase performance.
+#define TOPAGINGVIEWANIMATOR_OBJC_DIRECT __attribute__((objc_direct))
+
 // -----------------------------------------------------------------
 
 /// Default duration for page turn animations.
@@ -91,13 +94,16 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
 @interface TOPagingViewAnimator ()
 
+- (void)_createDisplayLink TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
+- (void)_destroyDisplayLink TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
+
 /// The display link driving the frame-by-frame animation.
 @property (nonatomic, strong, nullable) CADisplayLink *displayLink;
 
 /// The time at which the current animation cycle started (reset on each tap).
 @property (nonatomic, assign) CFTimeInterval startTime;
 
-/// The direction we're turning in
+/// The direction we're turning in.
 @property (nonatomic, assign, readwrite) UIRectEdge direction;
 
 /// The direction multiplier (+1 for right, -1 for left).
@@ -195,11 +201,13 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
     if (_turnDirection != dir) { return; }
-    
+
+    // Clamp the remaining travel to the centered slot once we know there are no more pages.
     _endOffset = _pageWidth;
 }
 
-- (void)didTransitionWithOffset:(CGFloat)offset {
+- (void)didTransitionWithOffset:(CGFloat)offset
+{
     if (!_isAnimating) { return; }
     const CGFloat scale = TOPagingViewAnimatorDisplayScale(_scrollView);
     const CGFloat actualOffset = TOPagingViewAnimatorRoundToPixel(_scrollView.contentOffset.x, scale);
@@ -226,7 +234,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
 #pragma mark - Display Link -
 
-- (void)_createDisplayLink
+- (void)_createDisplayLink TOPAGINGVIEWANIMATOR_OBJC_DIRECT
 {
     _displayLink = [CADisplayLink displayLinkWithTarget:self
                                               selector:@selector(_displayLinkDidFire:)];
@@ -239,7 +247,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
                        forMode:NSRunLoopCommonModes];
 }
 
-- (void)_destroyDisplayLink
+- (void)_destroyDisplayLink TOPAGINGVIEWANIMATOR_OBJC_DIRECT
 {
     [_displayLink invalidate];
     _displayLink = nil;

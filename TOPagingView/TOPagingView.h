@@ -42,7 +42,7 @@ typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
     /// The current page that will be visible on screen initially.
     TOPagingViewPageTypeCurrent,
 
-    ///The next page sequentially after the current page.
+    /// The next page sequentially after the current page.
     TOPagingViewPageTypeNext,
 
     /// The previous page sequentially before the current page.
@@ -71,7 +71,7 @@ NS_SWIFT_NAME(PagingViewPage)
 - (NSString *)uniqueIdentifier;
 
 /// Called just before the page object is removed from the visible page set,
-/// and re-enqueud by the data source.
+/// and re-enqueued by the data source.
 ///
 /// Use this method to return the page to a default state, and to clear out any
 /// references to memory-heavy objects like images.
@@ -114,7 +114,7 @@ NS_SWIFT_NAME(PagingViewDataDelegate)
 
 @optional
 
-/// Called when a transaction has started moving in a direction (eg, the user has
+/// Called when a transition has started moving in a direction (eg, the user has
 /// started swiping in a direction, or an animation is about to start) that can potentially
 /// end in a page transition. Use this to start preloading content in that direction.
 /// @param pagingView The calling paging view instance.
