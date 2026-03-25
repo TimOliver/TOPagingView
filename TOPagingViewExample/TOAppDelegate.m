@@ -7,6 +7,7 @@
 //
 
 #import "TOAppDelegate.h"
+
 #import "TOViewController.h"
 
 @interface TOAppDelegate ()
@@ -16,15 +17,12 @@
 @implementation TOAppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-    
     self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     self.window.rootViewController = [[TOViewController alloc] init];
     [self.window makeKeyAndVisible];
 
 #if TARGET_OS_MACCATALYST
-    if (@available(iOS 13.0, *)) {
-        self.window.windowScene.titlebar.titleVisibility = UITitlebarTitleVisibilityHidden;
-    }
+    if (@available(iOS 13.0, *)) { self.window.windowScene.titlebar.titleVisibility = UITitlebarTitleVisibilityHidden; }
 #endif
 
     return YES;

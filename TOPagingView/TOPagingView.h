@@ -103,7 +103,7 @@ NS_SWIFT_NAME(PagingViewDataSource)
 /// @param currentPageView The current page view on screen. This can be nil if no pages have been displayed yet.
 - (nullable __kindof UIView<TOPagingViewPage> *)pagingView:(TOPagingView *)pagingView
                                            pageViewForType:(TOPagingViewPageType)type
-                                           currentPageView:(UIView<TOPagingViewPage> * _Nullable)currentPageView;
+                                           currentPageView:(UIView<TOPagingViewPage> *_Nullable)currentPageView;
 
 @end
 
@@ -151,10 +151,10 @@ NS_SWIFT_NAME(PagingView)
 @property (nonatomic, weak, nullable) id<UIScrollViewDelegate> scrollViewDelegate;
 
 /// The data source object that is in charge with configuring and providing views to this view.
-@property (nonatomic, weak, nullable) id <TOPagingViewDataSource> dataSource;
+@property (nonatomic, weak, nullable) id<TOPagingViewDataSource> dataSource;
 
 /// The delegate broadcasts page turning events, so that the data source can update its state to match.
-@property (nonatomic, weak, nullable) id <TOPagingViewDelegate> delegate;
+@property (nonatomic, weak, nullable) id<TOPagingViewDelegate> delegate;
 
 /// Width of the spacing between pages in points (default value of 40).
 @property (nonatomic, assign) CGFloat pageSpacing;
@@ -178,16 +178,18 @@ NS_SWIFT_NAME(PagingView)
 /// Tears down and recreates the previous and next page views from scratch, but leaves the current one alone.
 - (void)reloadAdjacentPages;
 
-/// Loads the previous and/or next page views only if they're not already loaded. Useful for when the data source has updated with new page data.
+/// Loads the previous and/or next page views only if they're not already loaded. Useful for when the data source has updated with
+/// new page data.
 - (void)fetchAdjacentPagesIfAvailable;
 
 /// Returns a page view from the default queue of pages, ready for re-use.
 - (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageView;
 
 /// Returns a page view from the specific queue matching the provided identifier string.
-/// - Parameter identifier: The identifier of the specific page type to be returned. Generates a new instance if no more spares in the queue exist
+/// - Parameter identifier: The identifier of the specific page type to be returned. Generates a new instance if no more spares in
+/// the queue exist
 - (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier
-                                                                            NS_SWIFT_NAME(dequeueReusablePageView(for:));
+    NS_SWIFT_NAME(dequeueReusablePageView(for:));
 
 /// The currently visible primary page view on screen.
 - (nullable __kindof UIView<TOPagingViewPage> *)currentPageView;
@@ -204,7 +206,7 @@ NS_SWIFT_NAME(PagingView)
 /// Returns the visible page view for the supplied unique identifier, or nil otherwise.
 /// - Parameter identifier: The identifier of the specific page view to retrieve.
 - (nullable __kindof UIView<TOPagingViewPage> *)pageViewForUniqueIdentifier:(NSString *)identifier
-                                                                            NS_SWIFT_NAME(uniquePageView(for:));
+    NS_SWIFT_NAME(uniquePageView(for:));
 
 /// Advance one page forward in ascending order (which will be left or right depending on direction)
 /// - Parameter animated: Whether the transition is animated, or updates instantly

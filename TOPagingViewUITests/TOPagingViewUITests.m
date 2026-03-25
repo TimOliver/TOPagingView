@@ -15,8 +15,7 @@ static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
 
 @implementation TOPagingViewUITests
 
-- (void)setUp
-{
+- (void)setUp {
     [super setUp];
     self.continueAfterFailure = NO;
 
@@ -26,8 +25,7 @@ static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
     [[XCUIDevice sharedDevice] setOrientation:UIDeviceOrientationLandscapeRight];
 }
 
-- (nullable NSDictionary<NSString *, NSNumber *> *)pagingStateForElement:(XCUIElement *)pagingView
-{
+- (nullable NSDictionary<NSString *, NSNumber *> *)pagingStateForElement:(XCUIElement *)pagingView {
     id rawValue = pagingView.value;
     if (![rawValue isKindOfClass:NSString.class]) { return nil; }
 
@@ -56,10 +54,9 @@ static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
 }
 
 - (BOOL)waitForPagingView:(XCUIElement *)pagingView
-            toReachPage:(NSInteger)page
-        maxOffsetError:(CGFloat)maxOffsetError
-                timeout:(NSTimeInterval)timeout
-{
+              toReachPage:(NSInteger)page
+           maxOffsetError:(CGFloat)maxOffsetError
+                  timeout:(NSTimeInterval)timeout {
     NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:timeout];
 
     while (deadline.timeIntervalSinceNow > 0.0) {
@@ -67,9 +64,7 @@ static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
         if (state != nil) {
             const NSInteger currentPage = state[@"page"].integerValue;
             const CGFloat offset = state[@"offset"].doubleValue;
-            if (currentPage == page && fabs(offset) <= maxOffsetError) {
-                return YES;
-            }
+            if (currentPage == page && fabs(offset) <= maxOffsetError) { return YES; }
         }
 
         [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
@@ -79,18 +74,15 @@ static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
 }
 
 - (BOOL)waitForPagingView:(XCUIElement *)pagingView
-    toExceedOffsetError:(CGFloat)minimumOffsetError
-                timeout:(NSTimeInterval)timeout
-{
+      toExceedOffsetError:(CGFloat)minimumOffsetError
+                  timeout:(NSTimeInterval)timeout {
     NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:timeout];
 
     while (deadline.timeIntervalSinceNow > 0.0) {
         NSDictionary<NSString *, NSNumber *> *state = [self pagingStateForElement:pagingView];
         if (state != nil) {
             const CGFloat offset = state[@"offset"].doubleValue;
-            if (fabs(offset) >= minimumOffsetError) {
-                return YES;
-            }
+            if (fabs(offset) >= minimumOffsetError) { return YES; }
         }
 
         [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
@@ -99,8 +91,7 @@ static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
     return NO;
 }
 
-- (void)testRapidRightTapsLandOnExpectedPageInLandscape
-{
+- (void)testRapidRightTapsLandOnExpectedPageInLandscape {
     XCUIElement *pagingView = self.app.otherElements[kTOPagingViewAccessibilityIdentifier];
     XCTAssertTrue([pagingView waitForExistenceWithTimeout:5.0]);
 
@@ -110,11 +101,11 @@ static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
     }
 
     XCTAssertTrue([self waitForPagingView:pagingView toReachPage:10 maxOffsetError:0.5f timeout:5.0],
-                  @"Final paging state was %@", pagingView.value);
+                  @"Final paging state was %@",
+                  pagingView.value);
 }
 
-- (void)testDraggingMidAnimationCancelsProgrammaticTurnAndHandsOffToPaging
-{
+- (void)testDraggingMidAnimationCancelsProgrammaticTurnAndHandsOffToPaging {
     XCUIElement *pagingView = self.app.otherElements[kTOPagingViewAccessibilityIdentifier];
     XCTAssertTrue([pagingView waitForExistenceWithTimeout:5.0]);
 
@@ -122,14 +113,16 @@ static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
     [rightTapCoordinate tap];
 
     XCTAssertTrue([self waitForPagingView:pagingView toExceedOffsetError:20.0f timeout:1.0],
-                  @"Paging view never moved far enough off center. State was %@", pagingView.value);
+                  @"Paging view never moved far enough off center. State was %@",
+                  pagingView.value);
 
     XCUICoordinate *dragStart = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.35, 0.5)];
     XCUICoordinate *dragEnd = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.95, 0.5)];
     [dragStart pressForDuration:0.05 thenDragToCoordinate:dragEnd];
 
     XCTAssertTrue([self waitForPagingView:pagingView toReachPage:0 maxOffsetError:0.5f timeout:5.0],
-                  @"Final paging state after drag handoff was %@", pagingView.value);
+                  @"Final paging state after drag handoff was %@",
+                  pagingView.value);
 }
 
 @end

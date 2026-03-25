@@ -7,6 +7,7 @@
 //
 
 #import "TOTestPageView.h"
+
 #import "TOPagingView.h"
 
 @interface TOTestPageView () <TOPagingViewPage>
@@ -17,28 +18,25 @@
 
 @implementation TOTestPageView
 
-- (instancetype)initWithFrame:(CGRect)frame
-{
+- (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
         self.backgroundColor = [UIColor redColor];
-        
-        self.numberLabel = [[UILabel alloc] initWithFrame:(CGRect){0,0,320,128}];
+
+        self.numberLabel = [[UILabel alloc] initWithFrame:(CGRect){0, 0, 320, 128}];
         self.numberLabel.accessibilityIdentifier = @"page_number_label";
         self.numberLabel.textColor = [UIColor whiteColor];
         self.numberLabel.font = [UIFont boldSystemFontOfSize:100.0f];
         self.numberLabel.textAlignment = NSTextAlignmentCenter;
         [self addSubview:self.numberLabel];
     }
-    
+
     return self;
 }
 
-- (void)layoutSubviews
-{
+- (void)layoutSubviews {
     [super layoutSubviews];
 
-    self.numberLabel.center = (CGPoint){CGRectGetMidX(self.bounds),
-                                        CGRectGetMidY(self.bounds)};
+    self.numberLabel.center = (CGPoint){CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds)};
     self.numberLabel.frame = CGRectIntegral(self.numberLabel.frame);
 
     // Private API. Don't actually use this.
@@ -49,8 +47,7 @@
     }
 }
 
-- (void)setNumber:(NSInteger)number
-{
+- (void)setNumber:(NSInteger)number {
     _number = number;
     self.numberLabel.text = [NSString stringWithFormat:@"%ld", (long)number];
     [self setNeedsLayout];

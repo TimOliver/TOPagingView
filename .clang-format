@@ -14,7 +14,7 @@ UseTab: Never
 ContinuationIndentWidth: 4
 
 # Line length
-ColumnLimit: 0
+ColumnLimit: 130
 
 # Pointer and reference alignment
 PointerAlignment: Right
@@ -22,8 +22,8 @@ ReferenceAlignment: Right
 
 # Braces
 BreakBeforeBraces: Attach
-AllowShortBlocksOnASingleLine: Empty
-AllowShortFunctionsOnASingleLine: Empty
+AllowShortBlocksOnASingleLine: Always
+AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: WithoutElse
 AllowShortLoopsOnASingleLine: false
 

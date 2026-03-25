@@ -7,6 +7,7 @@
 //
 
 #import "TOViewController.h"
+
 #import "TOPagingView.h"
 #import "TOTestPageView.h"
 
@@ -28,38 +29,33 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 
 #pragma mark - Accessibility -
 
-- (void)updatePagingViewAccessibilityState
-{
+- (void)updatePagingViewAccessibilityState {
     if (self.pagingView == nil) { return; }
 
     const CGFloat pageWidth = CGRectGetWidth(self.pagingView.bounds) + self.pagingView.pageSpacing;
     CGFloat offsetError = self.pagingView.scrollView.contentOffset.x - pageWidth;
-    if (fabs(offsetError) < 0.0005f) {
-        offsetError = 0.0f;
-    }
+    if (fabs(offsetError) < 0.0005f) { offsetError = 0.0f; }
 
-    self.pagingView.accessibilityValue = [NSString stringWithFormat:@"page=%ld;offset=%.3f",
-                                          (long)self.pageIndex,
-                                          offsetError];
+    self.pagingView.accessibilityValue = [NSString stringWithFormat:@"page=%ld;offset=%.3f", (long)self.pageIndex, offsetError];
 }
 
 #pragma mark - Paging View Data Source -
 
 - (TOTestPageView *)pagingView:(TOPagingView *)pagingView
-                                  pageViewForType:(TOPagingViewPageType)type
-                                  currentPageView:(TOTestPageView *)currentPageView {
+               pageViewForType:(TOPagingViewPageType)type
+               currentPageView:(TOTestPageView *)currentPageView {
     TOTestPageView *pageView = [pagingView dequeueReusablePageView];
 
     switch (type) {
-        case TOPagingViewPageTypeCurrent:
-            pageView.number = self.pageIndex;
-            break;
-        case TOPagingViewPageTypeNext:
-            pageView.number = self.pageIndex + 1;
-            break;
-        case TOPagingViewPageTypePrevious:
-            pageView.number = self.pageIndex - 1;
-            break;
+    case TOPagingViewPageTypeCurrent:
+        pageView.number = self.pageIndex;
+        break;
+    case TOPagingViewPageTypeNext:
+        pageView.number = self.pageIndex + 1;
+        break;
+    case TOPagingViewPageTypePrevious:
+        pageView.number = self.pageIndex - 1;
+        break;
     }
 
     return pageView;
@@ -67,7 +63,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 
 #pragma mark - Paging View Delegate -
 
--(void)pagingView:(TOPagingView *)pagingView willTurnToPageOfType:(TOPagingViewPageType)type{
+- (void)pagingView:(TOPagingView *)pagingView willTurnToPageOfType:(TOPagingViewPageType)type {
     // This delegate event is called quite liberally every time the user causes an action that
     // 'might' result in a page turn transaction occurring. This is useful as a catch to check the current
     // state of incoming data, and perform any new pre-loads that may have occurred in the meantime.
@@ -75,7 +71,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     NSLog(@"Paging view will to turn to: %@", [self stringForType:type]);
 }
 
-- (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type{
+- (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type {
     // This delegate event is called once it has been confirmed that the pages have crossed over the threshold
     // and a new page just officially became the "current" page. This is where any UI or state attached to this
     // view can be safely updated to match this view. This is called before the data source requests the next page
@@ -99,10 +95,13 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 }
 
 - (NSString *)stringForType:(TOPagingViewPageType)type {
-    switch(type) {
-        case TOPagingViewPageTypeCurrent: return @"Current";
-        case TOPagingViewPageTypeNext: return @"Next";
-        case TOPagingViewPageTypePrevious: return @"Previous";
+    switch (type) {
+    case TOPagingViewPageTypeCurrent:
+        return @"Current";
+    case TOPagingViewPageTypeNext:
+        return @"Next";
+    case TOPagingViewPageTypePrevious:
+        return @"Previous";
     }
     return nil;
 }
@@ -112,24 +111,21 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 - (void)tapGestureRecognized:(UITapGestureRecognizer *)recgonizer {
     CGPoint tapPoint = [recgonizer locationInView:self.view];
     CGFloat halfBoundWidth = CGRectGetWidth(self.view.bounds) / 2.0f;
-    
+
     if (tapPoint.x < halfBoundWidth) {
         [self.pagingView turnToLeftPageAnimated:YES];
-    }
-    else {
+    } else {
         [self.pagingView turnToRightPageAnimated:YES];
     }
 }
 
 #pragma mark - UIScrollViewDelegate -
 
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView
-{
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
     [self updatePagingViewAccessibilityState];
 }
 
-- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
-{
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
     [self updatePagingViewAccessibilityState];
 }
 
@@ -139,7 +135,9 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     return UIStatusBarStyleLightContent;
 }
 
-- (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
+- (BOOL)prefersHomeIndicatorAutoHidden {
+    return YES;
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -152,7 +150,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 
     // Paging view set-up and configuration
     self.pagingView = [[TOPagingView alloc] initWithFrame:self.view.bounds];
-    //self.pagingView.isDynamicPageDirectionEnabled = YES;
+    // self.pagingView.isDynamicPageDirectionEnabled = YES;
     self.pagingView.dataSource = self;
     self.pagingView.delegate = self;
     self.pagingView.scrollViewDelegate = self;
@@ -166,7 +164,8 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     [self.pagingView becomeFirstResponder];
 
     // Add a tap recognizer to turn pages
-    UITapGestureRecognizer *tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapGestureRecognized:)];
+    UITapGestureRecognizer *tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self
+                                                                                    action:@selector(tapGestureRecognized:)];
     [self.pagingView addGestureRecognizer:tapRecognizer];
 
     // Add a button to toggle page turning direction
@@ -175,9 +174,10 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     [button setTitle:@"Right" forState:UIControlStateNormal];
     [button addTarget:self action:@selector(buttonTapped) forControlEvents:UIControlEventTouchUpInside];
     button.titleLabel.font = [UIFont systemFontOfSize:22];
-    button.frame = (CGRect){0,0,100,50};
+    button.frame = (CGRect){0, 0, 100, 50};
     button.center = (CGPoint){CGRectGetMidX(self.pagingView.frame), CGRectGetHeight(self.pagingView.frame) - 50};
-    button.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin;
+    button.autoresizingMask =
+        UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin;
     button.accessibilityIdentifier = kTODirectionButtonAccessibilityIdentifier;
     [self.view addSubview:button];
     self.button = button;
@@ -185,8 +185,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     [self updatePagingViewAccessibilityState];
 }
 
-- (void)viewDidLayoutSubviews
-{
+- (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [self updatePagingViewAccessibilityState];
 }
@@ -196,8 +195,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     if (direction == TOPagingViewDirectionLeftToRight) {
         direction = TOPagingViewDirectionRightToLeft;
         [self.button setTitle:@"Left" forState:UIControlStateNormal];
-    }
-    else {
+    } else {
         direction = TOPagingViewDirectionLeftToRight;
         [self.button setTitle:@"Right" forState:UIControlStateNormal];
     }
