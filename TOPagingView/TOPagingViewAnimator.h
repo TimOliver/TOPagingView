@@ -26,10 +26,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Drives content offset animations for TOPagingView using CADisplayLink.
 ///
-/// The animator keeps its own logical offset state relative to the middle slot
-/// and writes absolute content offsets into the scroll view each frame. This
-/// keeps the animation continuous even if TOPagingView recenters the content
-/// offset during page transitions.
+/// The animator stores absolute `contentOffset.x` values and writes them
+/// directly into the scroll view each frame. When TOPagingView recenters the
+/// scroll view during page transitions, the animator is rebased by one page
+/// segment so the motion remains continuous.
 NS_SWIFT_NAME(PagingViewAnimator)
 @interface TOPagingViewAnimator : NSObject
 
@@ -61,8 +61,8 @@ NS_SWIFT_NAME(PagingViewAnimator)
 - (void)stopAnimation;
 
 /// Called when the paging mechanism has performed a transition and all of the pages
-/// were offset. We pass the offset here so we can rebase the animator's logical
-/// offset relative to the middle slot.
+/// were offset by one page segment. We pass that segment delta here so the
+/// animator can rebase its absolute content offset targets.
 - (void)didTransitionWithOffset:(CGFloat)offset;
 
 @end

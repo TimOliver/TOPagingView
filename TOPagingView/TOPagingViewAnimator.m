@@ -82,26 +82,9 @@ static inline CGFloat TOPagingViewAnimatorSnapToPageBoundary(CGFloat value, CGFl
     return value;
 }
 
-/// Clamps extremely small values to zero using a one-pixel tolerance.
-static inline CGFloat TOPagingViewAnimatorClampNearZero(CGFloat value, CGFloat scale) {
-    const CGFloat pixelSize = 1.0f / fmax(scale, 1.0f);
-    return (fabs(value) <= pixelSize) ? 0.0f : value;
-}
-
 /// Rounds a value to the nearest screen pixel for the given display scale.
 static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat scale) {
     return round(value * scale) / scale;
-}
-
-/// Converts an absolute content offset into a logical offset relative to the middle slot.
-static inline CGFloat TOPagingViewAnimatorLogicalOffset(CGFloat contentOffset, CGFloat pageWidth, CGFloat scale) {
-    const CGFloat logicalOffset = TOPagingViewAnimatorRoundToPixel(contentOffset - pageWidth, scale);
-    return TOPagingViewAnimatorClampNearZero(logicalOffset, scale);
-}
-
-/// Converts a logical offset relative to the middle slot back into an absolute content offset.
-static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, CGFloat pageWidth, CGFloat scale) {
-    return TOPagingViewAnimatorRoundToPixel(pageWidth + logicalOffset, scale);
 }
 
 // -----------------------------------------------------------------
@@ -117,10 +100,10 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
 /// The direction multiplier (+1 for right, -1 for left).
 @property (nonatomic, assign) CGFloat turnDirection;
 
-/// The logical offset from the middle slot when we started.
+/// The absolute scroll view content offset when we started.
 @property (nonatomic, assign) CGFloat startOffset;
 
-/// The logical offset from the middle slot where this animation should end.
+/// The absolute scroll view content offset where this animation should end.
 @property (nonatomic, assign) CGFloat endOffset;
 
 /// The original pagingEnabled state before this animator temporarily disabled paging.
@@ -166,9 +149,7 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
         const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
         const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
         _startOffset = TOPagingViewAnimatorRoundToPixel(_startOffset + ((_endOffset - _startOffset) * progress), scale);
-        _startOffset = TOPagingViewAnimatorClampNearZero(_startOffset, scale);
         _endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset + (dir * _pageWidth), scale);
-        _endOffset = TOPagingViewAnimatorClampNearZero(_endOffset, scale);
         _startTime = now;
         return;
     }
@@ -178,12 +159,11 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
     // (tap left while going right snaps back to the page on screen) as well as
     // re-initiating the original direction mid-reversal without drift.
     _turnDirection = dir;
-    _startOffset = TOPagingViewAnimatorLogicalOffset(scrollView.contentOffset.x, _pageWidth, scale);
+    _startOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, scale);
     _endOffset = (dir > 0.0f)
         ? ceil(_startOffset / _pageWidth + FLT_EPSILON) * _pageWidth
         : floor(_startOffset / _pageWidth - FLT_EPSILON) * _pageWidth;
     _endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset, scale);
-    _endOffset = TOPagingViewAnimatorClampNearZero(_endOffset, scale);
     _startTime = now;
 
     if (!_isAnimating) {
@@ -205,20 +185,15 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
 - (void)didTransitionWithOffset:(CGFloat)offset {
     if (!_isAnimating) { return; }
     const CGFloat scale = TOPagingViewAnimatorDisplayScale(_scrollView);
-    const CGFloat actualOffset = TOPagingViewAnimatorLogicalOffset(_scrollView.contentOffset.x, _pageWidth, scale);
+    const CGFloat actualOffset = TOPagingViewAnimatorRoundToPixel(_scrollView.contentOffset.x, scale);
     const CFTimeInterval elapsed = (_displayLink != nil) ? (_displayLink.targetTimestamp - _startTime)
                                                          : (CACurrentMediaTime() - _startTime);
     const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
 
     _endOffset += offset;
-    if (_pageWidth > FLT_EPSILON) {
-        // Keep the logical destination on an exact page multiple even if the
-        // scroll view crossed the threshold at a slightly rounded offset.
-        _endOffset = round(_endOffset / _pageWidth) * _pageWidth;
-    }
     _endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset, scale);
-    _endOffset = TOPagingViewAnimatorClampNearZero(_endOffset, scale);
+    _endOffset = TOPagingViewAnimatorSnapToPageBoundary(_endOffset, _pageWidth, scale);
 
     const CGFloat remainingProgress = 1.0f - progress;
     if (remainingProgress <= FLT_EPSILON) {
@@ -230,7 +205,6 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
     _startOffset = (actualOffset - (_endOffset * progress)) / remainingProgress;
     _startOffset = TOPagingViewAnimatorRoundToPixel(_startOffset, scale);
     _startOffset = TOPagingViewAnimatorSnapToPageBoundary(_startOffset, _pageWidth, scale);
-    _startOffset = TOPagingViewAnimatorClampNearZero(_startOffset, scale);
 }
 
 #pragma mark - Display Link -
@@ -266,11 +240,12 @@ static inline CGFloat TOPagingViewAnimatorAbsoluteOffset(CGFloat logicalOffset, 
     const CGFloat linearProgress = (_duration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / _duration, 1.0);
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
-    scrollView.contentOffset = (CGPoint){TOPagingViewAnimatorAbsoluteOffset(targetOffset, _pageWidth, TOPagingViewAnimatorDisplayScale(scrollView)), 0.0f};
+    targetOffset = TOPagingViewAnimatorRoundToPixel(targetOffset, TOPagingViewAnimatorDisplayScale(scrollView));
+    scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
     
     const CGFloat pixelSize = 1.0f / TOPagingViewAnimatorDisplayScale(scrollView);
     if (progress >= 1.0f - FLT_EPSILON
-        && fabs(TOPagingViewAnimatorLogicalOffset(scrollView.contentOffset.x, _pageWidth, TOPagingViewAnimatorDisplayScale(scrollView)) - _endOffset) <= pixelSize) {
+        && fabs(scrollView.contentOffset.x - _endOffset) <= pixelSize) {
         [self _destroyDisplayLink];
         _isAnimating = NO;
         _scrollView.pagingEnabled = _originalPagingEnabled;

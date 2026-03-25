@@ -340,6 +340,10 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
 /// This replaces the KVO observer for better performance.
 - (void)_scrollViewDidScroll TOPAGINGVIEW_OBJC_DIRECT
 {
+    if (_scrollView.contentOffset.x == 1173) {
+        NSLog(@"We");
+    }
+    
     if (!_disableLayout) {
         TOPagingViewLayoutPages(self);
     }
@@ -1135,9 +1139,6 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view)
     const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? 1.0f : -1.0f);
     contentOffset.x += offset;
-    if (view->_pageAnimator.isAnimating) {
-        contentOffset.x = scrollViewPageWidth;
-    }
     view->_scrollView.contentOffset = contentOffset;
     [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
 
@@ -1190,9 +1191,6 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? -1.0f : 1.0f);
     contentOffset.x += offset;
-    if (view->_pageAnimator.isAnimating) {
-        contentOffset.x = scrollViewPageWidth;
-    }
     view->_scrollView.contentOffset = contentOffset;
     [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
     
@@ -1553,6 +1551,11 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
+//    NSLog(@"----");
+//    NSLog(@"scroll %f", scrollView.contentOffset.x);
+//    NSLog(@"%@", NSThread.callStackSymbols);
+//    NSLog(@"----");
+    
     // Notify the paging view of scroll changes
     [_pagingView _scrollViewDidScroll];
 
