@@ -128,7 +128,7 @@ NS_SWIFT_NAME(PagingViewDataDelegate)
 - (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type;
 
 /// Called when dynamic page direction is enabled, and the user just swiped off the initial page in either
-/// direction, effectively committing to a new page direction. Use this to update any UI or persist the new direction
+/// direction, effectively committing to a new page direction. Use this to update any UI or persist the new direction.
 /// @param pagingView The calling paging view instance.
 /// @param direction The new direction in which the pages are flowing.
 - (void)pagingView:(TOPagingView *)pagingView didChangeToPageDirection:(TOPagingViewDirection)direction;
