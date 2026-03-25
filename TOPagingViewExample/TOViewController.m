@@ -10,7 +10,10 @@
 #import "TOPagingView.h"
 #import "TOTestPageView.h"
 
-@interface TOViewController () <TOPagingViewDataSource, TOPagingViewDelegate>
+static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
+static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_button";
+
+@interface TOViewController () <TOPagingViewDataSource, TOPagingViewDelegate, UIScrollViewDelegate>
 
 // Current page state tracking
 @property (nonatomic, assign) NSInteger pageIndex;
@@ -22,6 +25,23 @@
 @end
 
 @implementation TOViewController
+
+#pragma mark - Accessibility -
+
+- (void)updatePagingViewAccessibilityState
+{
+    if (self.pagingView == nil) { return; }
+
+    const CGFloat pageWidth = CGRectGetWidth(self.pagingView.bounds) + self.pagingView.pageSpacing;
+    CGFloat offsetError = self.pagingView.scrollView.contentOffset.x - pageWidth;
+    if (fabs(offsetError) < 0.0005f) {
+        offsetError = 0.0f;
+    }
+
+    self.pagingView.accessibilityValue = [NSString stringWithFormat:@"page=%ld;offset=%.3f",
+                                          (long)self.pageIndex,
+                                          offsetError];
+}
 
 #pragma mark - Paging View Data Source -
 
@@ -64,6 +84,7 @@
     if (type == TOPagingViewPageTypeNext) { _pageIndex++; }
     if (type == TOPagingViewPageTypePrevious) { _pageIndex--; }
 
+    [self updatePagingViewAccessibilityState];
     NSLog(@"Paging view did turn to: %@ at page %ld", [self stringForType:type], (long)self.pageIndex);
 }
 
@@ -100,6 +121,18 @@
     }
 }
 
+#pragma mark - UIScrollViewDelegate -
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    [self updatePagingViewAccessibilityState];
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
+{
+    [self updatePagingViewAccessibilityState];
+}
+
 #pragma mark - View Controller Lifecycle -
 
 - (UIStatusBarStyle)preferredStatusBarStyle {
@@ -122,6 +155,9 @@
     //self.pagingView.isDynamicPageDirectionEnabled = YES;
     self.pagingView.dataSource = self;
     self.pagingView.delegate = self;
+    self.pagingView.scrollViewDelegate = self;
+    self.pagingView.isAccessibilityElement = YES;
+    self.pagingView.accessibilityIdentifier = kTOPagingViewAccessibilityIdentifier;
     [self.pagingView registerPageViewClass:TOTestPageView.class];
     self.pagingView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.pagingView];
@@ -142,8 +178,17 @@
     button.frame = (CGRect){0,0,100,50};
     button.center = (CGPoint){CGRectGetMidX(self.pagingView.frame), CGRectGetHeight(self.pagingView.frame) - 50};
     button.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin;
+    button.accessibilityIdentifier = kTODirectionButtonAccessibilityIdentifier;
     [self.view addSubview:button];
     self.button = button;
+
+    [self updatePagingViewAccessibilityState];
+}
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    [self updatePagingViewAccessibilityState];
 }
 
 - (void)buttonTapped {

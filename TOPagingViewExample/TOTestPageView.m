@@ -23,6 +23,7 @@
         self.backgroundColor = [UIColor redColor];
         
         self.numberLabel = [[UILabel alloc] initWithFrame:(CGRect){0,0,320,128}];
+        self.numberLabel.accessibilityIdentifier = @"page_number_label";
         self.numberLabel.textColor = [UIColor whiteColor];
         self.numberLabel.font = [UIFont boldSystemFontOfSize:100.0f];
         self.numberLabel.textAlignment = NSTextAlignmentCenter;
