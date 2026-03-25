@@ -587,16 +587,18 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (void)turnToLeftPageAnimated:(BOOL)animated
 {
-    const CGFloat offsetX = _scrollView.contentOffset.x;
+    const CGFloat offset = _scrollView.contentOffset.x;
     const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
+    const BOOL isAnimating = _pageAnimator.isAnimating;
+    const BOOL isAnimatingLeft = isAnimating && _pageAnimator.direction == UIRectEdgeLeft;
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
     const BOOL hasLeftPage = (isDirectionReversed && _hasNextPage) ||
                              (!isDirectionReversed && _hasPreviousPage);
 
     // Play a bouncy animation if there's no page available on that side and
     // the scroll view isn't already settling from a user-driven swipe.
-    if (!hasLeftPage && offsetX < pageWidth) {
-        if (!animated || _pageAnimator.isAnimating) { return; }
+    if (!hasLeftPage&& (offset <= pageWidth + FLT_EPSILON || isAnimatingLeft)) {
+        if (!animated || isAnimating) { return; }
         [self _playBounceAnimationInDirection:UIRectEdgeLeft];
         return;
     }
@@ -607,17 +609,18 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (void)turnToRightPageAnimated:(BOOL)animated
 {
-    const CGFloat offsetX = _scrollView.contentOffset.x;
+    const CGFloat offset = _scrollView.contentOffset.x;
     const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
-    const CGFloat lastSegment = _scrollView.contentSize.width - pageWidth;
+    const BOOL isAnimating = _pageAnimator.isAnimating;
+    const BOOL isAnimatingRight = isAnimating && _pageAnimator.direction == UIRectEdgeRight;
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
     const BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) ||
                               (!isDirectionReversed && _hasNextPage);
 
-    // Play a bouncy animation if there's no page available on that side and
-    // the scroll view isn't already settling from a user-driven swipe.
-    if (!hasRightPage && offsetX + pageWidth >= lastSegment - FLT_EPSILON) {
-        if (!animated || _pageAnimator.isAnimating) { return; }
+    // If we're partially at the last page and animating in, skip turning again to let it bottom out.
+    // Otherwise, we've hit the edge, so play a 'bounce' visual cue to make it clear there's no more pages.
+    if (!hasRightPage && (offset >= pageWidth - FLT_EPSILON || isAnimatingRight)) {
+        if (!animated || isAnimating) { return; }
         [self _playBounceAnimationInDirection:UIRectEdgeRight];
         return;
     }
