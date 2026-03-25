@@ -609,13 +609,14 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 {
     const CGFloat offsetX = _scrollView.contentOffset.x;
     const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
+    const CGFloat lastSegment = _scrollView.contentSize.width - pageWidth;
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
     const BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) ||
                               (!isDirectionReversed && _hasNextPage);
 
     // Play a bouncy animation if there's no page available on that side and
     // the scroll view isn't already settling from a user-driven swipe.
-    if (!hasRightPage && offsetX >= pageWidth - FLT_EPSILON) {
+    if (!hasRightPage && offsetX + pageWidth >= lastSegment - FLT_EPSILON) {
         if (!animated || _pageAnimator.isAnimating) { return; }
         [self _playBounceAnimationInDirection:UIRectEdgeRight];
         return;
