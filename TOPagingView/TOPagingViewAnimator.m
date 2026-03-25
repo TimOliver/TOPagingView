@@ -97,6 +97,9 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 /// The time at which the current animation cycle started (reset on each tap).
 @property (nonatomic, assign) CFTimeInterval startTime;
 
+/// The direction we're turning in
+@property (nonatomic, assign, readwrite) UIRectEdge direction;
+
 /// The direction multiplier (+1 for right, -1 for left).
 @property (nonatomic, assign) CGFloat turnDirection;
 
@@ -158,6 +161,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     // page boundary in the requested direction. This naturally handles reversal
     // (tap left while going right snaps back to the page on screen) as well as
     // re-initiating the original direction mid-reversal without drift.
+    _direction = direction;
     _turnDirection = dir;
     _startOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, scale);
     _endOffset = (dir > 0.0f)

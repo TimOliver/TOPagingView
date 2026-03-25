@@ -341,13 +341,8 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
 /// This replaces the KVO observer for better performance.
 - (void)_scrollViewDidScroll TOPAGINGVIEW_OBJC_DIRECT
 {
-    if (_scrollView.contentOffset.x == 1173) {
-        NSLog(@"We");
-    }
-    
-    if (!_disableLayout) {
-        TOPagingViewLayoutPages(self);
-    }
+    if (_disableLayout) { return; }
+    TOPagingViewLayoutPages(self);
 }
 
 /// Called by the scroll view delegate proxy when the user begins dragging.
@@ -751,7 +746,10 @@ static inline void TOPagingViewHandlePageTransitions(TOPagingView *view)
     const CGPoint offset = view->_scrollView.contentOffset;
     const CGFloat segmentWidth = TOPagingViewScrollViewPageWidth(view);
     const CGSize contentSize = view->_scrollView.contentSize;
+    const UIRectEdge direction = view->_pageAnimator.direction;
     const BOOL isAnimating = view->_pageAnimator.isAnimating;
+    const BOOL isAnimatingRight = isAnimating && direction == UIRectEdgeRight;
+    const BOOL isAnimatingLeft = isAnimating && direction == UIRectEdgeLeft;
     const CGFloat offsetX = offset.x;
 
     // By default, we only perform transitions when a new page has fully landed on screen.
@@ -760,8 +758,8 @@ static inline void TOPagingViewHandlePageTransitions(TOPagingView *view)
     // When the page animator is active, we need to transition sooner than the far edge.
     // Treat the center slot as the "arming" point, and only fire when we first cross away
     // from it so we don't repeatedly transition while remaining on the same side.
-    const CGFloat rightHandThreshold = isAnimating ? segmentWidth + 1.0f : contentSize.width - segmentWidth;
-    const CGFloat leftHandThreshold = isAnimating ? segmentWidth - 1.0f : FLT_EPSILON;
+    const CGFloat rightHandThreshold = isAnimatingRight ? segmentWidth + 1.0f : contentSize.width - segmentWidth;
+    const CGFloat leftHandThreshold = isAnimatingLeft ? segmentWidth - 1.0f : FLT_EPSILON;
 
     // Check if we went over the right-hand threshold to start transitioning the pages
     if ((!isReversed && offsetX >= rightHandThreshold) || (isReversed && offsetX <= leftHandThreshold)) {
@@ -1561,11 +1559,6 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-//    NSLog(@"----");
-//    NSLog(@"scroll %f", scrollView.contentOffset.x);
-//    NSLog(@"%@", NSThread.callStackSymbols);
-//    NSLog(@"----");
-    
     // Notify the paging view of scroll changes
     [_pagingView _scrollViewDidScroll];
 

@@ -46,8 +46,8 @@ NS_SWIFT_NAME(PagingViewAnimator)
 /// Whether an animation is currently in progress.
 @property (nonatomic, readonly) BOOL isAnimating;
 
-/// The velocity (in points/second) of the animation at the moment it was last stopped.
-@property (nonatomic, readonly) CGFloat velocity;
+/// The direction we're currently turning in
+@property (nonatomic, readonly) UIRectEdge direction;
 
 /// Called when the animation completes naturally (not when stopped mid-way).
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
