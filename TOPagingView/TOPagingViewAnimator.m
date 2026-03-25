@@ -182,6 +182,19 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     _scrollView.pagingEnabled = _originalPagingEnabled;
 }
 
+- (void)clampAnimationToCurrentOffsetInDirection:(UIRectEdge)direction
+{
+    if (!_isAnimating) { return; }
+
+    UIScrollView *const scrollView = _scrollView;
+    if (scrollView == nil) { return; }
+
+    const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
+    if (_turnDirection != dir) { return; }
+    
+    _endOffset = _pageWidth;
+}
+
 - (void)didTransitionWithOffset:(CGFloat)offset {
     if (!_isAnimating) { return; }
     const CGFloat scale = TOPagingViewAnimatorDisplayScale(_scrollView);

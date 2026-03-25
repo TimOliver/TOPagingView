@@ -85,6 +85,7 @@ typedef struct {
 
 @interface TOPagingViewAnimator (Internal)
 - (void)didTransitionWithOffset:(CGFloat)offset;
+- (void)clampAnimationToCurrentOffsetInDirection:(UIRectEdge)direction;
 @end
 
 // -----------------------------------------------------------------
@@ -586,7 +587,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
     // Play a bouncy animation if there's no incoming page and the animator
     // doesn't have runway (which indicates a page exists despite stale flags).
-    if (!hasLeftPage) {
+    if (!hasLeftPage && !_scrollView.isDecelerating) {
         if (!animated || _pageAnimator.isAnimating) { return; }
         [self _playBounceAnimationInDirection:UIRectEdgeLeft];
         return;
@@ -604,7 +605,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
     // Play a bouncy animation if there's no incoming page and the animator
     // doesn't have runway (which indicates a page exists despite stale flags).
-    if (!hasRightPage) {
+    if (!hasRightPage && !_scrollView.isDecelerating) {
         if (!animated || _pageAnimator.isAnimating) { return; }
         [self _playBounceAnimationInDirection:UIRectEdgeRight];
         return;
@@ -763,7 +764,6 @@ static inline void TOPagingViewHandlePageTransitions(TOPagingView *view)
     const CGFloat leftHandThreshold = isAnimating ? segmentWidth - 1.0f : FLT_EPSILON;
 
     // Check if we went over the right-hand threshold to start transitioning the pages
-    NSLog(@"offset: %f", offsetX);
     if ((!isReversed && offsetX >= rightHandThreshold) || (isReversed && offsetX <= leftHandThreshold)) {
         TOPagingViewTransitionOverToNextPage(view);
     } else if ((isReversed && offsetX >= rightHandThreshold) || (!isReversed && offsetX <= leftHandThreshold)) {
@@ -920,7 +920,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         }
     };
 
-    // Animate the page turn via CADisplayLink using logical offsets relative to the center slot.
+    // Animate the page turn via CADisplayLink by directly driving the scroll view content offset.
     _pageAnimator.pageWidth = TOPagingViewScrollViewPageWidth(self);
     [_pageAnimator turnToPageInDirection:direction];
 }
@@ -1214,6 +1214,11 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
         TOPagingViewInsertPageView(self, nextPage);
         _nextPageView = nextPage;
         _nextPageView.frame = TOPagingViewNextPageFrame(self);
+    } else {
+        const UIRectEdge direction = _pageScrollDirection == TOPagingViewDirectionLeftToRight
+                                        ? UIRectEdgeRight
+                                        : UIRectEdgeLeft;
+        [_pageAnimator clampAnimationToCurrentOffsetInDirection:direction];
     }
 
     // If the next page ended up being nil,
@@ -1233,6 +1238,11 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
         TOPagingViewInsertPageView(self, previousPage);
         _previousPageView = previousPage;
         _previousPageView.frame = TOPagingViewPreviousPageFrame(self);
+    } else {
+        const UIRectEdge direction = _pageScrollDirection == TOPagingViewDirectionLeftToRight
+                                        ? UIRectEdgeLeft
+                                        : UIRectEdgeRight;
+        [_pageAnimator clampAnimationToCurrentOffsetInDirection:direction];
     }
 
     // If the previous page ended up being nil, set a flag so we don't check again until we need to
