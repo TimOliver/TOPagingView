@@ -262,7 +262,7 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     [self layoutContent];
 }
 
-- (void)layoutContent
+- (void)layoutContent TOPAGINGVIEW_OBJC_DIRECT
 {
     // If need be, request new next/previous pages
     [self _requestPendingPages];
@@ -602,7 +602,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 {
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
     const BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) ||
-                                (!isDirectionReversed && _hasNextPage);
+                              (!isDirectionReversed && _hasNextPage);
 
     // Play a bouncy animation if there's no page available on that side and
     // the scroll view isn't already settling from a user-driven swipe.
@@ -800,7 +800,7 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view)
     const BOOL isReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     TOPagingViewPageType directionType;
 
-    //If we're detecting the direction, it will be 'next' regardless
+    // If we're detecting the direction, it will be 'next' regardless.
     if (isDetectingDirection) {
         directionType = TOPagingViewPageTypeNext;
     } else if (offset < view->_draggingOrigin - FLT_EPSILON) { // We dragged to the right
@@ -1177,7 +1177,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     view->_currentPageView.frame = TOPagingViewCurrentPageFrame(view);
     view->_nextPageView.frame = TOPagingViewNextPageFrame(view);
 
-    // Inform the delegate we have just committed to a transition so we can update state for the previous page
+    // Inform the delegate we have just committed to a transition so we can update state for the previous page.
     if (view->_delegateFlags.delegateDidTurnToPage) {
         [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypePrevious];
     }
@@ -1246,7 +1246,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
         [_pageAnimator clampAnimationToCurrentOffsetInDirection:direction];
     }
 
-    // If the previous page ended up being nil, set a flag so we don't check again until we need to
+    // If the previous page ended up being nil, set a flag so we don't check again until we need to.
     _hasPreviousPage = (previousPage != nil);
 }
 
