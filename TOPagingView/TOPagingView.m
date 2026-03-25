@@ -582,8 +582,8 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
     // Play a bouncy animation if there's no incoming page and the animator
     // doesn't have runway (which indicates a page exists despite stale flags).
-    if (!hasLeftPage && ![_pageAnimator hasRunwayInDirection:UIRectEdgeLeft]) {
-        if (!animated) { return; }
+    if (!hasLeftPage) {
+        if (!animated || _pageAnimator.isAnimating) { return; }
         [self _playBounceAnimationInDirection:UIRectEdgeLeft];
         return;
     }
@@ -600,8 +600,8 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
     // Play a bouncy animation if there's no incoming page and the animator
     // doesn't have runway (which indicates a page exists despite stale flags).
-    if (!hasRightPage && ![_pageAnimator hasRunwayInDirection:UIRectEdgeRight]) {
-        if (!animated) { return; }
+    if (!hasRightPage) {
+        if (!animated || _pageAnimator.isAnimating) { return; }
         [self _playBounceAnimationInDirection:UIRectEdgeRight];
         return;
     }
@@ -746,13 +746,24 @@ static inline void TOPagingViewHandlePageTransitions(TOPagingView *view)
     const CGPoint offset = view->_scrollView.contentOffset;
     const CGFloat segmentWidth = TOPagingViewScrollViewPageWidth(view);
     const CGSize contentSize = view->_scrollView.contentSize;
+    const BOOL isAnimating = view->_pageAnimator.isAnimating;
+    const CGFloat offsetX = offset.x;
+
+    // By default, we only perform transitions when a new page has fully landed on screen.
+    // This is so by default, potentially heavy layout operations are deferred until there's no motion on screen.
+    
+    // When the page animator is active, we need to transition sooner than the far edge.
+    // Treat the center slot as the "arming" point, and only fire when we first cross away
+    // from it so we don't repeatedly transition while remaining on the same side.
+    const CGFloat rightHandThreshold = isAnimating ? segmentWidth + 1.0f : contentSize.width - segmentWidth;
+    const CGFloat leftHandThreshold = isAnimating ? segmentWidth - 1.0f : FLT_EPSILON;
 
     // Check if we went over the right-hand threshold to start transitioning the pages
-    if ((!isReversed && offset.x >= (contentSize.width - segmentWidth))
-        || (isReversed && offset.x <= FLT_EPSILON)) {
+    NSLog(@"offset: %f", offsetX);
+    if ((!isReversed && offsetX >= rightHandThreshold) || (isReversed && offsetX <= leftHandThreshold)) {
         TOPagingViewTransitionOverToNextPage(view);
-    } else if ((isReversed && offset.x >= (contentSize.width - segmentWidth))
-               || (!isReversed && offset.x <= FLT_EPSILON)) { // Check if we're over the left threshold
+    } else if ((isReversed && offsetX >= rightHandThreshold) || (!isReversed && offsetX <= leftHandThreshold)) {
+        // Check if we're over the left threshold
         TOPagingViewTransitionOverToPreviousPage(view);
     }
 }
@@ -1205,11 +1216,6 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
         TOPagingViewInsertPageView(self, nextPage);
         _nextPageView = nextPage;
         _nextPageView.frame = TOPagingViewNextPageFrame(self);
-    } else {
-        // If we're about to continue scrolling in that direction, short circuit the animator.
-        const UIRectEdge direction = _pageScrollDirection == TOPagingViewDirectionLeftToRight ?
-                                        UIRectEdgeRight : UIRectEdgeLeft;
-        [_pageAnimator stopAnimationInDirection:direction];
     }
 
     // If the next page ended up being nil,
@@ -1229,11 +1235,6 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
         TOPagingViewInsertPageView(self, previousPage);
         _previousPageView = previousPage;
         _previousPageView.frame = TOPagingViewPreviousPageFrame(self);
-    } else {
-        // If we're about to continue scrolling in that direction, short circuit the animator.
-        const UIRectEdge direction = _pageScrollDirection == TOPagingViewDirectionLeftToRight ?
-                                        UIRectEdgeLeft : UIRectEdgeRight;
-        [_pageAnimator stopAnimationInDirection:direction];
     }
 
     // If the previous page ended up being nil, set a flag so we don't check again until we need to
