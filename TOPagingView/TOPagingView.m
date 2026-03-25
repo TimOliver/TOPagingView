@@ -147,10 +147,6 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
 @property (nonatomic, assign) CGFloat draggingOrigin;
 @property (nonatomic, assign) TOPagingViewPageType draggingDirectionType;
 
-/// State tracking for when the wrapped scroll view is decelerating.
-@property (nonatomic, assign) CGFloat scrollDecelerationOrigin;
-@property (nonatomic, assign, readwrite) UIRectEdge scrollDecelerationDirection;
-
 /// State tracking for offloading view configuration to another run-loop tick.
 @property (nonatomic, assign) BOOL needsNextPage;
 @property (nonatomic, assign) BOOL needsPreviousPage;
@@ -199,7 +195,6 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
                                                    valueOptions:NSPointerFunctionsStrongMemory];
     memset(&_delegateFlags, 0, sizeof(TOPagingViewDelegateFlags));
     _draggingOrigin = -CGFLOAT_MAX;
-    _scrollDecelerationOrigin = -CGFLOAT_MAX;
 
     // Configure the main properties of this view
     self.clipsToBounds = YES; // The scroll view intentionally overlaps, so this view MUST clip.
@@ -367,24 +362,12 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     if (_pageAnimator.isAnimating) {
         [_pageAnimator stopAnimation];
     }
-    [self _resetScrollDecelerationTracking];
 }
 
 - (void)_layoutPages TOPAGINGVIEW_OBJC_DIRECT
 {
     // Proxy through to the scroll handler for layout updates
     [self _scrollViewDidScroll];
-}
-
-- (BOOL)_scrollViewIsDeceleratingInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT
-{
-    return _scrollView.isDecelerating && _scrollDecelerationDirection == direction;
-}
-
-- (void)_resetScrollDecelerationTracking TOPAGINGVIEW_OBJC_DIRECT
-{
-    _scrollDecelerationOrigin = -CGFLOAT_MAX;
-    _scrollDecelerationDirection = UIRectEdgeNone;
 }
 
 #pragma mark - Page Setup -
@@ -604,13 +587,15 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (void)turnToLeftPageAnimated:(BOOL)animated
 {
+    const CGFloat offsetX = _scrollView.contentOffset.x;
+    const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
     const BOOL hasLeftPage = (isDirectionReversed && _hasNextPage) ||
                              (!isDirectionReversed && _hasPreviousPage);
 
     // Play a bouncy animation if there's no page available on that side and
     // the scroll view isn't already settling from a user-driven swipe.
-    if (!hasLeftPage && ![self _scrollViewIsDeceleratingInDirection:UIRectEdgeRight]) {
+    if (!hasLeftPage && offsetX < pageWidth) {
         if (!animated || _pageAnimator.isAnimating) { return; }
         [self _playBounceAnimationInDirection:UIRectEdgeLeft];
         return;
@@ -622,19 +607,20 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (void)turnToRightPageAnimated:(BOOL)animated
 {
+    const CGFloat offsetX = _scrollView.contentOffset.x;
+    const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
     const BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) ||
                               (!isDirectionReversed && _hasNextPage);
 
     // Play a bouncy animation if there's no page available on that side and
     // the scroll view isn't already settling from a user-driven swipe.
-    if (!hasRightPage && ![self _scrollViewIsDeceleratingInDirection:UIRectEdgeLeft]) {
+    if (!hasRightPage && offsetX >= pageWidth - FLT_EPSILON) {
         if (!animated || _pageAnimator.isAnimating) { return; }
         [self _playBounceAnimationInDirection:UIRectEdgeRight];
         return;
     }
-
-    // Turn to the right side page
+    
     [self _turnToPageInDirection:UIRectEdgeRight animated:animated];
 }
 
@@ -671,9 +657,6 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
         && TOPagingViewIsInitialPageForPageView(view, view->_currentPageView)) {
         TOPagingViewHandleDynamicPageDirectionLayout(view);
     }
-
-    // Track deceleration direction before page transitions potentially recenter the scroll view.
-    TOPagingViewUpdateDecelerationInteractions(view);
 
     // Check the offset of the scroll view, and when it passes over
     // the mid point between two pages, perform the page transition
@@ -798,36 +781,6 @@ static inline void TOPagingViewHandlePageTransitions(TOPagingView *view)
         // Check if we're over the left threshold
         TOPagingViewTransitionOverToPreviousPage(view);
     }
-}
-
-static inline UIRectEdge TOPagingViewDirectionForOffsetDelta(CGFloat offset, CGFloat origin)
-{
-    if (offset < origin - FLT_EPSILON) { return UIRectEdgeLeft; }
-    if (offset > origin + FLT_EPSILON) { return UIRectEdgeRight; }
-    return UIRectEdgeNone;
-}
-
-static inline void TOPagingViewUpdateDecelerationInteractions(TOPagingView *view)
-{
-    if (!view->_scrollView.isDecelerating) {
-        if (view->_scrollDecelerationDirection != UIRectEdgeNone ||
-            view->_scrollDecelerationOrigin > -CGFLOAT_MAX) {
-            [view _resetScrollDecelerationTracking];
-        }
-        return;
-    }
-
-    const CGFloat offset = view->_scrollView.contentOffset.x;
-    if (view->_scrollDecelerationOrigin <= -CGFLOAT_MAX + FLT_EPSILON) {
-        view->_scrollDecelerationOrigin = offset;
-        return;
-    }
-
-    const UIRectEdge direction = TOPagingViewDirectionForOffsetDelta(offset, view->_scrollDecelerationOrigin);
-    if (direction != UIRectEdgeNone) {
-        view->_scrollDecelerationDirection = direction;
-    }
-    view->_scrollDecelerationOrigin = offset;
 }
 
 static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view)
@@ -964,7 +917,6 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     // If the scroll view is decelerating from a swipe, cancel it.
     if (scrollView.isDecelerating) {
         [scrollView setContentOffset:scrollView.contentOffset animated:NO];
-        [self _resetScrollDecelerationTracking];
     }
 
     // Set up the completion handler to notify the external scroll view delegate
@@ -995,7 +947,6 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     // If the scroll view is decelerating from a swipe, cancel it.
     if (_scrollView.isDecelerating) {
         [_scrollView setContentOffset:_scrollView.contentOffset animated:NO];
-        [self _resetScrollDecelerationTracking];
     }
 
     // Reclaim the next and previous pages since these will always need to be regenerated
@@ -1205,9 +1156,6 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view)
     if (view->_scrollView.isDragging) {
         view->_draggingOrigin = -CGFLOAT_MAX;
     }
-    if (view->_scrollView.isDecelerating) {
-        view->_scrollDecelerationOrigin = -CGFLOAT_MAX;
-    }
 
     view->_disableLayout = NO;
 }
@@ -1259,9 +1207,6 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view)
     // If we're dragging, reset the state
     if (view->_scrollView.isDragging) {
         view->_draggingOrigin = -CGFLOAT_MAX;
-    }
-    if (view->_scrollView.isDecelerating) {
-        view->_scrollDecelerationOrigin = -CGFLOAT_MAX;
     }
 
     view->_disableLayout = NO;
