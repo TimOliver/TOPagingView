@@ -267,7 +267,14 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     // We don't need to perform any new sizing calculations unless the frame changed enough to warrant
     // also changing the content size
     if (CGSizeEqualToSize(_scrollView.frame.size, newScrollViewFrame.size)) { return; }
-
+    
+    // If we changed size mid-pageturn animation, reset back to the center
+    BOOL wasAnimating = NO;
+    if (_pageAnimator.isAnimating) {
+        [_pageAnimator stopAnimation];
+        wasAnimating = YES;
+    }
+    
     // Disable the observer while we update the scroll view
     _disableLayout = YES;
 
@@ -285,10 +292,12 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
 
     // Update the content offset to match the amount that the width changed
     // (Only do this if there actually was an old content width, otherwise we might get a NaN error)
-    if (oldContentWidth > FLT_EPSILON) {
+    if (!wasAnimating && oldContentWidth > FLT_EPSILON) {
         const CGFloat newOffsetMid = oldOffsetMid * (scrollView.contentSize.width / oldContentWidth);
         const CGFloat contentOffset = newOffsetMid - (scrollView.frame.size.width * 0.5f);
         scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
+    } else if (wasAnimating) {
+        scrollView.contentOffset = (CGPoint){TOPagingViewScrollViewPageWidth(self), 0.0f};
     }
 
     // Re-enable the observer
