@@ -22,6 +22,7 @@
 
 /* Begin PBXBuildFile section */
 		22432FF92F75789B00A5859F /* TOPagingView+Keyboard.m in Sources */ = {isa = PBXBuildFile; fileRef = 22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */; };
+		22432FFC2F75799600A5859F /* TOPageViewProtocolCache.m in Sources */ = {isa = PBXBuildFile; fileRef = 22432FFB2F75799600A5859F /* TOPageViewProtocolCache.m */; };
 		227BEDFA27AC1867009D6B6D /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 227BEDF927AC1867009D6B6D /* CHANGELOG.md */; };
 		22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22ADED23242B2ADD004A7854 /* TOTestPageView.m */; };
 		22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3161F242899AA0063F6A6 /* TOAppDelegate.m */; };
@@ -55,6 +56,8 @@
 /* Begin PBXFileReference section */
 		22432FF72F75789B00A5859F /* TOPagingView+Keyboard.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "TOPagingView+Keyboard.h"; sourceTree = "<group>"; };
 		22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "TOPagingView+Keyboard.m"; sourceTree = "<group>"; };
+		22432FFA2F75799600A5859F /* TOPageViewProtocolCache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPageViewProtocolCache.h; sourceTree = "<group>"; };
+		22432FFB2F75799600A5859F /* TOPageViewProtocolCache.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPageViewProtocolCache.m; sourceTree = "<group>"; };
 		227BEDF927AC1867009D6B6D /* CHANGELOG.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		227BEDFB27AC186F009D6B6D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		227BEDFC27AC1879009D6B6D /* TOPagingView.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = TOPagingView.podspec; sourceTree = "<group>"; };
@@ -120,6 +123,8 @@
 				22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */,
 				22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */,
 				22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */,
+				22432FFA2F75799600A5859F /* TOPageViewProtocolCache.h */,
+				22432FFB2F75799600A5859F /* TOPageViewProtocolCache.m */,
 				2F2600022F26000100000001 /* TOScrollViewDelegateProxy.h */,
 				2F2600032F26000100000001 /* TOScrollViewDelegateProxy.m */,
 			);
@@ -204,7 +209,6 @@
 				22C31617242899AA0063F6A6 /* Sources */,
 				22C31618242899AA0063F6A6 /* Frameworks */,
 				22C31619242899AA0063F6A6 /* Resources */,
-				22ADED27242C587C004A7854 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -342,23 +346,6 @@
 			shellPath = /bin/sh;
 			shellScript = "# brew install --cask oclint\n\nexport PATH=~/.rbenv/shims:$PATH\neval \"$(/opt/homebrew/bin/brew shellenv)\"\n\nunset LLVM_TARGET_TRIPLE_SUFFIX\n\nxcodebuild clean\nxcodebuild COMPILER_INDEX_STORE_ENABLE=NO | xcpretty -r json-compilation-database --output compile_commands.json\n\n# Rules\nLINT_LONG_LINE=300\nLINT_LONG_VARIABLE_NAME=64\nLINT_LONG_METHOD=150\n\nLINT_RULES=\"-rc LONG_LINE=${LINT_LONG_LINE} \\\n    -rc LONG_VARIABLE_NAME=${LINT_LONG_VARIABLE_NAME} \\\n    -rc LONG_METHOD=${LINT_LONG_METHOD}\"\n\n# Threshold.\nLINT_PRIORITY_1_THRESHOLD=0\nLINT_PRIORITY_2_THRESHOLD=20\nLINT_PRIORITY_3_THRESHOLD=30\nLINT_THRESHOLD = \"-max-priority-1=${LINT_PRIORITY_1_THRESHOLD} \\\n    -max-priority-2=${LINT_PRIORITY_2_THRESHOLD} \\\n    -max-priority-3=${LINT_PRIORITY_3_THRESHOLD}\"\n\n# Excludes\n# you can use grep-like regular expressions syntax,\nLINT_EXCLUDES=\"Pods|lib\"\n\noclint-json-compilation-database \\\n    -exclude ${LINT_EXCLUDES} \\\n    -- \\\n    -report-type xcode \\\n    ${LINT_RULES} \\\n\n";
 		};
-		22ADED27242C587C004A7854 /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "export REVEAL_SERVER_FILENAME=\"RevealServer.framework\"\n\n# Update this path to point to the location of RevealServer.framework in your project.\nexport REVEAL_SERVER_PATH=\"${SRCROOT}/${REVEAL_SERVER_FILENAME}\"\n\n# If configuration is not Debug, skip this script.\n[ \"${CONFIGURATION}\" != \"Debug\" ] && exit 0\n\n# If RevealServer.framework exists at the specified path, run code signing script.\nif [ -d \"${REVEAL_SERVER_PATH}\" ]; then\n  \"${REVEAL_SERVER_PATH}/Scripts/copy_and_codesign_revealserver.sh\"\nelse\n  echo \"Reveal Server not loaded: RevealServer.framework could not be found.\"\nfi\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -370,6 +357,7 @@
 				22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */,
 				22432FF92F75789B00A5859F /* TOPagingView+Keyboard.m in Sources */,
 				22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */,
+				22432FFC2F75799600A5859F /* TOPageViewProtocolCache.m in Sources */,
 				22C3167F242A40F80063F6A6 /* TOPagingView.m in Sources */,
 				2F2600012F26000100000001 /* TOScrollViewDelegateProxy.m in Sources */,
 				22D4A7B3293F5E8A00B1C2D3 /* TOPagingViewAnimator.m in Sources */,

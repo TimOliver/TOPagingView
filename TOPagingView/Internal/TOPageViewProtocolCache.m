@@ -1,5 +1,5 @@
 //
-//  TOPagingViewMacros.h
+//  TOPageViewProtocolCache.m
 //
 //  Copyright 2018-2026 Timothy Oliver. All rights reserved.
 //
@@ -20,22 +20,8 @@
 //  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#pragma once
+#import "TOPageViewProtocolCache.h"
 
-/// Mark implementation-only methods as being statically called to increase performance.
-#define TOPAGINGVIEW_OBJC_DIRECT __attribute__((objc_direct))
+@implementation TOPageViewProtocolCache
 
-// -----------------------------------------------------------------
-// Convenience functions for easier mapping Objective-C and C constructs
-
-/// Convert an Objective-C class pointer into an NSValue that can be stored in a dictionary
-static inline NSValue *TOPagingViewValueForClass(Class *class) {
-    return [NSValue valueWithBytes:class objCType:@encode(Class)];
-}
-
-/// Convert an Objective-C class that was encoded to NSValue back out again
-static inline Class TOPagingViewClassForValue(NSValue *value) {
-    Class class;
-    [value getValue:&class];
-    return class;
-}
+@end

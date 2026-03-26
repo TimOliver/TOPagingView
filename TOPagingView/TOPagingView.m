@@ -24,33 +24,12 @@
 
 #import <objc/runtime.h>
 
-#import "TOScrollViewDelegateProxy.h"
 #import "TOPagingViewAnimator.h"
 #import "TOPagingViewConstants.h"
 #import "TOPagingViewMacros.h"
+#import "TOPageViewProtocolCache.h"
 #import "TOPagingViewTypes.h"
-
-@interface TOPageViewProtocolCache : NSObject
-@property (nonatomic, assign) TOPageViewProtocolFlags flags;
-@end
-
-@implementation TOPageViewProtocolCache
-@end
-
-// -----------------------------------------------------------------
-// Convenience functions for easier mapping Objective-C and C constructs
-
-/// Convert an Objective-C class pointer into an NSValue that can be stored in a dictionary
-static inline NSValue *TOPagingViewValueForClass(Class *class) {
-    return [NSValue valueWithBytes:class objCType:@encode(Class)];
-}
-
-/// Convert an Objective-C class that was encoded to NSValue back out again
-static inline Class TOPagingViewClassForValue(NSValue *value) {
-    Class class;
-    [value getValue:&class];
-    return class;
-}
+#import "TOScrollViewDelegateProxy.h"
 
 @implementation TOPagingView {
     /// The scroll view managed by this container.
@@ -160,7 +139,7 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
 
     // Set the frame of the scrollview now so we can start
     // calculating the inset
-    scrollView.frame = TOPagingViewScrollViewFrame(self);
+    scrollView.frame = _layoutMetrics.scrollViewFrame;
 
     // Set the scroll behaviour to snap between pages
     scrollView.pagingEnabled = YES;
@@ -206,7 +185,7 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     [self _updateCachedLayoutMetrics];
 
     UIScrollView *const scrollView = _scrollView;
-    const CGRect newScrollViewFrame = TOPagingViewScrollViewFrame(self);
+    const CGRect newScrollViewFrame = _layoutMetrics.scrollViewFrame;
 
     // We don't need to perform any new sizing calculations unless the frame changed enough to warrant
     // also changing the content size
@@ -241,16 +220,16 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
         const CGFloat contentOffset = newOffsetMid - (scrollView.frame.size.width * 0.5f);
         scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
     } else if (wasAnimating) {
-        scrollView.contentOffset = (CGPoint){TOPagingViewScrollViewPageWidth(self), 0.0f};
+        scrollView.contentOffset = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
     }
 
     // Re-enable the observer
     _disableLayout = NO;
 
     // Layout the page subviews
-    _nextPageView.frame = TOPagingViewNextPageFrame(self);
-    _currentPageView.frame = TOPagingViewCurrentPageFrame(self);
-    _previousPageView.frame = TOPagingViewPreviousPageFrame(self);
+    _nextPageView.frame = _layoutMetrics.nextPageFrame;
+    _currentPageView.frame = _layoutMetrics.currentPageFrame;
+    _previousPageView.frame = _layoutMetrics.previousPageFrame;
 }
 
 - (void)didMoveToSuperview {
@@ -291,7 +270,7 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
 - (void)_updateContentSize TOPAGINGVIEW_OBJC_DIRECT {
     // With the three pages set, calculate the scrolling content size
     CGSize contentSize = self.bounds.size;
-    contentSize.width = TOPagingViewScrollViewPageWidth(self) * kTOPagingViewPageSlotCount;
+    contentSize.width = _layoutMetrics.pageWidth * kTOPagingViewPageSlotCount;
     _scrollView.contentSize = contentSize;
 }
 
@@ -324,6 +303,11 @@ void TOPagingViewHandleScrollViewDidScroll(TOPagingView *pagingView) {
 /// External hook for the scroll view proxy to forward scroll events to us
 void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
     [pagingView _scrollViewWillBeginDragging];
+}
+
+/// Convenience function for detecting when the paging view is set right-to-left.
+static inline BOOL TOPagingViewIsDirectionReversed(TOPagingView *view) {
+    return (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
 }
 
 #pragma mark - Page Setup -
@@ -483,7 +467,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
         // Add the page view to the hierarchy
         if (previousPage) {
             TOPagingViewInsertPageView(self, previousPage);
-            previousPage.frame = TOPagingViewPreviousPageFrame(self);
+            previousPage.frame = _layoutMetrics.previousPageFrame;
             _previousPageView = previousPage;
             _hasPreviousPage = YES;
         }
@@ -497,7 +481,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
         // Add the page view to the hierarchy
         if (nextPage) {
             TOPagingViewInsertPageView(self, nextPage);
-            nextPage.frame = TOPagingViewNextPageFrame(self);
+            nextPage.frame = _layoutMetrics.nextPageFrame;
             _nextPageView = nextPage;
             _hasNextPage = YES;
         }
@@ -529,7 +513,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (void)turnToLeftPageAnimated:(BOOL)animated {
     const CGFloat offset = _scrollView.contentOffset.x;
-    const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
+    const CGFloat pageWidth = _layoutMetrics.pageWidth;
     const BOOL isAnimating = _pageAnimator.isAnimating;
     const BOOL isAnimatingLeft = isAnimating && _pageAnimator.direction == UIRectEdgeLeft;
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
@@ -549,7 +533,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (void)turnToRightPageAnimated:(BOOL)animated {
     const CGFloat offset = _scrollView.contentOffset.x;
-    const CGFloat pageWidth = TOPagingViewScrollViewPageWidth(self);
+    const CGFloat pageWidth = _layoutMetrics.pageWidth;
     const BOOL isAnimating = _pageAnimator.isAnimating;
     const BOOL isAnimatingRight = isAnimating && _pageAnimator.direction == UIRectEdgeRight;
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
@@ -593,7 +577,7 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
 
     const TOPagingViewScrollMetrics metrics = {
         .offsetX = view->_scrollView.contentOffset.x,
-        .segmentWidth = TOPagingViewScrollViewPageWidth(view),
+        .segmentWidth = view->_layoutMetrics.pageWidth,
         .contentWidth = contentSize.width,
         .isReversed = TOPagingViewIsDirectionReversed(view),
     };
@@ -634,7 +618,7 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
     if (pageView == nil) { return; }
     view->_currentPageView = pageView;
     TOPagingViewInsertPageView(view, pageView);
-    view->_currentPageView.frame = TOPagingViewCurrentPageFrame(view);
+    view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
 
     // Add the next & previous pages
     [view _fetchNewNextPage];
@@ -675,10 +659,10 @@ static inline void TOPagingViewHandleDynamicPageDirectionLayout(TOPagingView *vi
     // page to match if it hasn't already been updated.
     if (offsetX < segmentWidth - FLT_EPSILON && xPosition > segmentWidth) {
         TOPagingViewSetPageDirectionForPageView(view, TOPagingViewDirectionRightToLeft, view->_nextPageView);
-        nextPage.frame = TOPagingViewLeftPageFrame(view);
+        nextPage.frame = view->_layoutMetrics.leftPageFrame;
     } else if (offsetX > segmentWidth + FLT_EPSILON && xPosition < segmentWidth) {
         TOPagingViewSetPageDirectionForPageView(view, TOPagingViewDirectionLeftToRight, view->_nextPageView);
-        nextPage.frame = TOPagingViewRightPageFrame(view);
+        nextPage.frame = view->_layoutMetrics.rightPageFrame;
     }
 
     // If we've sufficiently committed to this direction, update the hosting paging view's direction
@@ -840,7 +824,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     // If we're not animating, set the offset to the target directly
     if (animated == NO) {
         CGFloat targetOffset = 0.0f;
-        if (direction == UIRectEdgeRight) { targetOffset = scrollView.contentSize.width - TOPagingViewScrollViewPageWidth(self); }
+        if (direction == UIRectEdgeRight) { targetOffset = scrollView.contentSize.width - _layoutMetrics.pageWidth; }
         scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
         return;
     }
@@ -860,7 +844,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     };
 
     // Animate the page turn via CADisplayLink by directly driving the scroll view content offset.
-    _pageAnimator.pageWidth = TOPagingViewScrollViewPageWidth(self);
+    _pageAnimator.pageWidth = _layoutMetrics.pageWidth;
     [_pageAnimator turnToPageInDirection:direction];
 }
 
@@ -898,14 +882,14 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
         // Insert the new current page view
         _currentPageView = newPageView;
-        _currentPageView.frame = TOPagingViewCurrentPageFrame(self);
+        _currentPageView.frame = _layoutMetrics.currentPageFrame;
         TOPagingViewInsertPageView(self, _currentPageView);
 
         // Re-enable layout to trigger a check for the next pages
         _disableLayout = NO;
 
         // Re-set the offset to the middle
-        _scrollView.contentOffset = (CGPoint){TOPagingViewScrollViewPageWidth(self), 0.0f};
+        _scrollView.contentOffset = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
 
         // Trigger requesting replacement adjacent pages
         [self fetchAdjacentPagesIfAvailable];
@@ -915,17 +899,17 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // Set the scroll view offset to adjacent the middle to animate
     _scrollView.contentOffset =
-        (direction == UIRectEdgeLeft) ? (CGPoint){TOPagingViewScrollViewPageWidth(self) * 2.0f, 0.0f} : CGPointZero;
+        (direction == UIRectEdgeLeft) ? (CGPoint){_layoutMetrics.pageWidth * 2.0f, 0.0f} : CGPointZero;
 
     // Put the current view in the same slot so we can animate to the new one
-    _currentPageView.frame = (direction == UIRectEdgeLeft) ? TOPagingViewRightPageFrame(self) : TOPagingViewLeftPageFrame(self);
+    _currentPageView.frame = (direction == UIRectEdgeLeft) ? _layoutMetrics.rightPageFrame : _layoutMetrics.leftPageFrame;
 
     // Make the old current page the previous page so we can keep track of it across animations
     _previousPageView = _currentPageView;
 
     // Put the new view in the center point and promote it to new current
     _currentPageView = newPageView;
-    _currentPageView.frame = TOPagingViewCurrentPageFrame(self);
+    _currentPageView.frame = _layoutMetrics.currentPageFrame;
     TOPagingViewInsertPageView(self, _currentPageView);
 
     // Set up the completion handler
@@ -952,7 +936,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     };
 
     // Animate the scroll view back to the center slot with a standard view animation.
-    const CGPoint centerOffset = (CGPoint){TOPagingViewScrollViewPageWidth(self), 0.0f};
+    const CGPoint centerOffset = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
     [UIView animateWithDuration:_pageAnimator.duration
                           delay:0.0f
                         options:kTOPagingViewAnimationOptions
@@ -1039,8 +1023,8 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
     view->_nextPageView = nil;
 
     // Update the frames of the pages
-    view->_currentPageView.frame = TOPagingViewCurrentPageFrame(view);
-    view->_previousPageView.frame = TOPagingViewPreviousPageFrame(view);
+    view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
+    view->_previousPageView.frame = view->_layoutMetrics.previousPageFrame;
 
     // Inform the delegate we have committed to a transition so we can update state for the next page.
     if (view->_delegateFlags.delegateDidTurnToPage) {
@@ -1054,7 +1038,7 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
     // Move the scroll view back one segment
     const CGFloat previousOffsetX = view->_scrollView.contentOffset.x;
     CGPoint contentOffset = view->_scrollView.contentOffset;
-    const CGFloat scrollViewPageWidth = TOPagingViewScrollViewPageWidth(view);
+    const CGFloat scrollViewPageWidth = view->_layoutMetrics.pageWidth;
     const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? 1.0f : -1.0f);
     contentOffset.x += offset;
@@ -1086,8 +1070,8 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     view->_previousPageView = nil;
 
     // Update the frames of the pages
-    view->_currentPageView.frame = TOPagingViewCurrentPageFrame(view);
-    view->_nextPageView.frame = TOPagingViewNextPageFrame(view);
+    view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
+    view->_nextPageView.frame = view->_layoutMetrics.nextPageFrame;
 
     // Inform the delegate we have just committed to a transition so we can update state for the previous page.
     if (view->_delegateFlags.delegateDidTurnToPage) {
@@ -1101,7 +1085,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     // Move the scroll view forward one segment
     const CGFloat previousOffsetX = view->_scrollView.contentOffset.x;
     CGPoint contentOffset = view->_scrollView.contentOffset;
-    const CGFloat scrollViewPageWidth = TOPagingViewScrollViewPageWidth(view);
+    const CGFloat scrollViewPageWidth = view->_layoutMetrics.pageWidth;
     const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? -1.0f : 1.0f);
     contentOffset.x += offset;
@@ -1124,11 +1108,11 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         // Insert the new page object and update its position (Will fall through if nil)
         TOPagingViewInsertPageView(self, nextPage);
         _nextPageView = nextPage;
-        _nextPageView.frame = TOPagingViewNextPageFrame(self);
+        _nextPageView.frame = _layoutMetrics.nextPageFrame;
     } else {
         // At this point the newly committed page is already centered in the middle slot,
         // so if there is no farther page to continue to, the animator should settle there.
-        const CGFloat targetOffset = TOPagingViewScrollViewPageWidth(self);
+        const CGFloat targetOffset = _layoutMetrics.pageWidth;
         [_pageAnimator clampAnimationToOffset:targetOffset];
     }
 
@@ -1146,11 +1130,11 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         // Insert the new page object and set its position (Will fall through if nil)
         TOPagingViewInsertPageView(self, previousPage);
         _previousPageView = previousPage;
-        _previousPageView.frame = TOPagingViewPreviousPageFrame(self);
+        _previousPageView.frame = _layoutMetrics.previousPageFrame;
     } else {
         // At this point the newly committed page is already centered in the middle slot,
         // so if there is no farther page to continue to, the animator should settle there.
-        const CGFloat targetOffset = TOPagingViewScrollViewPageWidth(self);
+        const CGFloat targetOffset = _layoutMetrics.pageWidth;
         [_pageAnimator clampAnimationToOffset:targetOffset];
     }
 
@@ -1162,7 +1146,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     // Left is for Eastern type layouts
     const BOOL leftDirection = (direction == TOPagingViewDirectionRightToLeft);
 
-    const CGFloat segmentWidth = TOPagingViewScrollViewPageWidth(self);
+    const CGFloat segmentWidth = _layoutMetrics.pageWidth;
     const CGFloat contentWidth = _scrollView.contentSize.width;
     const CGFloat halfSpacing = self.pageSpacing * 0.5f;
     const CGFloat rightOffset = (contentWidth - segmentWidth) + halfSpacing;
@@ -1211,7 +1195,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         (isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) * offsetModifier;
 
     // Set the origin and bumper margins
-    const CGPoint origin = (CGPoint){TOPagingViewScrollViewPageWidth(self), 0.0f};
+    const CGPoint origin = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
     const CGPoint bumperOffset = (CGPoint){origin.x + bumperPadding, 0.0f};
 
     // Disable layout while this is occurring
@@ -1346,40 +1330,6 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     _isDynamicPageDirectionEnabled = isDynamicPageDirectionEnabled;
     [self reload];
 }
-
-#pragma mark - Layout Calculation Helpers -
-
-static inline CGFloat TOPagingViewScrollViewPageWidth(TOPagingView *view) { return view->_layoutMetrics.pageWidth; }
-
-static inline BOOL TOPagingViewIsDirectionReversed(TOPagingView *view) {
-    return (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
-}
-
-static inline CGRect TOPagingViewScrollViewFrame(TOPagingView *view) {
-    return view->_layoutMetrics.scrollViewFrame;
-}
-
-static inline CGRect TOPagingViewCurrentPageFrame(TOPagingView *view) {
-    return view->_layoutMetrics.currentPageFrame;
-}
-
-static inline CGRect TOPagingViewNextPageFrame(TOPagingView *view) {
-    return view->_layoutMetrics.nextPageFrame;
-}
-
-static inline CGRect TOPagingViewPreviousPageFrame(TOPagingView *view) {
-    return view->_layoutMetrics.previousPageFrame;
-}
-
-static inline CGRect TOPagingViewLeftPageFrame(TOPagingView *view) {
-    return view->_layoutMetrics.leftPageFrame;
-}
-
-static inline CGRect TOPagingViewRightPageFrame(TOPagingView *view) {
-    return view->_layoutMetrics.rightPageFrame;
-}
-
-#pragma mark - Scroll View Delegate Accessor -
 
 - (void)setScrollViewDelegate:(id<UIScrollViewDelegate>)scrollViewDelegate {
     _scrollViewDelegateProxy.externalDelegate = scrollViewDelegate;
