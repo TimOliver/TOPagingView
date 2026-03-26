@@ -21,6 +21,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		22432FF92F75789B00A5859F /* TOPagingView+Keyboard.m in Sources */ = {isa = PBXBuildFile; fileRef = 22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */; };
 		227BEDFA27AC1867009D6B6D /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 227BEDF927AC1867009D6B6D /* CHANGELOG.md */; };
 		22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22ADED23242B2ADD004A7854 /* TOTestPageView.m */; };
 		22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3161F242899AA0063F6A6 /* TOAppDelegate.m */; };
@@ -52,6 +53,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		22432FF72F75789B00A5859F /* TOPagingView+Keyboard.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "TOPagingView+Keyboard.h"; sourceTree = "<group>"; };
+		22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "TOPagingView+Keyboard.m"; sourceTree = "<group>"; };
 		227BEDF927AC1867009D6B6D /* CHANGELOG.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		227BEDFB27AC186F009D6B6D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		227BEDFC27AC1879009D6B6D /* TOPagingView.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = TOPagingView.podspec; sourceTree = "<group>"; };
@@ -113,6 +116,8 @@
 				2F2600042F26000100000001 /* TOPagingViewConstants.h */,
 				2F2600052F26000100000001 /* TOPagingViewMacros.h */,
 				2F2600062F26000100000001 /* TOPagingViewTypes.h */,
+				22432FF72F75789B00A5859F /* TOPagingView+Keyboard.h */,
+				22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */,
 				22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */,
 				22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */,
 				2F2600022F26000100000001 /* TOScrollViewDelegateProxy.h */,
@@ -363,6 +368,7 @@
 			files = (
 				22C31626242899AA0063F6A6 /* TOViewController.m in Sources */,
 				22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */,
+				22432FF92F75789B00A5859F /* TOPagingView+Keyboard.m in Sources */,
 				22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */,
 				22C3167F242A40F80063F6A6 /* TOPagingView.m in Sources */,
 				2F2600012F26000100000001 /* TOScrollViewDelegateProxy.m in Sources */,

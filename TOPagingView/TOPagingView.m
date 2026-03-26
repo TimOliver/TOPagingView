@@ -1301,34 +1301,6 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     }
 }
 
-#pragma mark - Keyboard Control -
-
-- (BOOL)canBecomeFirstResponder {
-    return YES;
-}
-
-- (NSArray<UIKeyCommand *> *)keyCommands {
-    SEL selector = @selector(arrowKeyPressed:);
-    UIKeyCommand *leftArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:0 action:selector];
-
-    UIKeyCommand *rightArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:0 action:selector];
-
-    if (@available(iOS 15.0, *)) {
-        leftArrowCommand.wantsPriorityOverSystemBehavior = YES;
-        rightArrowCommand.wantsPriorityOverSystemBehavior = YES;
-    }
-
-    return @[leftArrowCommand, rightArrowCommand];
-}
-
-- (void)arrowKeyPressed:(UIKeyCommand *)command {
-    if ([command.input isEqualToString:UIKeyInputLeftArrow]) {
-        [self turnToLeftPageAnimated:YES];
-    } else if ([command.input isEqualToString:UIKeyInputRightArrow]) {
-        [self turnToRightPageAnimated:YES];
-    }
-}
-
 #pragma mark - Public Accessors -
 
 - (void)setDataSource:(id<TOPagingViewDataSource>)dataSource {
