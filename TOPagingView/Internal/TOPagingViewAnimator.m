@@ -22,6 +22,7 @@
 
 #import "TOPagingViewAnimator.h"
 #import "TOPagingViewMacros.h"
+#import "TOPagingViewTypes.h"
 
 #import <QuartzCore/QuartzCore.h>
 #import <TargetConditionals.h>
@@ -105,51 +106,20 @@ static inline CGFloat TOPagingViewAnimatorAnimationDragCoefficient(void) {
 /// Applies the minimum settle window used when an in-flight turn is cut short.
 static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInterval duration) { return fmax(0.05, duration); }
 
-// -----------------------------------------------------------------
+@implementation TOPagingViewAnimator {
+    CADisplayLink *_displayLink;            /// The display link driving the frame-by-frame animation.
+    CFTimeInterval _startTime;              /// The time at which the current animation segment started.
+    UIRectEdge _direction;                  /// The direction we're turning in.
+    CFTimeInterval _activeDuration;         /// The duration of the current animation segment.
+    CFTimeInterval _activeEffectiveDuration; /// The duration of the current segment after applying any active simulator drag coefficient.
+    CGFloat _turnDirection;                 /// The direction multiplier (+1 for right, -1 for left).
+    CGFloat _startOffset;                   /// The absolute scroll view content offset when we started.
+    CGFloat _endOffset;                     /// The absolute scroll view content offset where this animation should end.
+    BOOL _originalPagingEnabled;            /// The original pagingEnabled state before this animator temporarily disabled paging.
+    TOPagingViewAnimatorEnvironmentMetrics _environmentMetrics; /// Cached environment values that stay stable for the life of an animation.
+}
 
-typedef struct {
-    CGFloat displayScale;
-    CGFloat pixelSize;
-    CGFloat animationDragCoefficient;
-} TOPagingViewAnimatorEnvironmentMetrics;
-
-@interface TOPagingViewAnimator ()
-
-/// The display link driving the frame-by-frame animation.
-@property (nonatomic, strong, nullable) CADisplayLink *displayLink;
-
-/// The time at which the current animation segment started.
-@property (nonatomic, assign) CFTimeInterval startTime;
-
-/// The direction we're turning in.
-@property (nonatomic, assign, readwrite) UIRectEdge direction;
-
-/// The duration of the current animation segment.
-@property (nonatomic, assign) CFTimeInterval activeDuration;
-
-/// The duration of the current segment after applying any active simulator drag coefficient.
-@property (nonatomic, assign) CFTimeInterval activeEffectiveDuration;
-
-/// The direction multiplier (+1 for right, -1 for left).
-@property (nonatomic, assign) CGFloat turnDirection;
-
-/// The absolute scroll view content offset when we started.
-@property (nonatomic, assign) CGFloat startOffset;
-
-/// The absolute scroll view content offset where this animation should end.
-@property (nonatomic, assign) CGFloat endOffset;
-
-/// The original pagingEnabled state before this animator temporarily disabled paging.
-@property (nonatomic, assign) BOOL originalPagingEnabled;
-
-/// Cached environment values that stay stable for the life of an animation.
-@property (nonatomic, assign) TOPagingViewAnimatorEnvironmentMetrics environmentMetrics;
-
-@end
-
-// -----------------------------------------------------------------
-
-@implementation TOPagingViewAnimator
+@synthesize direction;
 
 #pragma mark - Object Lifecycle -
 
@@ -174,13 +144,14 @@ typedef struct {
     UIScrollView *const scrollView = _scrollView;
     if (scrollView == nil || _pageWidth <= FLT_EPSILON) { return; }
 
-    [self _updateEnvironmentMetrics];
-
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
     const CFTimeInterval now = CACurrentMediaTime();
+    
+    // Cache all of the device metrics that won't change in this animation run.
+    [self _updateEnvironmentMetrics];
 
+    // If we were already animating, and another turn event comes through, stack it.
     if (_isAnimating && dir == _turnDirection) {
-        // Extend the animation one more page in the same direction.
         const CGFloat linearProgress = [self _linearProgressAtReferenceTime:[self _referenceTimeWithFallbackTime:now]];
         const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
         const CGFloat currentOffset = [self _roundToPixel:[self _presentationOffsetForProgress:progress]];
@@ -201,6 +172,9 @@ typedef struct {
     endOffset = [self _roundToPixel:endOffset];
     [self _configureSegmentWithStartOffset:startOffset endOffset:endOffset referenceTime:now duration:_duration];
 
+    // If we weren't already in an animation loop, start the display link.
+    // We also need to disable paging, otherwise our offset code ends up fighting
+    // another display link, internal to UIScrollView that is managing the paging state.
     if (!_isAnimating) {
         _isAnimating = YES;
         _originalPagingEnabled = scrollView.pagingEnabled;
@@ -211,6 +185,8 @@ typedef struct {
 
 - (void)stopAnimation {
     if (!_isAnimating) { return; }
+    // Cancel the display link.
+    // The scroll view will stop at whatever offset it is now.
     [self _destroyDisplayLink];
     _isAnimating = NO;
     [self _restorePagingState];

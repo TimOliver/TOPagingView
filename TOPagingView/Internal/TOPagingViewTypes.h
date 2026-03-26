@@ -43,3 +43,10 @@ typedef struct {
     CGRect leftPageFrame;
     CGRect rightPageFrame;
 } TOPagingViewLayoutMetrics;
+
+/// Cached device and motion metrics during a single animator session.
+typedef struct {
+    CGFloat displayScale;
+    CGFloat pixelSize;
+    CGFloat animationDragCoefficient;
+} TOPagingViewAnimatorEnvironmentMetrics;
