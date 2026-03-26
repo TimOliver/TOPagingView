@@ -22,7 +22,6 @@
 
 /* Begin PBXBuildFile section */
 		227BEDFA27AC1867009D6B6D /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 227BEDF927AC1867009D6B6D /* CHANGELOG.md */; };
-		24F0A0012F24000100000001 /* TOPagingViewUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 24F0A0042F24000100000001 /* TOPagingViewUITests.m */; };
 		22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22ADED23242B2ADD004A7854 /* TOTestPageView.m */; };
 		22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3161F242899AA0063F6A6 /* TOAppDelegate.m */; };
 		22C31626242899AA0063F6A6 /* TOViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31625242899AA0063F6A6 /* TOViewController.m */; };
@@ -31,16 +30,11 @@
 		22C3163B242899AB0063F6A6 /* TODynamicPageViewTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */; };
 		22C3167F242A40F80063F6A6 /* TOPagingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3167E242A40F80063F6A6 /* TOPagingView.m */; };
 		22D4A7B3293F5E8A00B1C2D3 /* TOPagingViewAnimator.m in Sources */ = {isa = PBXBuildFile; fileRef = 22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */; };
+		24F0A0012F24000100000001 /* TOPagingViewUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 24F0A0042F24000100000001 /* TOPagingViewUITests.m */; };
+		2F2600012F26000100000001 /* TOScrollViewDelegateProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 2F2600032F26000100000001 /* TOScrollViewDelegateProxy.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		24F0A0022F24000100000001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 22C31613242899AA0063F6A6 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 22C3161A242899AA0063F6A6;
-			remoteInfo = TOPagingViewExample;
-		};
 		22C31637242899AB0063F6A6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 22C31613242899AA0063F6A6 /* Project object */;
@@ -48,15 +42,19 @@
 			remoteGlobalIDString = 22C3161A242899AA0063F6A6;
 			remoteInfo = TODynamicPageView;
 		};
+		24F0A0022F24000100000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 22C31613242899AA0063F6A6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 22C3161A242899AA0063F6A6;
+			remoteInfo = TOPagingViewExample;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		227BEDF927AC1867009D6B6D /* CHANGELOG.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		227BEDFB27AC186F009D6B6D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		227BEDFC27AC1879009D6B6D /* TOPagingView.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = TOPagingView.podspec; sourceTree = "<group>"; };
-		24F0A0032F24000100000001 /* TOPagingViewUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TOPagingViewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		24F0A0042F24000100000001 /* TOPagingViewUITests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingViewUITests.m; sourceTree = "<group>"; };
-		24F0A0052F24000100000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		22ADED22242B2ADD004A7854 /* TOTestPageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOTestPageView.h; sourceTree = "<group>"; };
 		22ADED23242B2ADD004A7854 /* TOTestPageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOTestPageView.m; sourceTree = "<group>"; };
 		22C3161B242899AA0063F6A6 /* TOPagingViewExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TOPagingViewExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -74,16 +72,17 @@
 		22C3167E242A40F80063F6A6 /* TOPagingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingView.m; sourceTree = "<group>"; };
 		22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewAnimator.h; sourceTree = "<group>"; };
 		22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingViewAnimator.m; sourceTree = "<group>"; };
+		24F0A0032F24000100000001 /* TOPagingViewUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TOPagingViewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		24F0A0042F24000100000001 /* TOPagingViewUITests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingViewUITests.m; sourceTree = "<group>"; };
+		24F0A0052F24000100000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2F2600022F26000100000001 /* TOScrollViewDelegateProxy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOScrollViewDelegateProxy.h; sourceTree = "<group>"; };
+		2F2600032F26000100000001 /* TOScrollViewDelegateProxy.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOScrollViewDelegateProxy.m; sourceTree = "<group>"; };
+		2F2600042F26000100000001 /* TOPagingViewConstants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewConstants.h; sourceTree = "<group>"; };
+		2F2600052F26000100000001 /* TOPagingViewMacros.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewMacros.h; sourceTree = "<group>"; };
+		2F2600062F26000100000001 /* TOPagingViewTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewTypes.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		24F0A0082F24000100000001 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		22C31618242899AA0063F6A6 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -98,9 +97,30 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		24F0A0082F24000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		22432FF52F7501E600A5859F /* Internal */ = {
+			isa = PBXGroup;
+			children = (
+				2F2600042F26000100000001 /* TOPagingViewConstants.h */,
+				2F2600052F26000100000001 /* TOPagingViewMacros.h */,
+				2F2600062F26000100000001 /* TOPagingViewTypes.h */,
+				22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */,
+				22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */,
+				2F2600022F26000100000001 /* TOScrollViewDelegateProxy.h */,
+				2F2600032F26000100000001 /* TOScrollViewDelegateProxy.m */,
+			);
+			path = Internal;
+			sourceTree = "<group>";
+		};
 		22C31612242899AA0063F6A6 = {
 			isa = PBXGroup;
 			children = (
@@ -150,6 +170,16 @@
 			path = TOPagingViewTests;
 			sourceTree = "<group>";
 		};
+		22C3167C242A3C460063F6A6 /* TOPagingView */ = {
+			isa = PBXGroup;
+			children = (
+				22C3167D242A40F80063F6A6 /* TOPagingView.h */,
+				22C3167E242A40F80063F6A6 /* TOPagingView.m */,
+				22432FF52F7501E600A5859F /* Internal */,
+			);
+			path = TOPagingView;
+			sourceTree = "<group>";
+		};
 		24F0A0062F24000100000001 /* TOPagingViewUITests */ = {
 			isa = PBXGroup;
 			children = (
@@ -159,38 +189,9 @@
 			path = TOPagingViewUITests;
 			sourceTree = "<group>";
 		};
-		22C3167C242A3C460063F6A6 /* TOPagingView */ = {
-			isa = PBXGroup;
-			children = (
-				22C3167D242A40F80063F6A6 /* TOPagingView.h */,
-				22C3167E242A40F80063F6A6 /* TOPagingView.m */,
-				22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */,
-				22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */,
-			);
-			path = TOPagingView;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		24F0A0072F24000100000001 /* TOPagingViewUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 24F0A00E2F24000100000001 /* Build configuration list for PBXNativeTarget "TOPagingViewUITests" */;
-			buildPhases = (
-				24F0A00A2F24000100000001 /* Sources */,
-				24F0A0082F24000100000001 /* Frameworks */,
-				24F0A0092F24000100000001 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				24F0A00B2F24000100000001 /* PBXTargetDependency */,
-			);
-			name = TOPagingViewUITests;
-			productName = TOPagingViewUITests;
-			productReference = 24F0A0032F24000100000001 /* TOPagingViewUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 		22C3161A242899AA0063F6A6 /* TOPagingViewExample */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 22C3163F242899AB0063F6A6 /* Build configuration list for PBXNativeTarget "TOPagingViewExample" */;
@@ -226,6 +227,24 @@
 			productName = TODynamicPageViewTests;
 			productReference = 22C31636242899AB0063F6A6 /* TOPagingViewTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		24F0A0072F24000100000001 /* TOPagingViewUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 24F0A00E2F24000100000001 /* Build configuration list for PBXNativeTarget "TOPagingViewUITests" */;
+			buildPhases = (
+				24F0A00A2F24000100000001 /* Sources */,
+				24F0A0082F24000100000001 /* Frameworks */,
+				24F0A0092F24000100000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				24F0A00B2F24000100000001 /* PBXTargetDependency */,
+			);
+			name = TOPagingViewUITests;
+			productName = TOPagingViewUITests;
+			productReference = 24F0A0032F24000100000001 /* TOPagingViewUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
@@ -275,13 +294,6 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		24F0A0092F24000100000001 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		22C31619242899AA0063F6A6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -292,6 +304,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		22C31634242899AB0063F6A6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		24F0A0092F24000100000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -338,14 +357,6 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		24F0A00A2F24000100000001 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				24F0A0012F24000100000001 /* TOPagingViewUITests.m in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		22C31617242899AA0063F6A6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -354,6 +365,7 @@
 				22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */,
 				22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */,
 				22C3167F242A40F80063F6A6 /* TOPagingView.m in Sources */,
+				2F2600012F26000100000001 /* TOScrollViewDelegateProxy.m in Sources */,
 				22D4A7B3293F5E8A00B1C2D3 /* TOPagingViewAnimator.m in Sources */,
 				22C31631242899AB0063F6A6 /* main.m in Sources */,
 			);
@@ -367,18 +379,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		24F0A00A2F24000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				24F0A0012F24000100000001 /* TOPagingViewUITests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		24F0A00B2F24000100000001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 22C3161A242899AA0063F6A6 /* TOPagingViewExample */;
-			targetProxy = 24F0A0022F24000100000001 /* PBXContainerItemProxy */;
-		};
 		22C31638242899AB0063F6A6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 22C3161A242899AA0063F6A6 /* TOPagingViewExample */;
 			targetProxy = 22C31637242899AB0063F6A6 /* PBXContainerItemProxy */;
+		};
+		24F0A00B2F24000100000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 22C3161A242899AA0063F6A6 /* TOPagingViewExample */;
+			targetProxy = 24F0A0022F24000100000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
