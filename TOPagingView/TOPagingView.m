@@ -111,8 +111,6 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
 - (void)layoutContent TOPAGINGVIEW_OBJC_DIRECT;
 - (void)_scrollViewDidScroll TOPAGINGVIEW_OBJC_DIRECT;
 - (void)_scrollViewWillBeginDragging TOPAGINGVIEW_OBJC_DIRECT;
-- (BOOL)_scrollViewIsDeceleratingInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT;
-- (void)_resetScrollDecelerationTracking TOPAGINGVIEW_OBJC_DIRECT;
 
 /// The scroll view managed by this container.
 @property (nonatomic, strong, readwrite) UIScrollView *scrollView;
