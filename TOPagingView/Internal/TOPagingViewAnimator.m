@@ -21,12 +21,10 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #import "TOPagingViewAnimator.h"
+#import "TOPagingViewMacros.h"
 
 #import <QuartzCore/QuartzCore.h>
 #import <TargetConditionals.h>
-
-/// Mark implementation-only methods as being statically called to increase performance.
-#define TOPAGINGVIEWANIMATOR_OBJC_DIRECT __attribute__((objc_direct))
 
 // -----------------------------------------------------------------
 
@@ -116,22 +114,6 @@ typedef struct {
 } TOPagingViewAnimatorEnvironmentMetrics;
 
 @interface TOPagingViewAnimator ()
-
-- (void)_createDisplayLink TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (void)_destroyDisplayLink TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (void)_updateEnvironmentMetrics TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (CFTimeInterval)_referenceTimeWithFallbackTime:(CFTimeInterval)fallbackTime TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (CFTimeInterval)_effectiveDurationForDuration:(CFTimeInterval)duration TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (CFTimeInterval)_baseDurationForEffectiveDuration:(CFTimeInterval)effectiveDuration TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (CGFloat)_linearProgressAtReferenceTime:(CFTimeInterval)referenceTime TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (CGFloat)_presentationOffsetForProgress:(CGFloat)progress TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (CGFloat)_roundToPixel:(CGFloat)value TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (CGFloat)_snapToPageBoundary:(CGFloat)value TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (void)_configureSegmentWithStartOffset:(CGFloat)startOffset
-                               endOffset:(CGFloat)endOffset
-                           referenceTime:(CFTimeInterval)referenceTime
-                                duration:(CFTimeInterval)duration TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
-- (void)_restorePagingState TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
 
 /// The display link driving the frame-by-frame animation.
 @property (nonatomic, strong, nullable) CADisplayLink *displayLink;
@@ -310,11 +292,11 @@ typedef struct {
 
 #pragma mark - Display Link -
 
-- (CFTimeInterval)_referenceTimeWithFallbackTime:(CFTimeInterval)fallbackTime TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (CFTimeInterval)_referenceTimeWithFallbackTime:(CFTimeInterval)fallbackTime TOPAGINGVIEW_OBJC_DIRECT {
     return (_displayLink != nil) ? _displayLink.targetTimestamp : fallbackTime;
 }
 
-- (void)_updateEnvironmentMetrics TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (void)_updateEnvironmentMetrics TOPAGINGVIEW_OBJC_DIRECT {
     const CGFloat displayScale = TOPagingViewAnimatorDisplayScale(_scrollView);
     const CGFloat animationDragCoefficient = TOPagingViewAnimatorAnimationDragCoefficient();
     _environmentMetrics = (TOPagingViewAnimatorEnvironmentMetrics){
@@ -324,34 +306,34 @@ typedef struct {
     };
 }
 
-- (CFTimeInterval)_effectiveDurationForDuration:(CFTimeInterval)duration TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (CFTimeInterval)_effectiveDurationForDuration:(CFTimeInterval)duration TOPAGINGVIEW_OBJC_DIRECT {
     return duration * _environmentMetrics.animationDragCoefficient;
 }
 
-- (CFTimeInterval)_baseDurationForEffectiveDuration:(CFTimeInterval)effectiveDuration TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (CFTimeInterval)_baseDurationForEffectiveDuration:(CFTimeInterval)effectiveDuration TOPAGINGVIEW_OBJC_DIRECT {
     return effectiveDuration / _environmentMetrics.animationDragCoefficient;
 }
 
-- (CGFloat)_linearProgressAtReferenceTime:(CFTimeInterval)referenceTime TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (CGFloat)_linearProgressAtReferenceTime:(CFTimeInterval)referenceTime TOPAGINGVIEW_OBJC_DIRECT {
     return (_activeEffectiveDuration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin((referenceTime - _startTime) / _activeEffectiveDuration, 1.0);
 }
 
-- (CGFloat)_presentationOffsetForProgress:(CGFloat)progress TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (CGFloat)_presentationOffsetForProgress:(CGFloat)progress TOPAGINGVIEW_OBJC_DIRECT {
     return _startOffset + ((_endOffset - _startOffset) * progress);
 }
 
-- (CGFloat)_roundToPixel:(CGFloat)value TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (CGFloat)_roundToPixel:(CGFloat)value TOPAGINGVIEW_OBJC_DIRECT {
     return TOPagingViewAnimatorRoundToPixel(value, _environmentMetrics.displayScale);
 }
 
-- (CGFloat)_snapToPageBoundary:(CGFloat)value TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (CGFloat)_snapToPageBoundary:(CGFloat)value TOPAGINGVIEW_OBJC_DIRECT {
     return TOPagingViewAnimatorSnapToPageBoundary(value, _pageWidth, _environmentMetrics.displayScale);
 }
 
 - (void)_configureSegmentWithStartOffset:(CGFloat)startOffset
                                endOffset:(CGFloat)endOffset
                            referenceTime:(CFTimeInterval)referenceTime
-                                duration:(CFTimeInterval)duration TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+                                duration:(CFTimeInterval)duration TOPAGINGVIEW_OBJC_DIRECT {
     _startOffset = startOffset;
     _endOffset = endOffset;
     _startTime = referenceTime;
@@ -359,13 +341,13 @@ typedef struct {
     _activeEffectiveDuration = [self _effectiveDurationForDuration:duration];
 }
 
-- (void)_restorePagingState TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (void)_restorePagingState TOPAGINGVIEW_OBJC_DIRECT {
     _activeDuration = _duration;
     _activeEffectiveDuration = [self _effectiveDurationForDuration:_duration];
     _scrollView.pagingEnabled = _originalPagingEnabled;
 }
 
-- (void)_createDisplayLink TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (void)_createDisplayLink TOPAGINGVIEW_OBJC_DIRECT {
     _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(_displayLinkDidFire:)];
     if (@available(iOS 15.0, *)) {
         _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(80.0, 120.0f, 120.0f);
@@ -375,7 +357,7 @@ typedef struct {
     [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 }
 
-- (void)_destroyDisplayLink TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+- (void)_destroyDisplayLink TOPAGINGVIEW_OBJC_DIRECT {
     [_displayLink invalidate];
     _displayLink = nil;
 }

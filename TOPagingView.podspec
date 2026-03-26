@@ -8,9 +8,6 @@ Pod::Spec.new do |s|
   s.source   = { :git => 'https://github.com/TimOliver/TOPagingView.git', :tag => s.version }
   s.platform = :ios, '12.0'
   s.source_files = 'TOPagingView/**/*.{h,m}'
-  s.private_header_files = 'TOPagingView/TOScrollViewDelegateProxy.h',
-                           'TOPagingView/TOPagingViewConstants.h',
-                           'TOPagingView/TOPagingViewMacros.h',
-                           'TOPagingView/TOPagingViewTypes.h'
+  s.private_header_files = 'TOPagingView/Internal/*.h'
   s.requires_arc = true
 end
