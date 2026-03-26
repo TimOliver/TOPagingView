@@ -64,6 +64,14 @@ typedef struct {
     unsigned int protocolSetPageDirection : 1;
 } TOPageViewProtocolFlags;
 
+/// Per-scroll metrics cached once and threaded through the hot layout helpers.
+typedef struct {
+    CGFloat offsetX;
+    CGFloat segmentWidth;
+    CGFloat contentWidth;
+    BOOL isReversed;
+} TOPagingViewScrollMetrics;
+
 @interface TOPageViewProtocolCache : NSObject
 @property (nonatomic, assign) TOPageViewProtocolFlags flags;
 @end
@@ -103,6 +111,16 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     [value getValue:&class];
     return class;
 }
+
+static inline void TOPagingViewPerformInitialLayout(TOPagingView *view);
+static inline void TOPagingViewHandleDynamicPageDirectionLayout(TOPagingView *view, TOPagingViewScrollMetrics metrics);
+static inline void TOPagingViewHandlePageTransitions(TOPagingView *view, TOPagingViewScrollMetrics metrics);
+static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view, TOPagingViewScrollMetrics metrics);
+static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view, TOPagingViewScrollMetrics metrics);
+static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view,
+                                                  BOOL enabled,
+                                                  UIRectEdge edge,
+                                                  CGFloat segmentWidth);
 
 // -----------------------------------------------------------------
 
@@ -620,23 +638,30 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
         return;
     }
 
+    const TOPagingViewScrollMetrics metrics = {
+        .offsetX = view->_scrollView.contentOffset.x,
+        .segmentWidth = TOPagingViewScrollViewPageWidth(view),
+        .contentWidth = contentSize.width,
+        .isReversed = TOPagingViewIsDirectionReversed(view),
+    };
+
     // When dynamic paging is enabled, we swap the on-screen 'next' page to either
     // side of the initial page as the user swipes left and right
     if (view->_isDynamicPageDirectionEnabled && TOPagingViewIsInitialPageForPageView(view, view->_currentPageView)) {
-        TOPagingViewHandleDynamicPageDirectionLayout(view);
+        TOPagingViewHandleDynamicPageDirectionLayout(view, metrics);
     }
 
     // Check the offset of the scroll view, and when it passes over
     // the mid point between two pages, perform the page transition
-    TOPagingViewHandlePageTransitions(view);
+    TOPagingViewHandlePageTransitions(view, metrics);
 
     // Observe user interaction for triggering certain delegate callbacks
-    TOPagingViewUpdateDragInteractions(view);
+    TOPagingViewUpdateDragInteractions(view, metrics);
 
     // When the page offset crosses either the left or right threshold,
     // check if a page is ready or not and enable insetting at that point to
     // avoid any hitchy motion
-    TOPagingViewUpdateEnabledPages(view);
+    TOPagingViewUpdateEnabledPages(view, metrics);
 }
 
 static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
@@ -687,29 +712,29 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
     }
 }
 
-static inline void TOPagingViewHandleDynamicPageDirectionLayout(TOPagingView *view) {
-    const CGPoint offset = view->_scrollView.contentOffset;
-    const CGFloat segmentWidth = TOPagingViewScrollViewPageWidth(view);
+static inline void TOPagingViewHandleDynamicPageDirectionLayout(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
     const UIView<TOPagingViewPage> *nextPage = view->_nextPageView;
     const CGFloat xPosition = CGRectGetMinX(view->_nextPageView.frame);
+    const CGFloat offsetX = metrics.offsetX;
+    const CGFloat segmentWidth = metrics.segmentWidth;
 
     // Check when the page starts moving in a certain direction and update the 'next'
     // page to match if it hasn't already been updated.
-    if (offset.x < segmentWidth - FLT_EPSILON && xPosition > segmentWidth) {
+    if (offsetX < segmentWidth - FLT_EPSILON && xPosition > segmentWidth) {
         TOPagingViewSetPageDirectionForPageView(view, TOPagingViewDirectionRightToLeft, view->_nextPageView);
         nextPage.frame = TOPagingViewLeftPageFrame(view);
-    } else if (offset.x > segmentWidth + FLT_EPSILON && xPosition < segmentWidth) {
+    } else if (offsetX > segmentWidth + FLT_EPSILON && xPosition < segmentWidth) {
         TOPagingViewSetPageDirectionForPageView(view, TOPagingViewDirectionLeftToRight, view->_nextPageView);
         nextPage.frame = TOPagingViewRightPageFrame(view);
     }
 
     // If we've sufficiently committed to this direction, update the hosting paging view's direction
     BOOL needsDelegateUpdate = NO;
-    if (offset.x <= FLT_EPSILON &&
+    if (offsetX <= FLT_EPSILON &&
         view->_pageScrollDirection == TOPagingViewDirectionLeftToRight) {  // Scrolled all the way to the left
         view->_pageScrollDirection = TOPagingViewDirectionRightToLeft;
         needsDelegateUpdate = YES;
-    } else if (offset.x >= (segmentWidth * 2.0f) - FLT_EPSILON &&
+    } else if (offsetX >= (segmentWidth * 2.0f) - FLT_EPSILON &&
                view->_pageScrollDirection == TOPagingViewDirectionRightToLeft) {  // Scrolled all the way to the right
         view->_pageScrollDirection = TOPagingViewDirectionLeftToRight;
         needsDelegateUpdate = YES;
@@ -720,35 +745,33 @@ static inline void TOPagingViewHandleDynamicPageDirectionLayout(TOPagingView *vi
     }
 }
 
-static inline void TOPagingViewHandlePageTransitions(TOPagingView *view) {
-    const BOOL isReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
-    const CGPoint offset = view->_scrollView.contentOffset;
-    const CGFloat segmentWidth = TOPagingViewScrollViewPageWidth(view);
-    const CGSize contentSize = view->_scrollView.contentSize;
+static inline void TOPagingViewHandlePageTransitions(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
     const UIRectEdge direction = view->_pageAnimator.direction;
     const BOOL isAnimating = view->_pageAnimator.isAnimating;
     const BOOL isAnimatingRight = isAnimating && direction == UIRectEdgeRight;
     const BOOL isAnimatingLeft = isAnimating && direction == UIRectEdgeLeft;
-    const CGFloat offsetX = offset.x;
 
     // By default, we only perform transitions when a new page has fully landed on screen.
     // This defers heavier layout work until there is no visible motion.
     //
     // When the page animator is active, transition as soon as movement commits away from
     // the middle slot so the internal page bookkeeping stays ahead of rapid animation.
-    const CGFloat rightHandThreshold = isAnimatingRight ? segmentWidth + 1.0f : contentSize.width - segmentWidth;
-    const CGFloat leftHandThreshold = isAnimatingLeft ? segmentWidth - 1.0f : FLT_EPSILON;
+    const CGFloat rightHandThreshold =
+        isAnimatingRight ? metrics.segmentWidth + 1.0f : metrics.contentWidth - metrics.segmentWidth;
+    const CGFloat leftHandThreshold = isAnimatingLeft ? metrics.segmentWidth - 1.0f : FLT_EPSILON;
 
     // Check if we went over the right-hand threshold to start transitioning the pages
-    if ((!isReversed && offsetX >= rightHandThreshold) || (isReversed && offsetX <= leftHandThreshold)) {
+    if ((!metrics.isReversed && metrics.offsetX >= rightHandThreshold) ||
+        (metrics.isReversed && metrics.offsetX <= leftHandThreshold)) {
         TOPagingViewTransitionOverToNextPage(view);
-    } else if ((isReversed && offsetX >= rightHandThreshold) || (!isReversed && offsetX <= leftHandThreshold)) {
+    } else if ((metrics.isReversed && metrics.offsetX >= rightHandThreshold) ||
+               (!metrics.isReversed && metrics.offsetX <= leftHandThreshold)) {
         // Check if we're over the left threshold
         TOPagingViewTransitionOverToPreviousPage(view);
     }
 }
 
-static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view) {
+static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
     // Exit out if we don't actually use the delegate
     if (view->_delegateFlags.delegateWillTurnToPage == NO) { return; }
 
@@ -761,24 +784,22 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view) {
 
     // If we just started dragging, capture the current offset and exit
     if (view->_draggingOrigin <= -CGFLOAT_MAX + FLT_EPSILON) {
-        view->_draggingOrigin = view->_scrollView.contentOffset.x;
+        view->_draggingOrigin = metrics.offsetX;
         return;
     }
 
     // Check the direction of the next step
-    const CGFloat offset = view->_scrollView.contentOffset.x;
     const BOOL isDetectingDirection =
         (view->_isDynamicPageDirectionEnabled && TOPagingViewIsInitialPageForPageView(view, view->_currentPageView));
-    const BOOL isReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
     TOPagingViewPageType directionType;
 
     // If we're detecting the direction, it will be 'next' regardless.
     if (isDetectingDirection) {
         directionType = TOPagingViewPageTypeNext;
-    } else if (offset < view->_draggingOrigin - FLT_EPSILON) {  // We dragged to the right
-        directionType = isReversed ? TOPagingViewPageTypeNext : TOPagingViewPageTypePrevious;
-    } else if (offset > view->_draggingOrigin + FLT_EPSILON) {  // We dragged to the left
-        directionType = isReversed ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext;
+    } else if (metrics.offsetX < view->_draggingOrigin - FLT_EPSILON) {  // We dragged to the right
+        directionType = metrics.isReversed ? TOPagingViewPageTypeNext : TOPagingViewPageTypePrevious;
+    } else if (metrics.offsetX > view->_draggingOrigin + FLT_EPSILON) {  // We dragged to the left
+        directionType = metrics.isReversed ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext;
     } else {
         return;
     }
@@ -791,33 +812,26 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view) {
     }
 
     // Update with the new offset
-    view->_draggingOrigin = offset;
+    view->_draggingOrigin = metrics.offsetX;
 }
 
-static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view) {
-    const CGPoint offset = view->_scrollView.contentOffset;
-    const CGFloat segmentWidth = TOPagingViewScrollViewPageWidth(view);
-    const BOOL isReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
-
+static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
     // Check the offset and disable the adjacent slot if we've gone over the threshold.
     BOOL isEnabled = NO;
     UIRectEdge edge = UIRectEdgeNone;
-    if (offset.x < segmentWidth) {  // Check the left page slot
-        isEnabled = isReversed ? view->_hasNextPage : view->_hasPreviousPage;
+    if (metrics.offsetX < metrics.segmentWidth) {  // Check the left page slot
+        isEnabled = metrics.isReversed ? view->_hasNextPage : view->_hasPreviousPage;
         edge = UIRectEdgeLeft;
-    } else if (offset.x > segmentWidth) {  // Check the right slot
-        isEnabled = isReversed ? view->_hasPreviousPage : view->_hasNextPage;
+    } else if (metrics.offsetX > metrics.segmentWidth) {  // Check the right slot
+        isEnabled = metrics.isReversed ? view->_hasPreviousPage : view->_hasNextPage;
         edge = UIRectEdgeRight;
     }
 
     // If we matched an edge, update its state.
-    if (edge != UIRectEdgeNone) { TOPagingViewSetPageSlotEnabled(view, isEnabled, edge); }
+    if (edge != UIRectEdgeNone) { TOPagingViewSetPageSlotEnabled(view, isEnabled, edge, metrics.segmentWidth); }
 }
 
-static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabled, UIRectEdge edge) {
-    // Fetch the segment width. It will be used for either value
-    const CGFloat segmentWidth = TOPagingViewScrollViewPageWidth(view);
-
+static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabled, UIRectEdge edge, CGFloat segmentWidth) {
     // Get the current insets of the scroll view
     UIEdgeInsets insets = view->_scrollView.contentInset;
 
