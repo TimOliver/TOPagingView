@@ -501,7 +501,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     if (!_hasPreviousPage) {
         UIView<TOPagingViewPage> *previousPage = [_dataSource pagingView:self
                                                          pageViewForType:TOPagingViewPageTypePrevious
-                                                         currentPageView:_currentPageView];
+                                                       referencePageView:_currentPageView];
         // Add the page view to the hierarchy
         if (previousPage) {
             TOPagingViewInsertPageView(self, previousPage);
@@ -515,7 +515,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     if (!_hasNextPage) {
         UIView<TOPagingViewPage> *nextPage = [_dataSource pagingView:self
                                                      pageViewForType:TOPagingViewPageTypeNext
-                                                     currentPageView:_currentPageView];
+                                                   referencePageView:_currentPageView];
         // Add the page view to the hierarchy
         if (nextPage) {
             TOPagingViewInsertPageView(self, nextPage);
@@ -645,7 +645,7 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
     // Add the initial page
     UIView<TOPagingViewPage> *pageView = [view->_dataSource pagingView:view
                                                        pageViewForType:TOPagingViewPageTypeCurrent
-                                                       currentPageView:nil];
+                                                     referencePageView:nil];
     if (pageView == nil) { return; }
     view->_currentPageView = pageView;
     TOPagingViewInsertPageView(view, pageView);
@@ -907,7 +907,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     // Request the new page view that will become the new current page after this completes
     UIView<TOPagingViewPage> *newPageView = [_dataSource pagingView:self
                                                     pageViewForType:TOPagingViewPageTypeCurrent
-                                                    currentPageView:_currentPageView];
+                                                  referencePageView:_currentPageView];
 
     // Zero out the adjacent pages and set the
     // next/previous flags to ensure we'll query for new pages
@@ -1143,7 +1143,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     // Query the data source for a replacement next page.
     UIView<TOPagingViewPage> *nextPage = [_dataSource pagingView:self
                                                  pageViewForType:TOPagingViewPageTypeNext
-                                                 currentPageView:_nextPageView];
+                                               referencePageView:_nextPageView];
 
     if (nextPage) {
         // Insert the new page object and update its position (Will fall through if nil)
@@ -1163,7 +1163,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     // Query the data source for a replacement previous page.
     UIView<TOPagingViewPage> *previousPage = [_dataSource pagingView:self
                                                      pageViewForType:TOPagingViewPageTypePrevious
-                                                     currentPageView:_previousPageView];
+                                                   referencePageView:_previousPageView];
 
     if (previousPage) {
         // Insert the new page object and set its position (Will fall through if nil)

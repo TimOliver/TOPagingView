@@ -98,12 +98,17 @@ NS_SWIFT_NAME(PagingViewDataSource)
 
 /// Called when the paging view is requesting a new page view in the current sequence in either direction.
 /// Use this method to dequeue, or create a new page view that will be displayed in the paging view.
+/// Return nil when there are no more pages available for the requested type relative to the supplied reference page.
+/// In that case, the paging view will treat the supplied reference page as the end of the sequence in that direction
+/// and settle the scroll view there.
 /// @param pagingView The paging view requesting the new page view.
-/// @param type The type of page to be displayed in its relation to the visible page on screen.
-/// @param currentPageView The current page view on screen. This can be nil if no pages have been displayed yet.
+/// @param type The type of page to be displayed in its relation to the reference page.
+/// @param referencePageView The page view that the requested page should be generated relative to.
+/// This will usually be the visible current page on screen, but may also be an offscreen staged adjacent page
+/// when the pager is refilling farther outward. This can be nil if no pages have been displayed yet.
 - (nullable __kindof UIView<TOPagingViewPage> *)pagingView:(TOPagingView *)pagingView
                                            pageViewForType:(TOPagingViewPageType)type
-                                           currentPageView:(UIView<TOPagingViewPage> *_Nullable)currentPageView;
+                                         referencePageView:(UIView<TOPagingViewPage> *_Nullable)referencePageView;
 
 @end
 
