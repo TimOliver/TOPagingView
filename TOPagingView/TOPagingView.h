@@ -172,13 +172,13 @@ NS_SWIFT_NAME(PagingView)
 @property (nonatomic, assign) BOOL isDynamicPageDirectionEnabled;
 
 /// The currently visible primary page view on screen.
-@property (nonatomic, weak, nullable) UIView<TOPagingViewPage> *currentPageView;
+@property (nonatomic, weak, readonly, nullable) UIView<TOPagingViewPage> *currentPageView;
 
 /// The next page after the currently visible page on the screen.
-@property (nonatomic, weak, nullable) UIView<TOPagingViewPage> *nextPageView;
+@property (nonatomic, weak, readonly, nullable) UIView<TOPagingViewPage> *nextPageView;
 
 /// The previous page before the currently visible page on the screen.
-@property (nonatomic, weak, nullable) UIView<TOPagingViewPage> *previousPageView;
+@property (nonatomic, weak, readonly, nullable) UIView<TOPagingViewPage> *previousPageView;
 
 /// Registers a page view class that can be automatically instantiated as needed.
 /// If the class overrides `pageIdentifier`, new instances may automatically be created
