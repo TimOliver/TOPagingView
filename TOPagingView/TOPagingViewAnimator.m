@@ -104,34 +104,29 @@ static inline CGFloat TOPagingViewAnimatorAnimationDragCoefficient(void) {
 #endif
 }
 
-/// Returns a duration after applying the active simulator animation drag coefficient.
-static inline CFTimeInterval TOPagingViewAnimatorEffectiveDuration(CFTimeInterval duration) {
-    return duration * TOPagingViewAnimatorAnimationDragCoefficient();
-}
-
-/// Converts a wall-clock duration back into the animator's base duration space.
-static inline CFTimeInterval TOPagingViewAnimatorBaseDuration(CFTimeInterval effectiveDuration) {
-    return effectiveDuration / TOPagingViewAnimatorAnimationDragCoefficient();
-}
-
-/// Converts elapsed time into clamped linear animation progress.
-static inline CGFloat TOPagingViewAnimatorLinearProgress(CFTimeInterval elapsed, CFTimeInterval duration) {
-    const CFTimeInterval effectiveDuration = TOPagingViewAnimatorEffectiveDuration(duration);
-    return (effectiveDuration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin(elapsed / effectiveDuration, 1.0);
-}
-
 /// Applies the minimum settle window used when an in-flight turn is cut short.
 static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInterval duration) { return fmax(0.05, duration); }
 
 // -----------------------------------------------------------------
 
+typedef struct {
+    CGFloat displayScale;
+    CGFloat pixelSize;
+    CGFloat animationDragCoefficient;
+} TOPagingViewAnimatorEnvironmentMetrics;
+
 @interface TOPagingViewAnimator ()
 
 - (void)_createDisplayLink TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
 - (void)_destroyDisplayLink TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
+- (void)_updateEnvironmentMetrics TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
 - (CFTimeInterval)_referenceTimeWithFallbackTime:(CFTimeInterval)fallbackTime TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
+- (CFTimeInterval)_effectiveDurationForDuration:(CFTimeInterval)duration TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
+- (CFTimeInterval)_baseDurationForEffectiveDuration:(CFTimeInterval)effectiveDuration TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
 - (CGFloat)_linearProgressAtReferenceTime:(CFTimeInterval)referenceTime TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
 - (CGFloat)_presentationOffsetForProgress:(CGFloat)progress TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
+- (CGFloat)_roundToPixel:(CGFloat)value TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
+- (CGFloat)_snapToPageBoundary:(CGFloat)value TOPAGINGVIEWANIMATOR_OBJC_DIRECT;
 - (void)_configureSegmentWithStartOffset:(CGFloat)startOffset
                                endOffset:(CGFloat)endOffset
                            referenceTime:(CFTimeInterval)referenceTime
@@ -150,6 +145,9 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 /// The duration of the current animation segment.
 @property (nonatomic, assign) CFTimeInterval activeDuration;
 
+/// The duration of the current segment after applying any active simulator drag coefficient.
+@property (nonatomic, assign) CFTimeInterval activeEffectiveDuration;
+
 /// The direction multiplier (+1 for right, -1 for left).
 @property (nonatomic, assign) CGFloat turnDirection;
 
@@ -161,6 +159,9 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 
 /// The original pagingEnabled state before this animator temporarily disabled paging.
 @property (nonatomic, assign) BOOL originalPagingEnabled;
+
+/// Cached environment values that stay stable for the life of an animation.
+@property (nonatomic, assign) TOPagingViewAnimatorEnvironmentMetrics environmentMetrics;
 
 @end
 
@@ -175,6 +176,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     if (self) {
         _duration = kTOAnimatorDefaultDuration;
         _activeDuration = kTOAnimatorDefaultDuration;
+        _environmentMetrics = (TOPagingViewAnimatorEnvironmentMetrics){.displayScale = 1.0f, .pixelSize = 1.0f, .animationDragCoefficient = 1.0f};
+        _activeEffectiveDuration = kTOAnimatorDefaultDuration;
     }
     return self;
 }
@@ -189,16 +192,17 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     UIScrollView *const scrollView = _scrollView;
     if (scrollView == nil || _pageWidth <= FLT_EPSILON) { return; }
 
+    [self _updateEnvironmentMetrics];
+
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
-    const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
     const CFTimeInterval now = CACurrentMediaTime();
 
     if (_isAnimating && dir == _turnDirection) {
         // Extend the animation one more page in the same direction.
         const CGFloat linearProgress = [self _linearProgressAtReferenceTime:[self _referenceTimeWithFallbackTime:now]];
         const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
-        const CGFloat currentOffset = TOPagingViewAnimatorRoundToPixel([self _presentationOffsetForProgress:progress], scale);
-        const CGFloat endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset + (dir * _pageWidth), scale);
+        const CGFloat currentOffset = [self _roundToPixel:[self _presentationOffsetForProgress:progress]];
+        const CGFloat endOffset = [self _roundToPixel:(_endOffset + (dir * _pageWidth))];
         [self _configureSegmentWithStartOffset:currentOffset endOffset:endOffset referenceTime:now duration:_duration];
         return;
     }
@@ -209,10 +213,10 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     // re-initiating the original direction mid-reversal without drift.
     _direction = direction;
     _turnDirection = dir;
-    const CGFloat startOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, scale);
+    const CGFloat startOffset = [self _roundToPixel:scrollView.contentOffset.x];
     CGFloat endOffset = (dir > 0.0f) ? ceil(startOffset / _pageWidth + FLT_EPSILON) * _pageWidth
                                      : floor(startOffset / _pageWidth - FLT_EPSILON) * _pageWidth;
-    endOffset = TOPagingViewAnimatorRoundToPixel(endOffset, scale);
+    endOffset = [self _roundToPixel:endOffset];
     [self _configureSegmentWithStartOffset:startOffset endOffset:endOffset referenceTime:now duration:_duration];
 
     if (!_isAnimating) {
@@ -239,20 +243,18 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     const CGFloat dir = (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
     if (_turnDirection != dir) { return; }
 
-    const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
-    const CGFloat actualOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, scale);
+    const CGFloat actualOffset = [self _roundToPixel:scrollView.contentOffset.x];
     const CFTimeInterval now = CACurrentMediaTime();
     const CFTimeInterval referenceTime = [self _referenceTimeWithFallbackTime:now];
     const CGFloat linearProgress = [self _linearProgressAtReferenceTime:referenceTime];
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     const CGFloat easingSlope = TOPagingViewAnimatorEvaluateEasingSlope(linearProgress);
-    const CFTimeInterval effectiveDuration = TOPagingViewAnimatorEffectiveDuration(_activeDuration);
     const CGFloat currentVelocity =
-        (effectiveDuration <= FLT_EPSILON) ? 0.0f : (((_endOffset - _startOffset) * easingSlope) / effectiveDuration);
+        (_activeEffectiveDuration <= FLT_EPSILON) ? 0.0f : (((_endOffset - _startOffset) * easingSlope) / _activeEffectiveDuration);
     const CGFloat remainingDistance = _pageWidth - actualOffset;
 
     const CGFloat velocityTowardTarget = currentVelocity * ((remainingDistance >= 0.0f) ? 1.0f : -1.0f);
-    if (fabs(remainingDistance) <= (1.0f / fmax(scale, 1.0f))) {
+    if (fabs(remainingDistance) <= _environmentMetrics.pixelSize) {
         [self _configureSegmentWithStartOffset:actualOffset endOffset:_pageWidth referenceTime:referenceTime duration:0.0];
         return;
     }
@@ -261,14 +263,13 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     if (velocityTowardTarget > FLT_EPSILON && remainingProgress > FLT_EPSILON && easingSlope > FLT_EPSILON) {
         // Preserve the current easing phase so the clamp continues smoothly instead of restarting.
         CGFloat syntheticStartOffset = (actualOffset - (_pageWidth * progress)) / remainingProgress;
-        syntheticStartOffset = TOPagingViewAnimatorRoundToPixel(syntheticStartOffset, scale);
+        syntheticStartOffset = [self _roundToPixel:syntheticStartOffset];
 
         const CGFloat totalDistance = _pageWidth - syntheticStartOffset;
         if (fabs(totalDistance) > FLT_EPSILON && ((totalDistance >= 0.0f) == (remainingDistance >= 0.0f))) {
             const CFTimeInterval effectiveSettleDuration = (fabs(totalDistance) * easingSlope) / velocityTowardTarget;
-            const CFTimeInterval baseSettleDuration =
-                TOPagingViewAnimatorClampSettleDuration(TOPagingViewAnimatorBaseDuration(effectiveSettleDuration));
-            const CFTimeInterval adjustedEffectiveDuration = TOPagingViewAnimatorEffectiveDuration(baseSettleDuration);
+            const CFTimeInterval baseSettleDuration = TOPagingViewAnimatorClampSettleDuration([self _baseDurationForEffectiveDuration:effectiveSettleDuration]);
+            const CFTimeInterval adjustedEffectiveDuration = [self _effectiveDurationForDuration:baseSettleDuration];
 
             [self _configureSegmentWithStartOffset:syntheticStartOffset
                                          endOffset:_pageWidth
@@ -286,15 +287,14 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 
 - (void)didTransitionWithOffset:(CGFloat)offset {
     if (!_isAnimating) { return; }
-    const CGFloat scale = TOPagingViewAnimatorDisplayScale(_scrollView);
-    const CGFloat actualOffset = TOPagingViewAnimatorRoundToPixel(_scrollView.contentOffset.x, scale);
+    const CGFloat actualOffset = [self _roundToPixel:_scrollView.contentOffset.x];
     const CGFloat linearProgress =
         [self _linearProgressAtReferenceTime:[self _referenceTimeWithFallbackTime:CACurrentMediaTime()]];
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
 
     _endOffset += offset;
-    _endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset, scale);
-    _endOffset = TOPagingViewAnimatorSnapToPageBoundary(_endOffset, _pageWidth, scale);
+    _endOffset = [self _roundToPixel:_endOffset];
+    _endOffset = [self _snapToPageBoundary:_endOffset];
 
     const CGFloat remainingProgress = 1.0f - progress;
     if (remainingProgress <= FLT_EPSILON) {
@@ -304,8 +304,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     }
 
     _startOffset = (actualOffset - (_endOffset * progress)) / remainingProgress;
-    _startOffset = TOPagingViewAnimatorRoundToPixel(_startOffset, scale);
-    _startOffset = TOPagingViewAnimatorSnapToPageBoundary(_startOffset, _pageWidth, scale);
+    _startOffset = [self _roundToPixel:_startOffset];
+    _startOffset = [self _snapToPageBoundary:_startOffset];
 }
 
 #pragma mark - Display Link -
@@ -314,12 +314,38 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     return (_displayLink != nil) ? _displayLink.targetTimestamp : fallbackTime;
 }
 
+- (void)_updateEnvironmentMetrics TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+    const CGFloat displayScale = TOPagingViewAnimatorDisplayScale(_scrollView);
+    const CGFloat animationDragCoefficient = TOPagingViewAnimatorAnimationDragCoefficient();
+    _environmentMetrics = (TOPagingViewAnimatorEnvironmentMetrics){
+        .displayScale = displayScale,
+        .pixelSize = 1.0f / fmax(displayScale, 1.0f),
+        .animationDragCoefficient = animationDragCoefficient,
+    };
+}
+
+- (CFTimeInterval)_effectiveDurationForDuration:(CFTimeInterval)duration TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+    return duration * _environmentMetrics.animationDragCoefficient;
+}
+
+- (CFTimeInterval)_baseDurationForEffectiveDuration:(CFTimeInterval)effectiveDuration TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+    return effectiveDuration / _environmentMetrics.animationDragCoefficient;
+}
+
 - (CGFloat)_linearProgressAtReferenceTime:(CFTimeInterval)referenceTime TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
-    return TOPagingViewAnimatorLinearProgress(referenceTime - _startTime, _activeDuration);
+    return (_activeEffectiveDuration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin((referenceTime - _startTime) / _activeEffectiveDuration, 1.0);
 }
 
 - (CGFloat)_presentationOffsetForProgress:(CGFloat)progress TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
     return _startOffset + ((_endOffset - _startOffset) * progress);
+}
+
+- (CGFloat)_roundToPixel:(CGFloat)value TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+    return TOPagingViewAnimatorRoundToPixel(value, _environmentMetrics.displayScale);
+}
+
+- (CGFloat)_snapToPageBoundary:(CGFloat)value TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
+    return TOPagingViewAnimatorSnapToPageBoundary(value, _pageWidth, _environmentMetrics.displayScale);
 }
 
 - (void)_configureSegmentWithStartOffset:(CGFloat)startOffset
@@ -330,10 +356,12 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     _endOffset = endOffset;
     _startTime = referenceTime;
     _activeDuration = duration;
+    _activeEffectiveDuration = [self _effectiveDurationForDuration:duration];
 }
 
 - (void)_restorePagingState TOPAGINGVIEWANIMATOR_OBJC_DIRECT {
     _activeDuration = _duration;
+    _activeEffectiveDuration = [self _effectiveDurationForDuration:_duration];
     _scrollView.pagingEnabled = _originalPagingEnabled;
 }
 
@@ -359,15 +387,13 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
         return;
     }
 
-    const CGFloat scale = TOPagingViewAnimatorDisplayScale(scrollView);
     const CGFloat linearProgress = [self _linearProgressAtReferenceTime:displayLink.targetTimestamp];
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     CGFloat targetOffset = [self _presentationOffsetForProgress:progress];
-    targetOffset = TOPagingViewAnimatorRoundToPixel(targetOffset, scale);
+    targetOffset = [self _roundToPixel:targetOffset];
     scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
 
-    const CGFloat pixelSize = 1.0f / scale;
-    if (progress >= 1.0f - FLT_EPSILON && fabs(scrollView.contentOffset.x - _endOffset) <= pixelSize) {
+    if (progress >= 1.0f - FLT_EPSILON && fabs(scrollView.contentOffset.x - _endOffset) <= _environmentMetrics.pixelSize) {
         [self _destroyDisplayLink];
         _isAnimating = NO;
         [self _restorePagingState];
