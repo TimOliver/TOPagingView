@@ -41,7 +41,9 @@
 // Convenience functions for easier mapping Objective-C and C constructs
 
 /// Convert an Objective-C class pointer into an NSValue that can be stored in a dictionary
-static inline NSValue *TOPagingViewValueForClass(Class *class) { return [NSValue valueWithBytes:class objCType:@encode(Class)]; }
+static inline NSValue *TOPagingViewValueForClass(Class *class) {
+    return [NSValue valueWithBytes:class objCType:@encode(Class)];
+}
 
 /// Convert an Objective-C class that was encoded to NSValue back out again
 static inline Class TOPagingViewClassForValue(NSValue *value) {
@@ -50,85 +52,60 @@ static inline Class TOPagingViewClassForValue(NSValue *value) {
     return class;
 }
 
-static inline void TOPagingViewPerformInitialLayout(TOPagingView *view);
-static inline void TOPagingViewHandleDynamicPageDirectionLayout(TOPagingView *view, TOPagingViewScrollMetrics metrics);
-static inline void TOPagingViewHandlePageTransitions(TOPagingView *view, TOPagingViewScrollMetrics metrics);
-static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view, TOPagingViewScrollMetrics metrics);
-static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view, TOPagingViewScrollMetrics metrics);
-static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view,
-                                                  BOOL enabled,
-                                                  UIRectEdge edge,
-                                                  CGFloat segmentWidth);
+@implementation TOPagingView {
+    /// The scroll view managed by this container.
+    UIScrollView *__weak scrollView;
 
-// -----------------------------------------------------------------
+    /// A collection of all of the page view objects that were once used, and are pending re-use.
+    NSMutableDictionary<NSString *, NSMutableSet *> *_queuedPages;
 
-@interface TOPagingView () {
+    /// A collection of all of the registered page classes, saved against their identifiers.
+    NSMutableDictionary<NSString *, NSValue *> *_registeredPageViewClasses;
+
+    /// The views that are all currently in the scroll view, in specific order.
+    UIView<TOPagingViewPage> * __weak _currentPageView;
+    UIView<TOPagingViewPage> * __weak _nextPageView;
+    UIView<TOPagingViewPage> * __weak _previousPageView;
+
+    /// Flags to ensure the data source isn't thrashed if it doesn't return a page the first time.
+    BOOL _hasNextPage;
+    BOOL _hasPreviousPage;
+
+    /// Struct to cache the state of the delegate for performance.
+    TOPagingViewDelegateFlags _delegateFlags;
+
+    /// Struct to cache the protocol state of each type of page view class used in this session.
+    /// Uses NSMapTable with pointer keys to avoid NSStringFromClass allocations on lookup.
+    NSMapTable<Class, TOPageViewProtocolCache *> *_pageViewProtocolFlags;
+
+    /// Disable automatic layout when manually laying out content.
+    BOOL _disableLayout;
+
+    /// A dictionary that holds references to any pages with unique identifiers.
+    NSMutableDictionary<NSString *, UIView *> *_uniqueIdentifierPages;
+
+    /// State tracking for when a user is dragging their finger on screen.
+    CGFloat _draggingOrigin;
+    TOPagingViewPageType _draggingDirectionType;
+
+    /// State tracking for offloading view configuration to another run-loop tick.
+    BOOL _needsNextPage;
+    BOOL _needsPreviousPage;
+
+    /// The animator used to play smooth transitions when turning pages.
+    TOPagingViewAnimator *_pageAnimator;
+
+    /// The delegate proxy that handles scroll view delegate calls.
+    TOScrollViewDelegateProxy *_scrollViewDelegateProxy;
+    
+    /// A snapshot of the current layout metrics for faster performance.
     TOPagingViewLayoutMetrics _layoutMetrics;
 }
 
-- (void)layoutContent TOPAGINGVIEW_OBJC_DIRECT;
-- (void)_updateCachedLayoutMetrics TOPAGINGVIEW_OBJC_DIRECT;
-- (void)_scrollViewDidScroll TOPAGINGVIEW_OBJC_DIRECT;
-- (void)_scrollViewWillBeginDragging TOPAGINGVIEW_OBJC_DIRECT;
-
-/// The scroll view managed by this container.
-@property (nonatomic, strong, readwrite) UIScrollView *scrollView;
-
-/// A collection of all of the page view objects that were once used, and are pending re-use.
-@property (nonatomic, strong) NSMutableDictionary<NSString *, NSMutableSet *> *queuedPages;
-
-/// A collection of all of the registered page classes, saved against their identifiers.
-@property (nonatomic, strong) NSMutableDictionary<NSString *, NSValue *> *registeredPageViewClasses;
-
-/// The views that are all currently in the scroll view, in specific order.
-@property (nonatomic, weak, readwrite) UIView<TOPagingViewPage> *currentPageView;
-@property (nonatomic, weak, readwrite) UIView<TOPagingViewPage> *nextPageView;
-@property (nonatomic, weak, readwrite) UIView<TOPagingViewPage> *previousPageView;
-
-/// Flags to ensure the data source isn't thrashed if it doesn't return a page the first time.
-@property (nonatomic, assign) BOOL hasNextPage;
-@property (nonatomic, assign) BOOL hasPreviousPage;
-
-/// Struct to cache the state of the delegate for performance.
-@property (nonatomic, assign) TOPagingViewDelegateFlags delegateFlags;
-
-/// Struct to cache the protocol state of each type of page view class used in this session.
-/// Uses NSMapTable with pointer keys to avoid NSStringFromClass allocations on lookup.
-@property (nonatomic, strong) NSMapTable<Class, TOPageViewProtocolCache *> *pageViewProtocolFlags;
-
-/// Disable automatic layout when manually laying out content.
-@property (nonatomic, assign) BOOL disableLayout;
-
-/// A dictionary that holds references to any pages with unique identifiers.
-@property (nonatomic, strong) NSMutableDictionary<NSString *, UIView *> *uniqueIdentifierPages;
-
-/// State tracking for when a user is dragging their finger on screen.
-@property (nonatomic, assign) CGFloat draggingOrigin;
-@property (nonatomic, assign) TOPagingViewPageType draggingDirectionType;
-
-/// State tracking for offloading view configuration to another run-loop tick.
-@property (nonatomic, assign) BOOL needsNextPage;
-@property (nonatomic, assign) BOOL needsPreviousPage;
-
-/// The animator used to play smooth transitions when turning pages.
-@property (nonatomic, strong) TOPagingViewAnimator *pageAnimator;
-
-/// The delegate proxy that handles scroll view delegate calls.
-@property (nonatomic, strong) TOScrollViewDelegateProxy *scrollViewDelegateProxy;
-
-@end
-
-// -----------------------------------------------------------------
-
-@implementation TOPagingView
-
-void TOPagingViewHandleScrollViewDidScroll(TOPagingView *pagingView) {
-    [pagingView _scrollViewDidScroll];
-}
-
-void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
-    [pagingView _scrollViewWillBeginDragging];
-}
+@synthesize scrollView = _scrollView;
+@synthesize previousPageView = _previousPageView;
+@synthesize currentPageView = _currentPageView;
+@synthesize nextPageView = _nextPageView;
 
 #pragma mark - Object Creation -
 
@@ -154,9 +131,8 @@ void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
     // Set default values
     _pageSpacing = 40.0f;
     _queuedPages = [NSMutableDictionary dictionary];
-    _pageViewProtocolFlags =
-        [NSMapTable mapTableWithKeyOptions:NSPointerFunctionsOpaqueMemory | NSPointerFunctionsOpaquePersonality
-                              valueOptions:NSPointerFunctionsStrongMemory];
+    _pageViewProtocolFlags = [NSMapTable mapTableWithKeyOptions:NSPointerFunctionsOpaqueMemory | NSPointerFunctionsOpaquePersonality
+                                                   valueOptions:NSPointerFunctionsStrongMemory];
     memset(&_delegateFlags, 0, sizeof(TOPagingViewDelegateFlags));
     _draggingOrigin = -CGFLOAT_MAX;
 
@@ -329,21 +305,25 @@ void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
     _scrollView.contentOffset = offset;
 }
 
-/// Called by the scroll view delegate proxy when the scroll view scrolls.
-/// This replaces the KVO observer for better performance.
-- (void)_scrollViewDidScroll TOPAGINGVIEW_OBJC_DIRECT {
-    if (_disableLayout) { return; }
-    TOPagingViewLayoutPages(self);
-}
-
 /// Called by the scroll view delegate proxy when the user begins dragging.
 - (void)_scrollViewWillBeginDragging TOPAGINGVIEW_OBJC_DIRECT {
     if (_pageAnimator.isAnimating) { [_pageAnimator stopAnimation]; }
 }
 
+/// Perform a layout pass for the pages
 - (void)_layoutPages TOPAGINGVIEW_OBJC_DIRECT {
-    // Proxy through to the scroll handler for layout updates
-    [self _scrollViewDidScroll];
+    if (_disableLayout) { return; }
+    TOPagingViewLayoutPages(self);
+}
+
+/// External hook for the scroll view proxy to forward scroll events to us
+void TOPagingViewHandleScrollViewDidScroll(TOPagingView *pagingView) {
+    [pagingView _layoutPages];
+}
+
+/// External hook for the scroll view proxy to forward scroll events to us
+void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
+    [pagingView _scrollViewWillBeginDragging];
 }
 
 #pragma mark - Page Setup -

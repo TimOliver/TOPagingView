@@ -171,6 +171,15 @@ NS_SWIFT_NAME(PagingView)
 /// with `pageScrollDirection` automatically updating to match.
 @property (nonatomic, assign) BOOL isDynamicPageDirectionEnabled;
 
+/// The currently visible primary page view on screen.
+@property (nonatomic, weak, nullable) UIView<TOPagingViewPage> *currentPageView;
+
+/// The next page after the currently visible page on the screen.
+@property (nonatomic, weak, nullable) UIView<TOPagingViewPage> *nextPageView;
+
+/// The previous page before the currently visible page on the screen.
+@property (nonatomic, weak, nullable) UIView<TOPagingViewPage> *previousPageView;
+
 /// Registers a page view class that can be automatically instantiated as needed.
 /// If the class overrides `pageIdentifier`, new instances may automatically be created
 /// when needed. Any classes that do not override that property will become the default
@@ -195,15 +204,6 @@ NS_SWIFT_NAME(PagingView)
 /// the queue exist
 - (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier
     NS_SWIFT_NAME(dequeueReusablePageView(for:));
-
-/// The currently visible primary page view on screen.
-- (nullable __kindof UIView<TOPagingViewPage> *)currentPageView;
-
-/// The next page after the currently visible page on the screen.
-- (nullable __kindof UIView<TOPagingViewPage> *)nextPageView;
-
-/// The previous page before the currently visible page on the screen.
-- (nullable __kindof UIView<TOPagingViewPage> *)previousPageView;
 
 /// Returns all of the currently visible pages as an un-ordered set
 - (nullable NSSet<__kindof UIView<TOPagingViewPage> *> *)visiblePageViews;
