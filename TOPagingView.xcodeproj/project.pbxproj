@@ -23,6 +23,7 @@
 /* Begin PBXBuildFile section */
 		227BEDFA27AC1867009D6B6D /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 227BEDF927AC1867009D6B6D /* CHANGELOG.md */; };
 		24F0A0012F24000100000001 /* TOPagingViewUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 24F0A0042F24000100000001 /* TOPagingViewUITests.m */; };
+		2F2600012F26000100000001 /* TOScrollViewDelegateProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 2F2600032F26000100000001 /* TOScrollViewDelegateProxy.m */; };
 		22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22ADED23242B2ADD004A7854 /* TOTestPageView.m */; };
 		22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3161F242899AA0063F6A6 /* TOAppDelegate.m */; };
 		22C31626242899AA0063F6A6 /* TOViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31625242899AA0063F6A6 /* TOViewController.m */; };
@@ -57,6 +58,8 @@
 		24F0A0032F24000100000001 /* TOPagingViewUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TOPagingViewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		24F0A0042F24000100000001 /* TOPagingViewUITests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingViewUITests.m; sourceTree = "<group>"; };
 		24F0A0052F24000100000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2F2600022F26000100000001 /* TOScrollViewDelegateProxy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOScrollViewDelegateProxy.h; sourceTree = "<group>"; };
+		2F2600032F26000100000001 /* TOScrollViewDelegateProxy.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOScrollViewDelegateProxy.m; sourceTree = "<group>"; };
 		22ADED22242B2ADD004A7854 /* TOTestPageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOTestPageView.h; sourceTree = "<group>"; };
 		22ADED23242B2ADD004A7854 /* TOTestPageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOTestPageView.m; sourceTree = "<group>"; };
 		22C3161B242899AA0063F6A6 /* TOPagingViewExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TOPagingViewExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -164,6 +167,8 @@
 			children = (
 				22C3167D242A40F80063F6A6 /* TOPagingView.h */,
 				22C3167E242A40F80063F6A6 /* TOPagingView.m */,
+				2F2600022F26000100000001 /* TOScrollViewDelegateProxy.h */,
+				2F2600032F26000100000001 /* TOScrollViewDelegateProxy.m */,
 				22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */,
 				22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */,
 			);
@@ -354,6 +359,7 @@
 				22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */,
 				22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */,
 				22C3167F242A40F80063F6A6 /* TOPagingView.m in Sources */,
+				2F2600012F26000100000001 /* TOScrollViewDelegateProxy.m in Sources */,
 				22D4A7B3293F5E8A00B1C2D3 /* TOPagingViewAnimator.m in Sources */,
 				22C31631242899AB0063F6A6 /* main.m in Sources */,
 			);

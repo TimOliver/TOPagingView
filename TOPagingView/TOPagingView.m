@@ -24,6 +24,7 @@
 
 #import <objc/runtime.h>
 
+#import "TOScrollViewDelegateProxy.h"
 #import "TOPagingViewAnimator.h"
 
 /// Mark implementation-only methods as being statically called to increase performance.
@@ -92,19 +93,6 @@ typedef struct {
 @end
 
 // -----------------------------------------------------------------
-
-@class TOPagingView;
-
-/// A lightweight proxy that intercepts UIScrollViewDelegate calls.
-/// Uses NSProxy message forwarding to automatically forward all delegate methods
-/// to the external delegate, while intercepting scrollViewDidScroll: and
-/// scrollViewWillBeginDragging: for internal state tracking.
-/// This approach avoids manually implementing every UIScrollViewDelegate method.
-@interface TOScrollViewDelegateProxy : NSProxy <UIScrollViewDelegate>
-@property (nonatomic, weak) TOPagingView *pagingView;
-@property (nonatomic, weak) id<UIScrollViewDelegate> externalDelegate;
-- (instancetype)init;
-@end
 
 @interface TOPagingViewAnimator (Internal)
 - (void)didTransitionWithOffset:(CGFloat)offset;
@@ -195,6 +183,14 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view,
 // -----------------------------------------------------------------
 
 @implementation TOPagingView
+
+void TOPagingViewHandleScrollViewDidScroll(TOPagingView *pagingView) {
+    [pagingView _scrollViewDidScroll];
+}
+
+void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
+    [pagingView _scrollViewWillBeginDragging];
+}
 
 #pragma mark - Object Creation -
 
@@ -1498,76 +1494,6 @@ static inline CGRect TOPagingViewRightPageFrame(TOPagingView *view) {
 
 - (id<UIScrollViewDelegate>)scrollViewDelegate {
     return _scrollViewDelegateProxy.externalDelegate;
-}
-
-@end
-
-// -----------------------------------------------------------------
-
-#pragma mark - Scroll View Delegate Proxy Implementation -
-
-/// The delegate selectors we intercept to notify the paging view of scroll events.
-static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
-    return sel == @selector(scrollViewDidScroll:) || sel == @selector(scrollViewWillBeginDragging:);
-}
-
-@implementation TOScrollViewDelegateProxy
-
-- (instancetype)init {
-    // NSProxy doesn't have a default -init, so we just return self
-    return self;
-}
-
-#pragma mark - Intercepted Method
-
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    // Notify the paging view of scroll changes
-    [_pagingView _scrollViewDidScroll];
-
-    // Forward to external delegate
-    if ([_externalDelegate respondsToSelector:@selector(scrollViewDidScroll:)]) {
-        [_externalDelegate scrollViewDidScroll:scrollView];
-    }
-}
-
-- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
-    // Stop any programmatic turn so the user's gesture takes over immediately.
-    [_pagingView _scrollViewWillBeginDragging];
-
-    // Forward to external delegate
-    if ([_externalDelegate respondsToSelector:@selector(scrollViewWillBeginDragging:)]) {
-        [_externalDelegate scrollViewWillBeginDragging:scrollView];
-    }
-}
-
-#pragma mark - NSProxy Message Forwarding
-
-- (BOOL)respondsToSelector:(SEL)sel {
-    // We always respond to the intercepted selector
-    if (TOScrollViewDelegateProxyIsInterceptedSelector(sel)) { return YES; }
-    // Otherwise, forward to external delegate
-    return [_externalDelegate respondsToSelector:sel];
-}
-
-- (id)forwardingTargetForSelector:(SEL)sel {
-    // For non-intercepted selectors, forward directly to external delegate.
-    // This is the fast path - no NSInvocation boxing needed.
-    if (!TOScrollViewDelegateProxyIsInterceptedSelector(sel)) { return _externalDelegate; }
-    return nil;
-}
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel {
-    // Try to get signature from external delegate
-    NSMethodSignature *signature = [(NSObject *)_externalDelegate methodSignatureForSelector:sel];
-    if (signature) { return signature; }
-    // Fallback: return a void signature to avoid crashing on unknown selectors
-    return [NSMethodSignature signatureWithObjCTypes:"v@:"];
-}
-
-- (void)forwardInvocation:(NSInvocation *)invocation {
-    // This is the slow path, only used if forwardingTargetForSelector: returns nil
-    // and the method wasn't intercepted. Forward to external delegate if it responds.
-    if ([_externalDelegate respondsToSelector:invocation.selector]) { [invocation invokeWithTarget:_externalDelegate]; }
 }
 
 @end
