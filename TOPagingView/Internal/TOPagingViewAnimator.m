@@ -31,6 +31,9 @@
 /// Default duration for page turn animations.
 static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
 
+/// Default fraction of a full turn duration to use when clamping to a nearer target.
+static const CGFloat kTOAnimatorClampDurationFactor = 0.45f;
+
 /// Cubic bezier control points for the ease-out curve.
 static const CGFloat kTOAnimatorControlPoint1X = 0.3f;
 static const CGFloat kTOAnimatorControlPoint1Y = 0.9f;
@@ -221,7 +224,7 @@ typedef struct {
         (_activeEffectiveDuration <= FLT_EPSILON) ? 0.0f : (((_endOffset - _startOffset) * easingSlope) / _activeEffectiveDuration);
     const CGFloat velocityTowardTarget = currentVelocity * ((remainingDistance >= 0.0f) ? 1.0f : -1.0f);
 
-    CFTimeInterval settleDuration = TOPagingViewAnimatorClampSettleDuration(_duration * 0.45);
+    CFTimeInterval settleDuration = TOPagingViewAnimatorClampSettleDuration(_duration * kTOAnimatorClampDurationFactor);
     if (velocityTowardTarget > FLT_EPSILON) {
         const CGFloat initialEasingSlope = TOPagingViewAnimatorEvaluateEasingSlope(0.0f);
         if (initialEasingSlope > FLT_EPSILON) {
