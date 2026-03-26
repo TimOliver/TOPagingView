@@ -26,64 +26,9 @@
 
 #import "TOScrollViewDelegateProxy.h"
 #import "TOPagingViewAnimator.h"
-
-/// Mark implementation-only methods as being statically called to increase performance.
-#define TOPAGINGVIEW_OBJC_DIRECT __attribute__((objc_direct))
-
-// -----------------------------------------------------------------
-
-/// For pages that don't specify an identifier, this string will be used.
-static NSString *const kTOPagingViewDefaultIdentifier = @"TOPagingView.DefaultPageIdentifier";
-
-/// There are always 3 slots, with content insetting used to block pages on either side.
-static const CGFloat kTOPagingViewPageSlotCount = 3.0f;
-
-/// The amount of padding along the edge of the screen shown when the "no incoming page" animation plays.
-static const CGFloat kTOPagingViewBumperWidthCompact = 48.0f;
-static const CGFloat kTOPagingViewBumperWidthRegular = 96.0f;
-
-/// The animation options used for the bounce animation.
-static const NSInteger kTOPagingViewAnimationOptions = (UIViewAnimationOptionAllowUserInteraction);
-
-// -----------------------------------------------------------------
-
-/// A struct to cache which methods the current delegate implements.
-typedef struct {
-    unsigned int delegateWillTurnToPage : 1;
-    unsigned int delegateDidTurnToPage : 1;
-    unsigned int delegateDidChangeToPageDirection : 1;
-} TOPagingViewDelegateFlags;
-
-// -----------------------------------------------------------------
-
-/// A struct to cache which methods each page view class implements.
-typedef struct {
-    unsigned int protocolPageIdentifier : 1;
-    unsigned int protocolUniqueIdentifier : 1;
-    unsigned int protocolPrepareForReuse : 1;
-    unsigned int protocolIsInitialPage : 1;
-    unsigned int protocolSetPageDirection : 1;
-} TOPageViewProtocolFlags;
-
-/// Per-scroll metrics cached once and threaded through the hot layout helpers.
-typedef struct {
-    CGFloat offsetX;
-    CGFloat segmentWidth;
-    CGFloat contentWidth;
-    BOOL isReversed;
-} TOPagingViewScrollMetrics;
-
-/// Cached geometry values used throughout layout, scrolling, and transitions.
-typedef struct {
-    CGFloat pageWidth;
-    CGFloat halfPageSpacing;
-    CGRect scrollViewFrame;
-    CGRect currentPageFrame;
-    CGRect nextPageFrame;
-    CGRect previousPageFrame;
-    CGRect leftPageFrame;
-    CGRect rightPageFrame;
-} TOPagingViewLayoutMetrics;
+#import "TOPagingViewConstants.h"
+#import "TOPagingViewMacros.h"
+#import "TOPagingViewTypes.h"
 
 @interface TOPageViewProtocolCache : NSObject
 @property (nonatomic, assign) TOPageViewProtocolFlags flags;
