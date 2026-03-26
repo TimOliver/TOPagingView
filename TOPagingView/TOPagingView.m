@@ -41,7 +41,7 @@
 
 @interface TOPagingViewAnimator (Internal)
 - (void)didTransitionWithOffset:(CGFloat)offset;
-- (void)clampAnimationToCurrentOffsetInDirection:(UIRectEdge)direction;
+- (void)clampAnimationToOffset:(CGFloat)offset;
 @end
 
 // -----------------------------------------------------------------
@@ -738,8 +738,7 @@ static inline void TOPagingViewHandlePageTransitions(TOPagingView *view, TOPagin
     //
     // When the page animator is active, transition as soon as movement commits away from
     // the middle slot so the internal page bookkeeping stays ahead of rapid animation.
-    const CGFloat rightHandThreshold =
-        isAnimatingRight ? metrics.segmentWidth + 1.0f : metrics.contentWidth - metrics.segmentWidth;
+    const CGFloat rightHandThreshold = isAnimatingRight ? metrics.segmentWidth + 1.0f : metrics.contentWidth - metrics.segmentWidth;
     const CGFloat leftHandThreshold = isAnimatingLeft ? metrics.segmentWidth - 1.0f : FLT_EPSILON;
 
     // Check if we went over the right-hand threshold to start transitioning the pages
@@ -1154,8 +1153,10 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         _nextPageView = nextPage;
         _nextPageView.frame = TOPagingViewNextPageFrame(self);
     } else {
-        const UIRectEdge direction = _pageScrollDirection == TOPagingViewDirectionLeftToRight ? UIRectEdgeRight : UIRectEdgeLeft;
-        [_pageAnimator clampAnimationToCurrentOffsetInDirection:direction];
+        // At this point the newly committed page is already centered in the middle slot,
+        // so if there is no farther page to continue to, the animator should settle there.
+        const CGFloat targetOffset = TOPagingViewScrollViewPageWidth(self);
+        [_pageAnimator clampAnimationToOffset:targetOffset];
     }
 
     // If the next page ended up being nil, set a flag to prevent churning.
@@ -1174,8 +1175,10 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         _previousPageView = previousPage;
         _previousPageView.frame = TOPagingViewPreviousPageFrame(self);
     } else {
-        const UIRectEdge direction = _pageScrollDirection == TOPagingViewDirectionLeftToRight ? UIRectEdgeLeft : UIRectEdgeRight;
-        [_pageAnimator clampAnimationToCurrentOffsetInDirection:direction];
+        // At this point the newly committed page is already centered in the middle slot,
+        // so if there is no farther page to continue to, the animator should settle there.
+        const CGFloat targetOffset = TOPagingViewScrollViewPageWidth(self);
+        [_pageAnimator clampAnimationToOffset:targetOffset];
     }
 
     // If the previous page ended up being nil, set a flag so we don't check again until we need to.
