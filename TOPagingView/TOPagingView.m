@@ -615,28 +615,21 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
     view->_currentPageView = pageView;
     TOPagingViewInsertPageView(view, pageView);
     view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
-
-    // Add the next & previous pages
+    
+    // Fetch next and previous pages
     [view _fetchNewNextPage];
-
-    // When dynamic page detection is enabled, skip fetching the previous page, and assume we have one if we have
-    // a next page available.
     if (!view->_isDynamicPageDirectionEnabled || !TOPagingViewIsInitialPageForPageView(view, view->_currentPageView)) {
+        // When dynamic page detection is enabled, skip fetching the previous page, and assume we have one if we have
+        // a next page available.
         [view _fetchNewPreviousPage];
     } else {
         view->_hasPreviousPage = view->_hasNextPage;
     }
 
-    // Disable the observer while we manually place all elements
+    // Disable the observer while we perfom initial sizing and placement
     view->_disableLayout = YES;
-
-    // Update the content size for the scroll view
     [view _updateContentSize];
-
-    // Set the initial scroll point to the current page
     [view _resetContentOffset];
-
-    // Re-enable the observer
     view->_disableLayout = NO;
 
     // Send a delegate event stating we've completed transitioning to the initial page
@@ -762,7 +755,9 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view, TOPagingVi
     }
 
     // If we matched an edge, update its state.
-    if (edge != UIRectEdgeNone) { TOPagingViewSetPageSlotEnabled(view, isEnabled, edge, metrics.segmentWidth); }
+    if (edge != UIRectEdgeNone) {
+        TOPagingViewSetPageSlotEnabled(view, isEnabled, edge, metrics.segmentWidth);
+    }
 }
 
 static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabled, UIRectEdge edge, CGFloat segmentWidth) {
@@ -808,10 +803,11 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // Determine the direction we're heading for the delegate
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
-    const BOOL isDetectingDirection =
-        _isDynamicPageDirectionEnabled && TOPagingViewIsInitialPageForPageView(self, _currentPageView);
-    const BOOL isPreviousPage =
-        !isDetectingDirection && ((!isDirectionReversed && isLeftDirection) || (isDirectionReversed && !isLeftDirection));
+    const BOOL isDetectingDirection = _isDynamicPageDirectionEnabled &&
+                                        TOPagingViewIsInitialPageForPageView(self, _currentPageView);
+    const BOOL isPreviousPage = !isDetectingDirection &&
+                                ((!isDirectionReversed && isLeftDirection) ||
+                                 (isDirectionReversed && !isLeftDirection));
 
     // Fire the willTurn delegate for each requested animated turn.
     const TOPagingViewPageType type = (isPreviousPage ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext);
