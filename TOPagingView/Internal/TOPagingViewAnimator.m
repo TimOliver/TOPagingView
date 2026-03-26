@@ -183,7 +183,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     }
 }
 
-- (void)stopAnimation {
+- (void)stopAnimationWithCompletion:(BOOL)didComplete {
     if (!_isAnimating) { return; }
     // Cancel the display link.
     // The scroll view will stop at whatever offset it is now.
@@ -191,6 +191,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     _displayLink = nil;
     _isAnimating = NO;
     _scrollView.pagingEnabled = _originalPagingEnabled;
+    if (_completionHandler) { _completionHandler(); }
+    _completionHandler = nil;
 }
 
 - (void)clampAnimationToOffset:(CGFloat)targetOffset {
@@ -332,7 +334,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 - (void)_displayLinkDidFire:(CADisplayLink *)displayLink {
     UIScrollView *const scrollView = _scrollView;
     if (scrollView == nil) {
-        [self stopAnimation];
+        [self stopAnimationWithCompletion:NO];
         return;
     }
 
@@ -343,8 +345,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
 
     if (progress >= 1.0f - FLT_EPSILON && fabs(scrollView.contentOffset.x - _endOffset) <= _environmentMetrics.pixelSize) {
-        [self stopAnimation];
-        if (_completionHandler) { _completionHandler(); }
+        [self stopAnimationWithCompletion:YES];
     }
 }
 

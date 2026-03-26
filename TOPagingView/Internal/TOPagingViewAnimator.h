@@ -57,7 +57,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)turnToPageInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT;
 
 /// Immediately stops the current animation at its current position.
-- (void)stopAnimation TOPAGINGVIEW_OBJC_DIRECT;
+/// /// @param didComplete The animation successfully completed so its completion handler should be called.
+- (void)stopAnimationWithCompletion:(BOOL)didComplete TOPAGINGVIEW_OBJC_DIRECT;
 
 /// Called when the paging mechanism has performed a transition and all of the pages
 /// were offset by one page segment. We pass that segment delta here so the

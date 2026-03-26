@@ -195,7 +195,7 @@
     // If we changed size mid-pageturn animation, reset back to the center
     BOOL wasAnimating = NO;
     if (_pageAnimator.isAnimating) {
-        [_pageAnimator stopAnimation];
+        [_pageAnimator stopAnimationWithCompletion:YES];
         wasAnimating = YES;
     }
     
@@ -280,7 +280,9 @@
 
 /// Called by the scroll view delegate proxy when the user begins dragging.
 - (void)_scrollViewWillBeginDragging TOPAGINGVIEW_OBJC_DIRECT {
-    if (_pageAnimator.isAnimating) { [_pageAnimator stopAnimation]; }
+    if (_pageAnimator.isAnimating) {
+        [_pageAnimator stopAnimationWithCompletion:NO];
+    }
 }
 
 /// Perform a layout pass for the pages
@@ -843,15 +845,16 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 }
 
 - (void)_skipToNewPageInDirection:(UIRectEdge)direction animated:(BOOL)animated TOPAGINGVIEW_OBJC_DIRECT {
-    // Stop any ongoing animation
-    [_pageAnimator stopAnimation];
-    _pageAnimator.completionHandler = nil;
+    // Stop any ongoing animations
+    [_pageAnimator stopAnimationWithCompletion:NO];
 
     // Disable the layout since we'll handle everything beyond this point
     _disableLayout = YES;
 
     // If the scroll view is decelerating from a swipe, cancel it.
-    if (_scrollView.isDecelerating) { [_scrollView setContentOffset:_scrollView.contentOffset animated:NO]; }
+    if (_scrollView.isDecelerating) {
+        [_scrollView setContentOffset:_scrollView.contentOffset animated:NO];
+    }
 
     // Reclaim the next and previous pages since these will always need to be regenerated
     TOPagingViewReclaimPageView(self, _nextPageView);
@@ -871,34 +874,23 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // If we're not animating, we can rearrange everything statically and cancel out here
     if (!animated) {
-        // Reclaim the current page since we'll swap over to the newly requested one
+        // Reclaim the current page and instantly swap to the new one.
         TOPagingViewReclaimPageView(self, _currentPageView);
-
-        // Insert the new current page view
         _currentPageView = newPageView;
         _currentPageView.frame = _layoutMetrics.currentPageFrame;
         TOPagingViewInsertPageView(self, _currentPageView);
 
-        // Re-enable layout to trigger a check for the next pages
+        // Re-enable layout and then trigger a pass to set up the adjacent pages
         _disableLayout = NO;
-
-        // Re-set the offset to the middle
         _scrollView.contentOffset = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
-
-        // Trigger requesting replacement adjacent pages
         [self fetchAdjacentPagesIfAvailable];
 
         return;
     }
 
-    // Set the scroll view offset to adjacent the middle to animate
-    _scrollView.contentOffset =
-        (direction == UIRectEdgeLeft) ? (CGPoint){_layoutMetrics.pageWidth * 2.0f, 0.0f} : CGPointZero;
-
-    // Put the current view in the same slot so we can animate to the new one
+    // Set the scroll view offset to either side slot, depending on direction, so we can animate to current page in the center
+    _scrollView.contentOffset = (direction == UIRectEdgeLeft) ? (CGPoint){_layoutMetrics.pageWidth * 2.0f, 0.0f} : CGPointZero;
     _currentPageView.frame = (direction == UIRectEdgeLeft) ? _layoutMetrics.rightPageFrame : _layoutMetrics.leftPageFrame;
-
-    // Make the old current page the previous page so we can keep track of it across animations
     _previousPageView = _currentPageView;
 
     // Put the new view in the center point and promote it to new current
@@ -912,14 +904,12 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         __strong __typeof(self) strongSelf = weakSelf;
         if (!strongSelf) { return; }
 
-        // Remove the previous page
+        // Remove the previous page, now that we're done with it
         TOPagingViewReclaimPageView(strongSelf, strongSelf->_previousPageView);
         strongSelf->_previousPageView = nil;
-
-        // Re-enable layout
+        
+        // Re-enable layout and refresh adjacent pages
         strongSelf->_disableLayout = NO;
-
-        // Trigger requesting replacement adjacent pages
         [strongSelf fetchAdjacentPagesIfAvailable];
 
         // If the scroll view delegate was set, tell it the animation completed
@@ -1182,51 +1172,6 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     _disableLayout = NO;
 }
 
-- (void)_playBounceAnimationInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT {
-    const CGFloat offsetModifier = (direction == UIRectEdgeLeft) ? -1.0f : 1.0f;
-    const BOOL isCompactSizeClass = self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact;
-    const CGFloat bumperPadding =
-        (isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) * offsetModifier;
-
-    // Set the origin and bumper margins
-    const CGPoint origin = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
-    const CGPoint bumperOffset = (CGPoint){origin.x + bumperPadding, 0.0f};
-
-    // Disable layout while this is occurring
-    _disableLayout = YES;
-
-    // Animation block when pulling back to the original state
-    void (^popAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:origin animated:NO]; };
-
-    // Completion block that cleans everything up at the end of the animation
-    void (^popAnimationCompletionBlock)(BOOL) = ^(BOOL success) { self->_disableLayout = NO; };
-
-    // Initial block that starts the animation chain
-    void (^pullAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:bumperOffset animated:NO]; };
-
-    // Completion block after the initial pull back is started
-    void (^pullAnimationCompletionBlock)(BOOL) = ^(BOOL success) {
-        // Play a very wobbly spring back animation snapping back into place
-        [UIView animateWithDuration:0.4f
-                              delay:0.0f
-             usingSpringWithDamping:0.3f
-              initialSpringVelocity:0.1f
-                            options:kTOPagingViewAnimationOptions
-                         animations:popAnimationBlock
-                         completion:popAnimationCompletionBlock];
-    };
-
-    // Kickstart the animation chain.
-    // Play a very quick rubber-banding slide out to the bumper padding
-    [UIView animateWithDuration:0.1f
-                          delay:0.0f
-         usingSpringWithDamping:1.0f
-          initialSpringVelocity:2.5f
-                        options:kTOPagingViewAnimationOptions
-                     animations:pullAnimationBlock
-                     completion:pullAnimationCompletionBlock];
-}
-
 - (void)_requestPendingPages TOPAGINGVIEW_OBJC_DIRECT {
     // Don't continue if neither pages are pending
     if (!_needsNextPage && !_needsPreviousPage) { return; }
@@ -1277,6 +1222,51 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
             return;
         }
     }
+}
+
+- (void)_playBounceAnimationInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT {
+    const CGFloat offsetModifier = (direction == UIRectEdgeLeft) ? -1.0f : 1.0f;
+    const BOOL isCompactSizeClass = self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact;
+    const CGFloat bumperPadding =
+        (isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) * offsetModifier;
+
+    // Set the origin and bumper margins
+    const CGPoint origin = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
+    const CGPoint bumperOffset = (CGPoint){origin.x + bumperPadding, 0.0f};
+
+    // Disable layout while this is occurring
+    _disableLayout = YES;
+
+    // Animation block when pulling back to the original state
+    void (^popAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:origin animated:NO]; };
+
+    // Completion block that cleans everything up at the end of the animation
+    void (^popAnimationCompletionBlock)(BOOL) = ^(BOOL success) { self->_disableLayout = NO; };
+
+    // Initial block that starts the animation chain
+    void (^pullAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:bumperOffset animated:NO]; };
+
+    // Completion block after the initial pull back is started
+    void (^pullAnimationCompletionBlock)(BOOL) = ^(BOOL success) {
+        // Play a very wobbly spring back animation snapping back into place
+        [UIView animateWithDuration:0.4f
+                              delay:0.0f
+             usingSpringWithDamping:0.3f
+              initialSpringVelocity:0.1f
+                            options:kTOPagingViewAnimationOptions
+                         animations:popAnimationBlock
+                         completion:popAnimationCompletionBlock];
+    };
+
+    // Kickstart the animation chain.
+    // Play a very quick rubber-banding slide out to the bumper padding
+    [UIView animateWithDuration:0.1f
+                          delay:0.0f
+         usingSpringWithDamping:1.0f
+          initialSpringVelocity:2.5f
+                        options:kTOPagingViewAnimationOptions
+                     animations:pullAnimationBlock
+                     completion:pullAnimationCompletionBlock];
 }
 
 #pragma mark - Public Accessors -
