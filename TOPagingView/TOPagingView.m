@@ -38,13 +38,6 @@
 @end
 
 // -----------------------------------------------------------------
-
-@interface TOPagingViewAnimator (Internal)
-- (void)didTransitionWithOffset:(CGFloat)offset;
-- (void)clampAnimationToOffset:(CGFloat)offset;
-@end
-
-// -----------------------------------------------------------------
 // Convenience functions for easier mapping Objective-C and C constructs
 
 /// Convert an Objective-C class pointer into an NSValue that can be stored in a dictionary

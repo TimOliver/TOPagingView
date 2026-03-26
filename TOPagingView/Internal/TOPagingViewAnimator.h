@@ -21,6 +21,7 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #import <UIKit/UIKit.h>
+#import "TOPagingViewMacros.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -30,7 +31,6 @@ NS_ASSUME_NONNULL_BEGIN
 /// directly into the scroll view each frame. When TOPagingView recenters the
 /// scroll view during page transitions, the animator is rebased by one page
 /// segment so the motion remains continuous.
-NS_SWIFT_NAME(PagingViewAnimator)
 @interface TOPagingViewAnimator : NSObject
 
 /// The scroll view whose content offset will be animated.
@@ -53,17 +53,20 @@ NS_SWIFT_NAME(PagingViewAnimator)
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
 
 /// Animates toward the next page in the given direction.
-///
 /// @param direction The edge to turn toward (UIRectEdgeLeft or UIRectEdgeRight).
-- (void)turnToPageInDirection:(UIRectEdge)direction;
+- (void)turnToPageInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT;
 
 /// Immediately stops the current animation at its current position.
-- (void)stopAnimation;
+- (void)stopAnimation TOPAGINGVIEW_OBJC_DIRECT;
 
 /// Called when the paging mechanism has performed a transition and all of the pages
 /// were offset by one page segment. We pass that segment delta here so the
 /// animator can rebase its absolute content offset targets.
-- (void)didTransitionWithOffset:(CGFloat)offset;
+- (void)didTransitionWithOffset:(CGFloat)offset TOPAGINGVIEW_OBJC_DIRECT;
+
+/// Called when we've detected we're in animation run and we're about to hit the outer boundary of pages.
+/// This method modifies the current velocity so it gracefully decelerates to the boundary instead.
+- (void)clampAnimationToOffset:(CGFloat)targetOffset TOPAGINGVIEW_OBJC_DIRECT;
 
 @end
 
