@@ -53,7 +53,7 @@
     /// Flags tracking the current state of layout
     BOOL _disableLayout;     // Pause all layout logic temporarily for fine-grained modifications.
     BOOL _hasNextPage;       // Skip checking for an incoming next page once we've successfully dequeued one.
-    BOOL _hasPreviousPage;   // Skip checking for an outgoing previous page once we've successfully dequeued one.
+    BOOL _hasPreviousPage;   // Skip checking for an adjacent previous page once we've successfully dequeued one.
     BOOL _needsNextPage;     // Defers loading the next page until the next view layout pass to spread the work across run loops
     BOOL _needsPreviousPage; // Defers loading the previous page until the next view layout pass to spread the work across run loops
 
@@ -151,15 +151,17 @@
 }
 
 - (void)layoutContent TOPAGINGVIEW_OBJC_DIRECT {
-    // Refresh the latest page and layout state
+    // If there are any pending previous or next page requests, fulfill them now.
     [self _requestPendingPages];
+    
+    // Rebuild the layout metrics against (potentially) new frame size.
     [self _updateCachedLayoutMetrics];
 
     // Skip performing a new layout pass if the scroll view size didn't actually change.
     UIScrollView *const scrollView = _scrollView;
     const CGRect newScrollViewFrame = _layoutMetrics.scrollViewFrame;
     if (CGSizeEqualToSize(_scrollView.frame.size, newScrollViewFrame.size)) { return; }
-    
+
     // If we changed size mid-pageturn animation, reset back to the center
     BOOL wasAnimating = NO;
     if (_pageAnimator.isAnimating) {
@@ -891,7 +893,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     [UIView animateWithDuration:_pageAnimator.duration
                           delay:0.0f
                         options:kTOPagingViewAnimationOptions
-                     animations:^{ [weakSelf->_scrollView setContentOffset:centerOffset animated:NO]; }
+                     animations:^{ [self->_scrollView setContentOffset:centerOffset animated:NO]; }
                      completion:completionBlock];
 }
 
@@ -918,7 +920,7 @@ static void TOPagingViewInsertPageView(TOPagingView *view, UIView<TOPagingViewPa
         view->_uniqueIdentifierPages[uniqueIdentifier] = pageView;
     }
 
-    // If the page view supports it, inform the delegate of the current page direction
+    // If the page view supports it, inform it of the current page direction
     if (flags.protocolSetPageDirection) { [pageView setPageDirection:view->_pageScrollDirection]; }
 
     // Remove it from the pool of recycled pages
