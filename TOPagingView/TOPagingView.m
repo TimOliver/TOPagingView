@@ -31,8 +31,6 @@
 #import "TOPagingViewTypes.h"
 #import "TOScrollViewDelegateProxy.h"
 
-
-
 @implementation TOPagingView {
     /// The scroll view managed by this container.
     UIScrollView *__weak scrollView;
@@ -123,24 +121,14 @@
 
 - (void)_configureScrollView TOPAGINGVIEW_OBJC_DIRECT {
     UIScrollView *const scrollView = _scrollView;
-
-    // Set the frame of the scrollview now so we can start
-    // calculating the inset
     scrollView.frame = _layoutMetrics.scrollViewFrame;
-
-    // Set the scroll behaviour to snap between pages
     scrollView.pagingEnabled = YES;
-
-    // Disable auto status bar insetting
-    if (@available(iOS 11.0, *)) { scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever; }
-
-    // Never show the indicators
+    scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     scrollView.showsHorizontalScrollIndicator = NO;
     scrollView.showsVerticalScrollIndicator = NO;
 
     // Set our delegate proxy as the scroll view's delegate.
     // The proxy forwards calls to an external delegate while also handling internal scroll tracking.
-    // This is faster than KVO (direct method dispatch vs KVO dictionary lookups).
     scrollView.delegate = _scrollViewDelegateProxy;
 
     // Enable scrolling by clicking and dragging with the mouse
@@ -166,17 +154,14 @@
 }
 
 - (void)layoutContent TOPAGINGVIEW_OBJC_DIRECT {
-    // If need be, request new next/previous pages
+    
     [self _requestPendingPages];
-
-    // Cache all of our metrics for this layout pass to minimize recomputation
     [self _updateCachedLayoutMetrics];
 
     UIScrollView *const scrollView = _scrollView;
     const CGRect newScrollViewFrame = _layoutMetrics.scrollViewFrame;
 
-    // We don't need to perform any new sizing calculations unless the frame changed enough to warrant
-    // also changing the content size
+    // We don't need to perform any new sizing calculations unless the frame size actually changed.
     if (CGSizeEqualToSize(_scrollView.frame.size, newScrollViewFrame.size)) { return; }
     
     // If we changed size mid-pageturn animation, reset back to the center
@@ -186,32 +171,31 @@
         wasAnimating = YES;
     }
     
-    // Disable the observer while we update the scroll view
+    // Disable the observer since this code will be tweaking all of the scroll view
     _disableLayout = YES;
-
-    // In case the width is changing, re-set the content size and offset to match
-    const CGFloat oldContentWidth = scrollView.contentSize.width;
-    const CGFloat oldOffsetMid = scrollView.contentOffset.x + (scrollView.frame.size.width * 0.5f);
-
-    // Layout the scroll view.
-    // In order to allow spaces between the pages, the scroll view needs to be
-    // slightly wider than this container view.
-    scrollView.frame = newScrollViewFrame;
-
-    // Update the content size of the scroll view
-    [self _updateContentSize];
-
-    // Update the content offset to match the amount that the width changed
-    // (Only do this if there actually was an old content width, otherwise we might get a NaN error)
-    if (!wasAnimating && oldContentWidth > FLT_EPSILON) {
-        const CGFloat newOffsetMid = oldOffsetMid * (scrollView.contentSize.width / oldContentWidth);
-        const CGFloat contentOffset = newOffsetMid - (scrollView.frame.size.width * 0.5f);
-        scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
-    } else if (wasAnimating) {
-        scrollView.contentOffset = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
+    {
+        // In case the width is changing, re-set the content size and offset to match
+        const CGFloat oldContentWidth = scrollView.contentSize.width;
+        const CGFloat oldOffsetMid = scrollView.contentOffset.x + (scrollView.frame.size.width * 0.5f);
+        
+        // Layout the scroll view.
+        // In order to allow spaces between the pages, the scroll view needs to be
+        // slightly wider than this container view.
+        scrollView.frame = newScrollViewFrame;
+        
+        // Update the content size of the scroll view
+        [self _updateContentSize];
+        
+        // Update the content offset to match the amount that the width changed
+        // (Only do this if there actually was an old content width, otherwise we might get a NaN error)
+        if (!wasAnimating && oldContentWidth > FLT_EPSILON) {
+            const CGFloat newOffsetMid = oldOffsetMid * (scrollView.contentSize.width / oldContentWidth);
+            const CGFloat contentOffset = newOffsetMid - (scrollView.frame.size.width * 0.5f);
+            scrollView.contentOffset = (CGPoint){contentOffset, 0.0f};
+        } else if (wasAnimating) {
+            scrollView.contentOffset = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
+        }
     }
-
-    // Re-enable the observer
     _disableLayout = NO;
 
     // Layout the page subviews
