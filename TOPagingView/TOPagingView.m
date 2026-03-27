@@ -34,7 +34,7 @@
 
 @implementation TOPagingView {
     /// The scroll view managed by this container.
-    UIScrollView *__weak scrollView;
+    UIScrollView *_scrollView;
 
     /// Dictionaries managing the pool of available pages and page classes.
     NSMutableDictionary<NSString *, NSMutableSet *> *_queuedPages;          // pageIdentifier - available reusable pages
@@ -145,12 +145,6 @@
 
 #pragma mark - View Lifecycle
 
-- (void)setFrame:(CGRect)frame {
-    const CGRect oldFrame = self.frame;
-    [super setFrame:frame];
-    if (CGRectEqualToRect(frame, oldFrame)) { return; }
-    [self layoutContent];
-}
 
 - (void)layoutSubviews {
     [super layoutSubviews];
@@ -251,7 +245,7 @@
 /// Called by the scroll view delegate proxy when the user begins dragging.
 - (void)_scrollViewWillBeginDragging TOPAGINGVIEW_OBJC_DIRECT {
     if (_pageAnimator.isAnimating) {
-        [_pageAnimator stopAnimationWithCompletion:NO];
+        [_pageAnimator stopAnimationWithCompletion:YES];
     }
 }
 
@@ -417,12 +411,12 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 }
 
 - (nullable UIView<TOPagingViewPage> *)_fetchAdjacentPageForType:(TOPagingViewPageType)pageType
-                                               referencePageView:(nullable UIView<TOPagingViewPage> *)referencePageView
+                                                currentPageView:(nullable UIView<TOPagingViewPage> *)currentPageView
                                            clampAnimatorIfMissing:(BOOL)clampAnimatorIfMissing TOPAGINGVIEW_OBJC_DIRECT {
     // Fetch a new page from the data source
     UIView<TOPagingViewPage> *pageView = [_dataSource pagingView:self
                                                  pageViewForType:pageType
-                                               referencePageView:referencePageView];
+                                                currentPageView:currentPageView];
     
     // Set up our new page as the incoming 'next' page
     if (pageType == TOPagingViewPageTypeNext) {
@@ -461,12 +455,12 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
     // If there currently isn't a previous page, check again to see if there is one now.
     if (!_hasPreviousPage) {
-        [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious referencePageView:_currentPageView clampAnimatorIfMissing:NO];
+        [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious currentPageView:_currentPageView clampAnimatorIfMissing:NO];
     }
 
     // If there currently isn't a next page, check again
     if (!_hasNextPage) {
-        [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext referencePageView:_currentPageView clampAnimatorIfMissing:NO];
+        [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext currentPageView:_currentPageView clampAnimatorIfMissing:NO];
     }
 
     // If we're on the initial page, set the previous page state to match whatever the next state is
@@ -599,7 +593,7 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
     // Add the initial page
     UIView<TOPagingViewPage> *pageView = [view->_dataSource pagingView:view
                                                        pageViewForType:TOPagingViewPageTypeCurrent
-                                                     referencePageView:nil];
+                                                     currentPageView:nil];
     if (pageView == nil) { return; }
     view->_currentPageView = pageView;
     TOPagingViewInsertPageView(view, pageView);
@@ -628,7 +622,7 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
 }
 
 static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
-    const UIView<TOPagingViewPage> *nextPage = view->_nextPageView;
+    UIView<TOPagingViewPage> * const nextPage = view->_nextPageView;
     const CGFloat xPosition = CGRectGetMinX(view->_nextPageView.frame);
     const CGFloat offsetX = metrics.offsetX;
     const CGFloat segmentWidth = metrics.segmentWidth;
@@ -721,7 +715,6 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view, TOPagi
     }
 
     // If this is a new direction than before, inform the delegate, and then save to avoid repeating
-    // Offload this delegate call to another run-loop to avoid any heavy operations as the data source
     if (directionType != view->_dragInteractionState.directionType) {
         [view->_delegate pagingView:view willTurnToPageOfType:directionType];
         view->_dragInteractionState.directionType = directionType;
@@ -840,7 +833,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     // Request the new page view that will become the new current page after this completes
     UIView<TOPagingViewPage> *newPageView = [_dataSource pagingView:self
                                                     pageViewForType:TOPagingViewPageTypeCurrent
-                                                  referencePageView:_currentPageView];
+                                                  currentPageView:_currentPageView];
 
     // Zero out the adjacent pages and set the
     // next/previous flags to ensure we'll query for new pages
@@ -1049,11 +1042,11 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
 }
 
 - (void)_fetchNewNextPage TOPAGINGVIEW_OBJC_DIRECT {
-    [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext referencePageView:_nextPageView clampAnimatorIfMissing:YES];
+    [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext currentPageView:_currentPageView clampAnimatorIfMissing:YES];
 }
 
 - (void)_fetchNewPreviousPage TOPAGINGVIEW_OBJC_DIRECT {
-    [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious referencePageView:_previousPageView clampAnimatorIfMissing:YES];
+    [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious currentPageView:_currentPageView clampAnimatorIfMissing:YES];
 }
 
 - (void)_rearrangePagesForScrollDirection:(TOPagingViewDirection)direction TOPAGINGVIEW_OBJC_DIRECT {
@@ -1187,7 +1180,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     if (_currentPageView) { [visiblePages addObject:_currentPageView]; }
     if (_nextPageView) { [visiblePages addObject:_nextPageView]; }
     if (visiblePages.count == 0) { return nil; }
-    return [NSSet setWithSet:visiblePages];
+    return [visiblePages copy];
 }
 
 - (void)setPageScrollDirection:(TOPagingViewDirection)pageScrollDirection {

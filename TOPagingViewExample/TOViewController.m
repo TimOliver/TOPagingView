@@ -43,7 +43,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 
 - (TOTestPageView *)pagingView:(TOPagingView *)pagingView
                pageViewForType:(TOPagingViewPageType)type
-             referencePageView:(TOTestPageView *)referencePageView {
+              currentPageView:(TOTestPageView *)currentPageView {
     TOTestPageView *pageView = [pagingView dequeueReusablePageView];
 
     switch (type) {
