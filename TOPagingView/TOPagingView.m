@@ -91,6 +91,8 @@
     return self;
 }
 
+#pragma mark - Setup
+
 - (void)_setUp TOPAGINGVIEW_OBJC_DIRECT {
     // Set default values
     _pageSpacing = 40.0f;
@@ -145,7 +147,8 @@
 - (void)setFrame:(CGRect)frame {
     const CGRect oldFrame = self.frame;
     [super setFrame:frame];
-    if (!CGRectEqualToRect(frame, oldFrame)) { [self layoutContent]; }
+    if (CGRectEqualToRect(frame, oldFrame)) { return; }
+    [self layoutContent];
 }
 
 - (void)layoutSubviews {
@@ -154,14 +157,13 @@
 }
 
 - (void)layoutContent TOPAGINGVIEW_OBJC_DIRECT {
-    
+    // Refresh the latest page and layout state
     [self _requestPendingPages];
     [self _updateCachedLayoutMetrics];
 
+    // Skip performing a new layout pass if the scroll view size didn't actually change.
     UIScrollView *const scrollView = _scrollView;
     const CGRect newScrollViewFrame = _layoutMetrics.scrollViewFrame;
-
-    // We don't need to perform any new sizing calculations unless the frame size actually changed.
     if (CGSizeEqualToSize(_scrollView.frame.size, newScrollViewFrame.size)) { return; }
     
     // If we changed size mid-pageturn animation, reset back to the center
@@ -174,16 +176,12 @@
     // Disable the observer since this code will be tweaking all of the scroll view
     _disableLayout = YES;
     {
-        // In case the width is changing, re-set the content size and offset to match
+        // Capture the old content width and x offset so we can apply it to the new size
         const CGFloat oldContentWidth = scrollView.contentSize.width;
         const CGFloat oldOffsetMid = scrollView.contentOffset.x + (scrollView.frame.size.width * 0.5f);
-        
-        // Layout the scroll view.
-        // In order to allow spaces between the pages, the scroll view needs to be
-        // slightly wider than this container view.
+
+        // Update the scroll view to the new size
         scrollView.frame = newScrollViewFrame;
-        
-        // Update the content size of the scroll view
         [self _updateContentSize];
         
         // Update the content offset to match the amount that the width changed
@@ -405,7 +403,9 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
     // Reset the content size of the scroll view content
     _disableLayout = YES;
-    _scrollView.contentSize = CGSizeZero;
+    {
+        _scrollView.contentSize = CGSizeZero;
+    }
     _disableLayout = NO;
 
     // Perform a fresh layout
@@ -605,10 +605,12 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
         view->_hasPreviousPage = view->_hasNextPage;
     }
 
-    // Disable the observer while we perfom initial sizing and placement
+    // Update the initial content size and rest position
     view->_disableLayout = YES;
-    [view _updateContentSize];
-    [view _resetContentOffset];
+    {
+        [view _updateContentSize];
+        [view _resetContentOffset];
+    }
     view->_disableLayout = NO;
 
     // Send a delegate event stating we've completed transitioning to the initial page
