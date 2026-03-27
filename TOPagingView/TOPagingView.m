@@ -73,7 +73,7 @@
 @synthesize currentPageView = _currentPageView;
 @synthesize nextPageView = _nextPageView;
 
-#pragma mark - Object Creation -
+#pragma mark - Object Creation
 
 - (instancetype)init {
     self = [super init];
@@ -152,7 +152,7 @@
     }
 }
 
-#pragma mark - View Lifecycle -
+#pragma mark - View Lifecycle
 
 - (void)setFrame:(CGRect)frame {
     const CGRect oldFrame = self.frame;
@@ -225,7 +225,7 @@
     [self reload];
 }
 
-#pragma mark - Scroll View Management -
+#pragma mark - Scroll View Management
 
 - (void)_updateCachedLayoutMetrics TOPAGINGVIEW_OBJC_DIRECT {
     const CGRect bounds = self.bounds;
@@ -301,7 +301,7 @@ static inline TOPagingViewDraggingState TOPagingViewDraggingStateReset(void) {
     };
 }
 
-#pragma mark - Page Setup -
+#pragma mark - Page Setup
 
 - (void)registerPageViewClass:(Class)pageViewClass {
     NSAssert([pageViewClass isSubclassOfClass:[UIView class]], @"Only UIView objects may be registered as pages.");
@@ -402,7 +402,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     return flags;
 }
 
-#pragma mark - External Page Control -
+#pragma mark - External Page Control
 
 - (void)reload {
     // Remove all currently visible pages from the scroll views
@@ -551,7 +551,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     [self _skipToNewPageInDirection:direction animated:animated];
 }
 
-#pragma mark - Page Layout & Management -
+#pragma mark - Page Layout & Management
 
 static inline void TOPagingViewLayoutPages(TOPagingView *view) {
     // Only perform this overhead when we are in the appropriate state,
@@ -789,7 +789,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     view->_disableLayout = NO;
 }
 
-#pragma mark - Animated Transitions -
+#pragma mark - Animated Transitions
 
 - (void)_turnToPageInDirection:(UIRectEdge)direction animated:(BOOL)animated TOPAGINGVIEW_OBJC_DIRECT {
     UIScrollView *const scrollView = _scrollView;
@@ -922,7 +922,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     return _uniqueIdentifierPages[identifier];
 }
 
-#pragma mark - Page View Recycling -
+#pragma mark - Page View Recycling
 
 static void TOPagingViewInsertPageView(TOPagingView *view, UIView<TOPagingViewPage> *pageView) {
     if (pageView == nil) { return; }
@@ -976,7 +976,7 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView) {
     [view->_queuedPages[pageIdentifier] addObject:pageView];
 }
 
-#pragma mark - Page Transitions -
+#pragma mark - Page Transitions
 
 static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
     // Don't start churning if we already confirmed there is no page after this.
@@ -1259,7 +1259,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
                      completion:pullAnimationCompletionBlock];
 }
 
-#pragma mark - Public Accessors -
+#pragma mark - Public Accessors
 
 - (void)setDataSource:(id<TOPagingViewDataSource>)dataSource {
     if (dataSource == _dataSource) { return; }
@@ -1272,8 +1272,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     _delegate = delegate;
     _delegateFlags.delegateWillTurnToPage = [_delegate respondsToSelector:@selector(pagingView:willTurnToPageOfType:)];
     _delegateFlags.delegateDidTurnToPage = [_delegate respondsToSelector:@selector(pagingView:didTurnToPageOfType:)];
-    _delegateFlags.delegateDidChangeToPageDirection =
-        [_delegate respondsToSelector:@selector(pagingView:didChangeToPageDirection:)];
+    _delegateFlags.delegateDidChangeToPageDirection = [_delegate respondsToSelector:@selector(pagingView:didChangeToPageDirection:)];
 }
 
 - (nullable NSSet<__kindof UIView<TOPagingViewPage> *> *)visiblePageViews {
