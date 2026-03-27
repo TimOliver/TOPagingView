@@ -29,6 +29,7 @@
 #import "TOPagingViewMacros.h"
 #import "TOPageViewProtocolCache.h"
 #import "TOPagingViewTypes.h"
+#import "TOPagingViewUtilities.h"
 #import "TOScrollViewDelegateProxy.h"
 
 @implementation TOPagingView {
@@ -221,7 +222,7 @@
     _layoutMetrics.rightPageFrame = CGRectOffset(bounds, (pageWidth * 2.0f) + halfPageSpacing, 0.0f);
     _layoutMetrics.currentPageFrame = CGRectMake(pageWidth + halfPageSpacing, bounds.origin.y, bounds.size.width, bounds.size.height);
 
-    if (TOPagingViewIsDirectionReversed(self)) {
+    if (TOPagingViewIsDirectionReversed(_pageScrollDirection)) {
         _layoutMetrics.nextPageFrame = _layoutMetrics.leftPageFrame;
         _layoutMetrics.previousPageFrame = _layoutMetrics.rightPageFrame;
     } else {
@@ -268,19 +269,6 @@ void TOPagingViewHandleScrollViewDidScroll(TOPagingView *pagingView) {
 /// External hook for the scroll view proxy to forward scroll events to us
 void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
     [pagingView _scrollViewWillBeginDragging];
-}
-
-/// Convenience function for detecting when the paging view is set right-to-left.
-static inline BOOL TOPagingViewIsDirectionReversed(TOPagingView *view) {
-    return (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
-}
-
-/// Convenience function to reset dragging state once we've fired the previous delegate call.
-static inline TOPagingViewDraggingState TOPagingViewDraggingStateReset(void) {
-    return (TOPagingViewDraggingState){
-        .origin = -CGFLOAT_MAX,
-        .directionType = TOPagingViewPageTypeCurrent
-    };
 }
 
 #pragma mark - Page Setup
@@ -482,7 +470,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 }
 
 - (void)turnToNextPageAnimated:(BOOL)animated {
-    if (TOPagingViewIsDirectionReversed(self)) {
+    if (TOPagingViewIsDirectionReversed(_pageScrollDirection)) {
         [self turnToLeftPageAnimated:animated];
     } else {
         [self turnToRightPageAnimated:animated];
@@ -490,7 +478,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 }
 
 - (void)turnToPreviousPageAnimated:(BOOL)animated {
-    if (TOPagingViewIsDirectionReversed(self)) {
+    if (TOPagingViewIsDirectionReversed(_pageScrollDirection)) {
         [self turnToRightPageAnimated:animated];
     } else {
         [self turnToLeftPageAnimated:animated];
@@ -502,7 +490,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     const CGFloat pageWidth = _layoutMetrics.pageWidth;
     const BOOL isAnimating = _pageAnimator.isAnimating;
     const BOOL isAnimatingLeft = isAnimating && _pageAnimator.direction == UIRectEdgeLeft;
-    const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
+    const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
     const BOOL hasLeftPage = (isDirectionReversed && _hasNextPage) || (!isDirectionReversed && _hasPreviousPage);
 
     // Play a bouncy animation if there's no page available on that side and
@@ -522,7 +510,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     const CGFloat pageWidth = _layoutMetrics.pageWidth;
     const BOOL isAnimating = _pageAnimator.isAnimating;
     const BOOL isAnimatingRight = isAnimating && _pageAnimator.direction == UIRectEdgeRight;
-    const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
+    const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
     const BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) || (!isDirectionReversed && _hasNextPage);
 
     // If we're partially at the last page and animating in, skip turning again to let it bottom out.
@@ -537,12 +525,12 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 }
 
 - (void)skipForwardToNewPageAnimated:(BOOL)animated {
-    UIRectEdge direction = TOPagingViewIsDirectionReversed(self) ? UIRectEdgeLeft : UIRectEdgeRight;
+    UIRectEdge direction = TOPagingViewIsDirectionReversed(_pageScrollDirection) ? UIRectEdgeLeft : UIRectEdgeRight;
     [self _skipToNewPageInDirection:direction animated:animated];
 }
 
 - (void)skipBackwardToNewPageAnimated:(BOOL)animated {
-    UIRectEdge direction = TOPagingViewIsDirectionReversed(self) ? UIRectEdgeRight : UIRectEdgeLeft;
+    UIRectEdge direction = TOPagingViewIsDirectionReversed(_pageScrollDirection) ? UIRectEdgeRight : UIRectEdgeLeft;
     [self _skipToNewPageInDirection:direction animated:animated];
 }
 
@@ -565,7 +553,7 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
         .offsetX = view->_scrollView.contentOffset.x,
         .segmentWidth = view->_layoutMetrics.pageWidth,
         .contentWidth = contentSize.width,
-        .isReversed = TOPagingViewIsDirectionReversed(view),
+        .isReversed = TOPagingViewIsDirectionReversed(view->_pageScrollDirection),
     };
 
     // When dynamic paging is enabled, we swap the on-screen 'next' page to either
@@ -793,7 +781,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     const BOOL isLeftDirection = (direction == UIRectEdgeLeft);
 
     // Determine the direction we're heading for the delegate
-    const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(self);
+    const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
     const BOOL isDetectingDirection = _isDynamicPageDirectionEnabled &&
                                         TOPagingViewIsInitialPageForPageView(self, _currentPageView);
     const BOOL isPreviousPage = !isDetectingDirection &&

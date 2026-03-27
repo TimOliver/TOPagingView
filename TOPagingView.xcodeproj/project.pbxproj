@@ -88,6 +88,7 @@
 		2F2600042F26000100000001 /* TOPagingViewConstants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewConstants.h; sourceTree = "<group>"; };
 		2F2600052F26000100000001 /* TOPagingViewMacros.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewMacros.h; sourceTree = "<group>"; };
 		2F2600062F26000100000001 /* TOPagingViewTypesPrivate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewTypesPrivate.h; sourceTree = "<group>"; };
+		2F2600072F26000100000001 /* TOPagingViewUtilities.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewUtilities.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +122,7 @@
 				2F2600042F26000100000001 /* TOPagingViewConstants.h */,
 				2F2600052F26000100000001 /* TOPagingViewMacros.h */,
 				2F2600062F26000100000001 /* TOPagingViewTypesPrivate.h */,
+				2F2600072F26000100000001 /* TOPagingViewUtilities.h */,
 				22432FF72F75789B00A5859F /* TOPagingView+Keyboard.h */,
 				22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */,
 				22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */,

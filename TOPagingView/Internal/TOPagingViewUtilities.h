@@ -1,5 +1,5 @@
 //
-//  TOPagingViewMacros.h
+//  TOPagingViewUtilities.h
 //
 //  Copyright 2018-2026 Timothy Oliver. All rights reserved.
 //
@@ -22,5 +22,31 @@
 
 #pragma once
 
-/// Mark implementation-only methods as being statically called to increase performance.
-#define TOPAGINGVIEW_OBJC_DIRECT __attribute__((objc_direct))
+#import <Foundation/Foundation.h>
+#import "TOPagingViewTypes.h"
+#import "TOPagingViewTypesPrivate.h"
+
+/// Convert an Objective-C class pointer into an NSValue that can be stored in a dictionary.
+static inline NSValue *TOPagingViewValueForClass(Class *class) {
+    return [NSValue valueWithBytes:class objCType:@encode(Class)];
+}
+
+/// Convert an Objective-C class that was encoded to NSValue back out again.
+static inline Class TOPagingViewClassForValue(NSValue *value) {
+    Class class;
+    [value getValue:&class];
+    return class;
+}
+
+/// Convenience function for detecting when the paging view is set right-to-left.
+static inline BOOL TOPagingViewIsDirectionReversed(TOPagingViewDirection direction) {
+    return (direction == TOPagingViewDirectionRightToLeft);
+}
+
+/// Convenience function to reset dragging state once we've fired the previous delegate call.
+static inline TOPagingViewDraggingState TOPagingViewDraggingStateReset(void) {
+    return (TOPagingViewDraggingState){
+        .origin = -CGFLOAT_MAX,
+        .directionType = TOPagingViewPageTypeCurrent
+    };
+}
