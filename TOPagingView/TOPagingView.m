@@ -1215,27 +1215,17 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
 }
 
 - (void)_playBounceAnimationInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT {
-    const CGFloat offsetModifier = (direction == UIRectEdgeLeft) ? -1.0f : 1.0f;
     const BOOL isCompactSizeClass = self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact;
-    const CGFloat bumperPadding =
-        (isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) * offsetModifier;
-
-    // Set the origin and bumper margins
+    const CGFloat offsetModifier = (direction == UIRectEdgeLeft) ? -1.0f : 1.0f;
+    const CGFloat bumperPadding = (isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) * offsetModifier;
     const CGPoint origin = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
     const CGPoint bumperOffset = (CGPoint){origin.x + bumperPadding, 0.0f};
 
-    // Disable layout while this is occurring
-    _disableLayout = YES;
-
-    // Animation block when pulling back to the original state
-    void (^popAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:origin animated:NO]; };
-
-    // Completion block that cleans everything up at the end of the animation
-    void (^popAnimationCompletionBlock)(BOOL) = ^(BOOL success) { self->_disableLayout = NO; };
-
-    // Initial block that starts the animation chain
+    // Set the various animation blocks so we pull to the side, and then snap back to the middle
     void (^pullAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:bumperOffset animated:NO]; };
-
+    void (^popAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:origin animated:NO]; };
+    void (^popAnimationCompletionBlock)(BOOL) = ^(BOOL success) { self->_disableLayout = NO; };
+    
     // Completion block after the initial pull back is started
     void (^pullAnimationCompletionBlock)(BOOL) = ^(BOOL success) {
         // Play a very wobbly spring back animation snapping back into place
@@ -1248,6 +1238,9 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
                          completion:popAnimationCompletionBlock];
     };
 
+    // Disable layout since the animation will manage everything
+    _disableLayout = YES;
+    
     // Kickstart the animation chain.
     // Play a very quick rubber-banding slide out to the bumper padding
     [UIView animateWithDuration:0.1f
