@@ -76,7 +76,7 @@ NS_SWIFT_NAME(PagingViewDataDelegate)
 /// @param type The type of page that was turned to (This can include initial after a reload).
 - (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type;
 
-/// Called when dynamic page direction is enabled, and the user just swiped off the initial page in either
+/// Called when adaptive page direction is enabled, and the user just swiped off the initial page in either
 /// direction, effectively committing to a new page direction. Use this to update any UI or persist the new direction.
 /// @param pagingView The calling paging view instance.
 /// @param direction The new direction in which the pages are flowing.
@@ -101,7 +101,7 @@ NS_SWIFT_NAME(PagingView)
 /// The pager consults this object whenever it needs the current page or an adjacent page.
 @property (nonatomic, weak, nullable) id<TOPagingViewDataSource> dataSource;
 
-/// The object notified as turns begin, commit, or when dynamic direction changes.
+/// The object notified as turns begin, commit, or when adaptive direction changes.
 /// Use this for side effects and external state updates rather than for supplying page views.
 @property (nonatomic, weak, nullable) id<TOPagingViewDelegate> delegate;
 
@@ -113,7 +113,7 @@ NS_SWIFT_NAME(PagingView)
 
 /// Allows users to intuitively start scrolling in either direction,
 /// with `pageScrollDirection` automatically updating to match.
-@property (nonatomic, assign) BOOL isDynamicPageDirectionEnabled;
+@property (nonatomic, assign) BOOL isAdaptivePageDirectionEnabled;
 
 /// The currently visible primary page view on screen.
 @property (nonatomic, weak, readonly, nullable) UIView<TOPagingViewPage> *currentPageView;

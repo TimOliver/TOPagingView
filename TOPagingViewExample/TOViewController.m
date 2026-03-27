@@ -85,7 +85,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 }
 
 - (void)pagingView:(TOPagingView *)pagingView didChangeToPageDirection:(TOPagingViewDirection)direction {
-    // This delegate is called when dynamic page direction detection is enabled and the scroll view
+    // This delegate is called when adaptive page direction detection is enabled and the scroll view
     // has determined the user has committed to a new page direction. It is only called once per interaction.
     BOOL isReversed = (direction == TOPagingViewDirectionRightToLeft);
     NSString *directionString = (isReversed ? @"Left" : @"Right");
@@ -150,7 +150,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 
     // Paging view set-up and configuration
     self.pagingView = [[TOPagingView alloc] initWithFrame:self.view.bounds];
-    // self.pagingView.isDynamicPageDirectionEnabled = YES;
+    // self.pagingView.isAdaptivePageDirectionEnabled = YES;
     self.pagingView.dataSource = self;
     self.pagingView.delegate = self;
     self.pagingView.scrollViewDelegate = self;

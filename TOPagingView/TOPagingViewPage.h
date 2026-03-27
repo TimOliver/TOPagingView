@@ -48,7 +48,7 @@ NS_SWIFT_NAME(PagingViewPage)
 - (void)prepareForReuse;
 
 /// The current page on screen is the first page in the current sequence.
-/// When dynamic page direction is enabled, scrolling past the initial page in either
+/// When adaptive page direction is enabled, scrolling past the initial page in either
 /// direction will start incrementing pages in that direction.
 - (BOOL)isInitialPage;
 
