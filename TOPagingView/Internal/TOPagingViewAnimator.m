@@ -112,7 +112,6 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     CADisplayLink *_displayLink;            /// The display link driving the frame-by-frame animation.
     CFTimeInterval _startTime;              /// The time at which the current animation segment started.
     UIRectEdge _direction;                  /// The direction we're turning in.
-    CFTimeInterval _activeDuration;         /// The duration of the current animation segment.
     CFTimeInterval _activeEffectiveDuration; /// The duration of the current segment after applying any active simulator drag coefficient.
     CGFloat _directionMultiplier;           /// The direction multiplier (+1 for right, -1 for left).
     CGFloat _startOffset;                   /// The absolute scroll view content offset when we started.
@@ -129,7 +128,6 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     self = [super init];
     if (self) {
         _duration = kTOAnimatorDefaultDuration;
-        _activeDuration = kTOAnimatorDefaultDuration;
         _environmentMetrics = (TOPagingViewAnimatorEnvironmentMetrics){.displayScale = 1.0f, .pixelSize = 1.0f, .animationDragCoefficient = 1.0f};
         _activeEffectiveDuration = kTOAnimatorDefaultDuration;
     }
@@ -279,8 +277,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 #pragma mark - Animation State -
 
 - (void)_updateEnvironmentMetrics TOPAGINGVIEW_OBJC_DIRECT {
-    // Capture device metrics that while may transiently change between animations,
-    // they won't likely change during this animation, and it is more performant to cache them.
+    // Capture device metrics that may change between animations but are stable
+    // enough to cache for the duration of one.
     
     // Capture the physical display scale of the screen (eg 2x = 0.5, 3x = 0.33333)
     const CGFloat displayScale = ({
@@ -319,7 +317,6 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     _startOffset = startOffset;
     _endOffset = endOffset;
     _startTime = referenceTime;
-    _activeDuration = duration;
     _activeEffectiveDuration = duration * _environmentMetrics.animationDragCoefficient;
 }
 

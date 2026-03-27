@@ -237,7 +237,7 @@
     // Reset the scroll view offset to the current page view
     CGPoint offset = CGPointZero;
     offset.x = CGRectGetMinX(_currentPageView.frame);
-    offset.x -= (_pageSpacing * 0.5f);
+    offset.x -= _layoutMetrics.halfPageSpacing;
     _scrollView.contentOffset = offset;
 }
 
