@@ -58,6 +58,7 @@
 		22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "TOPagingView+Keyboard.m"; sourceTree = "<group>"; };
 		22432FFA2F75799600A5859F /* TOPageViewProtocolCache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPageViewProtocolCache.h; sourceTree = "<group>"; };
 		22432FFB2F75799600A5859F /* TOPageViewProtocolCache.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPageViewProtocolCache.m; sourceTree = "<group>"; };
+		22432FFE2F76448800A5859F /* TOPagingViewTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewTypes.h; sourceTree = "<group>"; };
 		227BEDF927AC1867009D6B6D /* CHANGELOG.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		227BEDFB27AC186F009D6B6D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		227BEDFC27AC1879009D6B6D /* TOPagingView.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = TOPagingView.podspec; sourceTree = "<group>"; };
@@ -85,7 +86,7 @@
 		2F2600032F26000100000001 /* TOScrollViewDelegateProxy.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOScrollViewDelegateProxy.m; sourceTree = "<group>"; };
 		2F2600042F26000100000001 /* TOPagingViewConstants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewConstants.h; sourceTree = "<group>"; };
 		2F2600052F26000100000001 /* TOPagingViewMacros.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewMacros.h; sourceTree = "<group>"; };
-		2F2600062F26000100000001 /* TOPagingViewTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewTypes.h; sourceTree = "<group>"; };
+		2F2600062F26000100000001 /* TOPagingViewTypesPrivate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewTypesPrivate.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,7 +119,7 @@
 			children = (
 				2F2600042F26000100000001 /* TOPagingViewConstants.h */,
 				2F2600052F26000100000001 /* TOPagingViewMacros.h */,
-				2F2600062F26000100000001 /* TOPagingViewTypes.h */,
+				2F2600062F26000100000001 /* TOPagingViewTypesPrivate.h */,
 				22432FF72F75789B00A5859F /* TOPagingView+Keyboard.h */,
 				22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */,
 				22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */,
@@ -185,6 +186,7 @@
 			children = (
 				22C3167D242A40F80063F6A6 /* TOPagingView.h */,
 				22C3167E242A40F80063F6A6 /* TOPagingView.m */,
+				22432FFE2F76448800A5859F /* TOPagingViewTypes.h */,
 				22432FF52F7501E600A5859F /* Internal */,
 			);
 			path = TOPagingView;

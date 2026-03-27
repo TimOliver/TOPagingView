@@ -22,6 +22,7 @@
 
 #import "TOPagingViewAnimator.h"
 #import "TOPagingViewTypes.h"
+#import "TOPagingViewTypesPrivate.h"
 
 #import <QuartzCore/QuartzCore.h>
 #import <TargetConditionals.h>

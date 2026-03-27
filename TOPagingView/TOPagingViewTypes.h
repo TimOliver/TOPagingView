@@ -1,5 +1,5 @@
 //
-//  TOPageViewProtocolCache.h
+//  TOPagingViewTypes.h
 //
 //  Copyright 2018-2026 Timothy Oliver. All rights reserved.
 //
@@ -21,16 +21,16 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #import <Foundation/Foundation.h>
-#import "TOPagingViewTypesPrivate.h"
 
-NS_ASSUME_NONNULL_BEGIN
+/// An enumeration of directions in which the scroll view may display pages.
+typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
+    TOPagingViewDirectionLeftToRight = 0, // Western style page ordering
+    TOPagingViewDirectionRightToLeft = 1  // Eastern style page ordering
+} NS_SWIFT_NAME(PagingViewDirection);
 
-/// A basic model object to enable the protocol conformance C structs to be
-/// encoded into an Objective-C NSValue object
-@interface TOPageViewProtocolCache : NSObject
-
-@property (nonatomic, assign) TOPageViewProtocolFlags flags;
-
-@end
-
-NS_ASSUME_NONNULL_END
+/// An enumeration denoting the kind of page being requested by the data source.
+typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
+    TOPagingViewPageTypeCurrent,  // The center page, displayed by default.
+    TOPagingViewPageTypeNext,     // The next, incoming page after the current page.
+    TOPagingViewPageTypePrevious  // The previous, outgoing page before the current page.
+} NS_SWIFT_NAME(PagingViewPageType);
