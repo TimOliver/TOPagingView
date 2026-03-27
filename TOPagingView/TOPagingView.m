@@ -740,12 +740,11 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view, TOPagingVi
 }
 
 static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabled, UIRectEdge edge, CGFloat segmentWidth) {
-    // Get the current insets of the scroll view
     UIEdgeInsets insets = view->_scrollView.contentInset;
 
     // Exit out if we don't need to set the state already
     const BOOL isLeft = (edge == UIRectEdgeLeft);
-    CGFloat inset = isLeft ? insets.left : insets.right;
+    const CGFloat inset = isLeft ? insets.left : insets.right;
     if (enabled && inset == segmentWidth) {
         return;
     } else if (!enabled && inset == -segmentWidth) {
@@ -755,10 +754,8 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     // When the slot is enabled, expand the scrollable region by an extra slot
     // so it won't bump against the edge of the scroll region when scrolling rapidly.
     // Otherwise, inset it a whole slot to disable it completely.
-    CGFloat value = enabled ? segmentWidth : -segmentWidth;
-
-    // Capture the content offset since changing the inset will change it
-    CGPoint contentOffset = view->_scrollView.contentOffset;
+    const CGFloat value = enabled ? segmentWidth : -segmentWidth;
+    const CGPoint contentOffset = view->_scrollView.contentOffset;
 
     // Set the target inset value
     if (isLeft) {
@@ -769,29 +766,27 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // Set the inset and then restore the offset
     view->_disableLayout = YES;
-    view->_scrollView.contentInset = insets;
-    view->_scrollView.contentOffset = contentOffset;
+    {
+        view->_scrollView.contentInset = insets;
+        view->_scrollView.contentOffset = contentOffset;
+    }
     view->_disableLayout = NO;
 }
 
 #pragma mark - Animated Transitions
 
 - (void)_turnToPageInDirection:(UIRectEdge)direction animated:(BOOL)animated TOPAGINGVIEW_OBJC_DIRECT {
-    UIScrollView *const scrollView = _scrollView;
     const BOOL isLeftDirection = (direction == UIRectEdgeLeft);
-
-    // Determine the direction we're heading for the delegate
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
-    const BOOL isDetectingDirection = _isDynamicPageDirectionEnabled &&
-                                        TOPagingViewIsInitialPageForPageView(self, _currentPageView);
-    const BOOL isPreviousPage = !isDetectingDirection &&
-                                ((!isDirectionReversed && isLeftDirection) ||
-                                 (isDirectionReversed && !isLeftDirection));
+    const BOOL isDetectingDirection = _isDynamicPageDirectionEnabled && TOPagingViewIsInitialPageForPageView(self, _currentPageView);
+    const BOOL isPreviousPage = !isDetectingDirection && ((!isDirectionReversed && isLeftDirection) || (isDirectionReversed && !isLeftDirection));
 
     // Fire the willTurn delegate for each requested animated turn.
     const TOPagingViewPageType type = (isPreviousPage ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext);
     if (_delegateFlags.delegateWillTurnToPage) { [_delegate pagingView:self willTurnToPageOfType:type]; }
 
+    UIScrollView *const scrollView = _scrollView;
+    
     // If we're not animating, set the offset to the target directly
     if (animated == NO) {
         CGFloat targetOffset = 0.0f;
@@ -842,10 +837,8 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // Zero out the adjacent pages and set the
     // next/previous flags to ensure we'll query for new pages
-    _nextPageView = nil;
-    _previousPageView = nil;
-    _hasNextPage = NO;
-    _hasPreviousPage = NO;
+    _nextPageView = nil; _hasNextPage = NO;
+    _previousPageView = nil; _hasPreviousPage = NO;
 
     // If we're not animating, we can rearrange everything statically and cancel out here
     if (!animated) {
