@@ -30,23 +30,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// An enumeration of directions in which the scroll view may display pages.
 typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
-    /// Pages ascend from the left, to the right.
-    TOPagingViewDirectionLeftToRight = 0,
-
-    /// Pages ascend from the right, to the left.
-    TOPagingViewDirectionRightToLeft = 1
+    TOPagingViewDirectionLeftToRight = 0, // Western style page ordering
+    TOPagingViewDirectionRightToLeft = 1  // Eastern style page ordering
 } NS_SWIFT_NAME(PagingViewDirection);
 
-/// An enumeration describing the kind of page being requested by the data source.
+/// An enumeration denoting the kind of page being requested by the data source.
 typedef NS_ENUM(NSInteger, TOPagingViewPageType) {
-    /// The current page that will be visible on screen initially.
-    TOPagingViewPageTypeCurrent,
-
-    /// The next page sequentially after the current page.
-    TOPagingViewPageTypeNext,
-
-    /// The previous page sequentially before the current page.
-    TOPagingViewPageTypePrevious
+    TOPagingViewPageTypeCurrent,  // The center page, displayed by default.
+    TOPagingViewPageTypeNext,     // The next, incoming page after the current page.
+    TOPagingViewPageTypePrevious  // The previous, outgoing page before the current page.
 } NS_SWIFT_NAME(PagingViewPageType);
 
 //-------------------------------------------------------------------
@@ -66,15 +58,13 @@ NS_SWIFT_NAME(PagingViewPage)
 + (NSString *)pageIdentifier;
 
 /// A globally unique identifier that can be used to uniquely tag this specific
-/// page object. This can be used to retrieve the page from the pager view at a later
-/// time.
+/// page objects when they are in active use. This must be finalized before the page
+/// is inserted into the paging view.
 - (NSString *)uniqueIdentifier;
 
 /// Called just before the page object is removed from the visible page set,
-/// and re-enqueued by the data source.
-///
-/// Use this method to return the page to a default state, and to clear out any
-/// references to memory-heavy objects like images.
+/// and re-enqueued by the data source. Use this method to return the page to a default state.
+/// Most importantly, be sure to use this method to release memory heavy objects like images.
 - (void)prepareForReuse;
 
 /// The current page on screen is the first page in the current sequence.
@@ -106,6 +96,7 @@ NS_SWIFT_NAME(PagingViewDataSource)
 /// @param referencePageView The page view that the requested page should be generated relative to.
 /// This will usually be the visible current page on screen, but may also be an offscreen staged adjacent page
 /// when the pager is refilling farther outward. This can be nil if no pages have been displayed yet.
+/// @return The newly dequeued and configured page. At any point, if it's determined that there are no more pages, return nil instead.
 - (nullable __kindof UIView<TOPagingViewPage> *)pagingView:(TOPagingView *)pagingView
                                            pageViewForType:(TOPagingViewPageType)type
                                          referencePageView:(UIView<TOPagingViewPage> *_Nullable)referencePageView;
@@ -189,11 +180,11 @@ NS_SWIFT_NAME(PagingView)
 /// Reload the view from scratch, including tearing down and recreating all page views
 - (void)reload;
 
-/// Tears down and recreates the previous and next page views from scratch, but leaves the current one alone.
+/// Tears down and recreates just the previous and next page views from scratch, leaving the current one as-is.
 - (void)reloadAdjacentPages;
 
-/// Loads the previous and/or next page views only if they're not already loaded. Useful for when the data source has updated with
-/// new page data.
+/// Loads the previous and/or next page views only if they're not already loaded.
+/// Useful for when the data source has updated with new page data.
 - (void)fetchAdjacentPagesIfAvailable;
 
 /// Returns a page view from the default queue of pages, ready for re-use.

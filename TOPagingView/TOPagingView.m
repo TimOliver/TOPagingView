@@ -35,10 +35,9 @@
     /// The scroll view managed by this container.
     UIScrollView *__weak scrollView;
 
-    /// A collection of all of the page view objects that were once used, and are pending re-use.
-    NSMutableDictionary<NSString *, NSMutableSet *> *_queuedPages;
-
-    /// A collection of all of the registered page classes, saved against their identifiers.
+    /// Dictionaries managing the pool of available pages and page classes.
+    NSMutableDictionary<NSString *, NSMutableSet *> *_queuedPages;          // pageIdentifer - available reusable pages
+    NSMutableDictionary<NSString *, UIView *> *_uniqueIdentifierPages;      // uniqueIdentifier - specifc page on demand
     NSMutableDictionary<NSString *, NSValue *> *_registeredPageViewClasses;
 
     /// The views that are all currently in the scroll view, in specific order.
@@ -46,7 +45,7 @@
     UIView<TOPagingViewPage> * __weak _nextPageView;
     UIView<TOPagingViewPage> * __weak _previousPageView;
 
-    /// Flags to ensure the data source isn't thrashed if it doesn't return a page the first time.
+    /// Flags to avoid re-polling for adjacent pages once they are confirmed.
     BOOL _hasNextPage;
     BOOL _hasPreviousPage;
 
@@ -59,9 +58,6 @@
 
     /// Disable automatic layout when manually laying out content.
     BOOL _disableLayout;
-
-    /// A dictionary that holds references to any pages with unique identifiers.
-    NSMutableDictionary<NSString *, UIView *> *_uniqueIdentifierPages;
 
     /// State tracking for when a user is dragging their finger on screen.
     CGFloat _draggingOrigin;
