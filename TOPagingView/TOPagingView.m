@@ -919,14 +919,10 @@ static void TOPagingViewInsertPageView(TOPagingView *view, UIView<TOPagingViewPa
     // Cache the page's protocol methods if it hasn't been done yet
     TOPageViewProtocolFlags flags = TOPagingViewCachedProtocolFlagsForPageViewClass(view, pageView.class);
 
-    // If it has a unique identifier, store it so we can refer to it easily
+    // If it implements the unique identifier protocol, capture the identifier and store it in our dictionary
     if (flags.protocolUniqueIdentifier) {
         NSString *uniqueIdentifier = [(id)pageView uniqueIdentifier];
-
-        // Lazily create the dictionary as needed
         if (view->_uniqueIdentifierPages == nil) { view->_uniqueIdentifierPages = [NSMutableDictionary dictionary]; }
-
-        // Add to the dictionary
         view->_uniqueIdentifierPages[uniqueIdentifier] = pageView;
     }
 
@@ -941,20 +937,17 @@ static void TOPagingViewInsertPageView(TOPagingView *view, UIView<TOPagingViewPa
 static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView) {
     if (pageView == nil) { return; }
 
-    // Skip internal UIScrollView views (use class_getName to avoid string allocation)
+    // Skip internal UIScrollView views (use class_getName to avoid NSString allocation)
     if (class_getName([pageView class])[0] == '_') { return; }
 
-    // Fetch the protocol flags for this class
+    // Fetch the protocol flags for this class and make any appropriate calls now
     TOPageViewProtocolFlags flags = TOPagingViewCachedProtocolFlagsForPageViewClass(view, pageView.class);
-
-    // If the page has a unique identifier, remove it from the dictionary
     if (flags.protocolUniqueIdentifier) { [view->_uniqueIdentifierPages removeObjectForKey:[(id)pageView uniqueIdentifier]]; }
-
-    // If the class supports the clean up method, clean it up now
     if (flags.protocolPrepareForReuse) { [(id)pageView prepareForReuse]; }
 
-    // Hide the view (Don't remove because that is a heavier operation)
+    // Hide the view and remove from the superview. (This might become a performance bottleneck down the line)
     pageView.hidden = YES;
+    [pageView removeFromSuperview];
 
     // Re-add it to the recycled pages pool
     NSString *pageIdentifier = TOPagingViewIdentifierForPageViewClass(view, pageView.class);
