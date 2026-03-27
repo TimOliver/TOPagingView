@@ -1010,49 +1010,48 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
 }
 
 static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) {
-    // Don't start churning if we already confirmed there is no page before this.
+    // If there's no previous page, exit out now, to avoid calling this on each frame tick
     if (!view->_hasPreviousPage) { return; }
-
-    // If we confirmed we moved away from the next page, re-enable
-    // so we can query again next time
+    
+    // If we didn't have a next page before, we will after this transaction
     if (!view->_hasNextPage) { view->_hasNextPage = YES; }
-
+    
     view->_disableLayout = YES;
-
-    // Reclaim the next view
-    TOPagingViewReclaimPageView(view, view->_nextPageView);
-
-    // Update all of the references by pushing each view forward
-    view->_nextPageView = view->_currentPageView;
-    view->_currentPageView = view->_previousPageView;
-    view->_previousPageView = nil;
-
-    // Update the frames of the pages
-    view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
-    view->_nextPageView.frame = view->_layoutMetrics.nextPageFrame;
-
-    // Inform the delegate we have just committed to a transition so we can update state for the previous page.
-    if (view->_delegateFlags.delegateDidTurnToPage) {
-        [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypePrevious];
+    {
+        // Reclaim the next view
+        TOPagingViewReclaimPageView(view, view->_nextPageView);
+        
+        // Update all of the references by pushing each view forward
+        view->_nextPageView = view->_currentPageView;
+        view->_currentPageView = view->_previousPageView;
+        view->_previousPageView = nil;
+        
+        // Update the frames of the pages
+        view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
+        view->_nextPageView.frame = view->_layoutMetrics.nextPageFrame;
+        
+        // Inform the delegate we have just committed to a transition so we can update state for the previous page.
+        if (view->_delegateFlags.delegateDidTurnToPage) {
+            [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypePrevious];
+        }
+        
+        // Offload the heavy work to a new run-loop cycle so we don't overload the current one.
+        view->_needsPreviousPage = YES;
+        [view setNeedsLayout];
+        
+        // Move the scroll view forward one segment
+        const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
+        const CGFloat previousOffsetX = view->_scrollView.contentOffset.x;
+        const CGFloat scrollViewPageWidth = view->_layoutMetrics.pageWidth;
+        const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? -1.0f : 1.0f);
+        CGPoint contentOffset = view->_scrollView.contentOffset;
+        contentOffset.x += offset;
+        view->_scrollView.contentOffset = contentOffset;
+        [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
+        
+        // If we're dragging, reset the state
+        if (view->_scrollView.isDragging) { view->_dragInteractionState.origin = -CGFLOAT_MAX; }
     }
-
-    // Offload the heavy work to a new run-loop cycle so we don't overload the current one.
-    view->_needsPreviousPage = YES;
-    [view setNeedsLayout];
-
-    // Move the scroll view forward one segment
-    const CGFloat previousOffsetX = view->_scrollView.contentOffset.x;
-    CGPoint contentOffset = view->_scrollView.contentOffset;
-    const CGFloat scrollViewPageWidth = view->_layoutMetrics.pageWidth;
-    const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
-    const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? -1.0f : 1.0f);
-    contentOffset.x += offset;
-    view->_scrollView.contentOffset = contentOffset;
-    [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
-
-    // If we're dragging, reset the state
-    if (view->_scrollView.isDragging) { view->_dragInteractionState.origin = -CGFLOAT_MAX; }
-
     view->_disableLayout = NO;
 }
 
@@ -1065,9 +1064,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
 }
 
 - (void)_rearrangePagesForScrollDirection:(TOPagingViewDirection)direction TOPAGINGVIEW_OBJC_DIRECT {
-    // Left is for Eastern type layouts
     const BOOL leftDirection = (direction == TOPagingViewDirectionRightToLeft);
-
     const CGFloat segmentWidth = _layoutMetrics.pageWidth;
     const CGFloat contentWidth = _scrollView.contentSize.width;
     const CGFloat halfSpacing = self.pageSpacing * 0.5f;
@@ -1076,22 +1073,14 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     // Move the next page to the left if direction is left, or vice versa
     if (_nextPageView) {
         CGRect frame = _nextPageView.frame;
-        if (leftDirection) {
-            frame.origin.x = halfSpacing;
-        } else {
-            frame.origin.x = rightOffset;
-        }
+        frame.origin.x = leftDirection ? halfSpacing : rightOffset;
         _nextPageView.frame = frame;
     }
 
     // Move the previous page to the right if direction is left, or vice versa
     if (_previousPageView) {
         CGRect frame = _previousPageView.frame;
-        if (leftDirection) {
-            frame.origin.x = rightOffset;
-        } else {
-            frame.origin.x = halfSpacing;
-        }
+        frame.origin.x = leftDirection ? rightOffset : halfSpacing;
         _previousPageView.frame = frame;
     }
 
