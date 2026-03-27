@@ -68,7 +68,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     // 'might' result in a page turn transaction occurring. This is useful as a catch to check the current
     // state of incoming data, and perform any new pre-loads that may have occurred in the meantime.
 
-    NSLog(@"Paging view will to turn to: %@", [self stringForType:type]);
+    NSLog(@"Paging view will turn to: %@", [self stringForType:type]);
 }
 
 - (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type {

@@ -1,5 +1,5 @@
 //
-//  TOPagingViewDelegateProxy.h
+//  TOScrollViewDelegateProxy.h
 //
 //  Copyright 2018-2026 Timothy Oliver. All rights reserved.
 //
@@ -38,10 +38,10 @@ FOUNDATION_EXTERN void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingVie
 /// The parent paging view which delegate calls will be forwarded to
 @property (nonatomic, weak) TOPagingView *pagingView;
 
-/// The external object that has subscribed to UIScrollViewDelegate;
+/// The external object that has subscribed to `UIScrollViewDelegate`.
 @property (nonatomic, weak) id<UIScrollViewDelegate> externalDelegate;
 
-// Creates a new instance of this proxy class
+/// Creates a new instance of this proxy class.
 - (instancetype)init;
 
 @end

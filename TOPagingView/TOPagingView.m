@@ -37,8 +37,8 @@
     UIScrollView *__weak scrollView;
 
     /// Dictionaries managing the pool of available pages and page classes.
-    NSMutableDictionary<NSString *, NSMutableSet *> *_queuedPages;          // pageIdentifer - available reusable pages
-    NSMutableDictionary<NSString *, UIView *> *_uniqueIdentifierPages;      // uniqueIdentifier - specifc page on demand
+    NSMutableDictionary<NSString *, NSMutableSet *> *_queuedPages;          // pageIdentifier - available reusable pages
+    NSMutableDictionary<NSString *, UIView *> *_uniqueIdentifierPages;      // uniqueIdentifier - specific page on demand
     NSMutableDictionary<NSString *, NSValue *> *_registeredPageViewClasses;
 
     /// Struct to cache the protocol state of each type of page view class used in this session.
@@ -54,16 +54,16 @@
     BOOL _disableLayout;     // Pause all layout logic temporarily for fine-grained modifications.
     BOOL _hasNextPage;       // Skip checking for an incoming next page once we've successfully dequeued one.
     BOOL _hasPreviousPage;   // Skip checking for an outgoing previous page once we've successfully dequeued one.
-    BOOL _needsNextPage;     // Defers loading the next page until the next view layout pass to spread the work across runloops
-    BOOL _needsPreviousPage; // Defers loading the previous page until the next view layout pass to spread the work across runloops
+    BOOL _needsNextPage;     // Defers loading the next page until the next view layout pass to spread the work across run loops
+    BOOL _needsPreviousPage; // Defers loading the previous page until the next view layout pass to spread the work across run loops
 
     /// Structs that cache long-lived state about the paging view
     TOPagingViewDelegateFlags _delegateFlags;        // Which methods the current delegate implements
     TOPagingViewLayoutMetrics _layoutMetrics;        // Layout metrics about the paging view that only change on frame change.
-    TOPagingViewDraggingState _dragInteractionState; // Tracking the user's dragging behaviour to detect when to alert of a sudden direction change
+    TOPagingViewDraggingState _dragInteractionState; // Tracking the user's dragging behavior to detect when to alert of a sudden direction change
     
     /// Additional modularized components of the paging view
-    TOPagingViewAnimator *_pageAnimator;                 // A real-time animator that plays an interuptible page-turning animation
+    TOPagingViewAnimator *_pageAnimator;                 // A real-time animator that plays an interruptible page-turning animation
     TOScrollViewDelegateProxy *_scrollViewDelegateProxy; // A proxy object that allows forwarding all UIScrollViewDelegate events to an external object
 }
 
@@ -659,7 +659,7 @@ static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *v
         [view->_delegate pagingView:view didChangeToPageDirection:view->_pageScrollDirection];
     }
 
-    // Refresh the layout metrics just in case another
+    // Refresh the layout metrics just in case any layout state changed from this
     if (needsDelegateUpdate) { [view _updateCachedLayoutMetrics]; }
 }
 
