@@ -27,7 +27,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Class category for adding support for physical keyboards to TOPagingView
 @interface TOPagingView (Keyboard)
-
 @end
 
 NS_ASSUME_NONNULL_END

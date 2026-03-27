@@ -20,12 +20,15 @@
 //  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+#import <UIKit/UIScreen.h>
+#import <UIKit/UIScrollView.h>
+#import <UIKit/UIWindow.h>
+#import <QuartzCore/QuartzCore.h>
+#import <TargetConditionals.h>
+
 #import "TOPagingViewAnimator.h"
 #import "TOPagingViewTypes.h"
 #import "TOPagingViewTypesPrivate.h"
-
-#import <QuartzCore/QuartzCore.h>
-#import <TargetConditionals.h>
 
 // -----------------------------------------------------------------
 

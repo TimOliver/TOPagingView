@@ -22,7 +22,7 @@
 
 #pragma once
 
-#import <UIKit/UIKit.h>
+#import <UIKit/UIView.h>
 
 /// For pages that don't specify an identifier, this string will be used.
 static NSString *const kTOPagingViewDefaultIdentifier = @"TOPagingView.DefaultPageIdentifier";

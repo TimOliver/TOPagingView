@@ -20,7 +20,7 @@
 //  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#import <UIKit/UIKit.h>
+#import <UIKit/UIView.h>
 
 #import "TOPagingViewTypes.h"
 #import "TOPagingViewPage.h"
@@ -28,7 +28,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class TOPagingView;
-
+@class UIScrollView;
+@protocol UIScrollViewDelegate;
 
 /// Supplies page views to the paging view on demand as the user moves through the sequence.
 /// Return configured page views relative to the supplied reference page, or `nil` to indicate

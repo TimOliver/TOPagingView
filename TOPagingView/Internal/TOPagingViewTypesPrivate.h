@@ -22,7 +22,7 @@
 
 #pragma once
 
-#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
 #import "TOPagingViewTypes.h"
 
 /// A struct to cache which methods the current delegate implements.
