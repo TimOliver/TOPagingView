@@ -195,7 +195,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     _displayLink = nil;
     _isAnimating = NO;
     _scrollView.pagingEnabled = _originalPagingEnabled;
-    if (_completionHandler) { _completionHandler(); }
+    if (didComplete && _completionHandler) { _completionHandler(); }
     _completionHandler = nil;
 }
 
