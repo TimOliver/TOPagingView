@@ -431,35 +431,46 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     }
 }
 
+- (nullable UIView<TOPagingViewPage> *)_fetchAdjacentPageForType:(TOPagingViewPageType)pageType
+                                               referencePageView:(nullable UIView<TOPagingViewPage> *)referencePageView
+                                           clampAnimatorIfMissing:(BOOL)clampAnimatorIfMissing TOPAGINGVIEW_OBJC_DIRECT {
+    UIView<TOPagingViewPage> *pageView = [_dataSource pagingView:self
+                                                 pageViewForType:pageType
+                                               referencePageView:referencePageView];
+    if (pageType == TOPagingViewPageTypeNext) {
+        if (pageView) {
+            TOPagingViewInsertPageView(self, pageView);
+            _nextPageView = pageView;
+            _nextPageView.frame = _layoutMetrics.nextPageFrame;
+        } else if (clampAnimatorIfMissing) {
+            [_pageAnimator clampAnimationToOffset:_layoutMetrics.pageWidth];
+        }
+        _hasNextPage = (pageView != nil);
+        return pageView;
+    }
+
+    if (pageView) {
+        TOPagingViewInsertPageView(self, pageView);
+        _previousPageView = pageView;
+        _previousPageView.frame = _layoutMetrics.previousPageFrame;
+    } else if (clampAnimatorIfMissing) {
+        [_pageAnimator clampAnimationToOffset:_layoutMetrics.pageWidth];
+    }
+    _hasPreviousPage = (pageView != nil);
+    return pageView;
+}
+
 - (void)fetchAdjacentPagesIfAvailable {
     if (_dataSource == nil) { return; }
 
     // If there currently isn't a previous page, check again to see if there is one now.
     if (!_hasPreviousPage) {
-        UIView<TOPagingViewPage> *previousPage = [_dataSource pagingView:self
-                                                         pageViewForType:TOPagingViewPageTypePrevious
-                                                       referencePageView:_currentPageView];
-        // Add the page view to the hierarchy
-        if (previousPage) {
-            TOPagingViewInsertPageView(self, previousPage);
-            previousPage.frame = _layoutMetrics.previousPageFrame;
-            _previousPageView = previousPage;
-            _hasPreviousPage = YES;
-        }
+        [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious referencePageView:_currentPageView clampAnimatorIfMissing:NO];
     }
 
     // If there currently isn't a next page, check again
     if (!_hasNextPage) {
-        UIView<TOPagingViewPage> *nextPage = [_dataSource pagingView:self
-                                                     pageViewForType:TOPagingViewPageTypeNext
-                                                   referencePageView:_currentPageView];
-        // Add the page view to the hierarchy
-        if (nextPage) {
-            TOPagingViewInsertPageView(self, nextPage);
-            nextPage.frame = _layoutMetrics.nextPageFrame;
-            _nextPageView = nextPage;
-            _hasNextPage = YES;
-        }
+        [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext referencePageView:_currentPageView clampAnimatorIfMissing:NO];
     }
 
     // If we're on the initial page, set the previous page state to match whatever the next state is
@@ -1059,47 +1070,11 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
 }
 
 - (void)_fetchNewNextPage TOPAGINGVIEW_OBJC_DIRECT {
-    // Query the data source for a replacement next page.
-    UIView<TOPagingViewPage> *nextPage = [_dataSource pagingView:self
-                                                 pageViewForType:TOPagingViewPageTypeNext
-                                               referencePageView:_nextPageView];
-
-    if (nextPage) {
-        // Insert the new page object and update its position (Will fall through if nil)
-        TOPagingViewInsertPageView(self, nextPage);
-        _nextPageView = nextPage;
-        _nextPageView.frame = _layoutMetrics.nextPageFrame;
-    } else {
-        // At this point the newly committed page is already centered in the middle slot,
-        // so if there is no farther page to continue to, the animator should settle there.
-        const CGFloat targetOffset = _layoutMetrics.pageWidth;
-        [_pageAnimator clampAnimationToOffset:targetOffset];
-    }
-
-    // If the next page ended up being nil, set a flag to prevent churning.
-    _hasNextPage = (nextPage != nil);
+    [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext referencePageView:_nextPageView clampAnimatorIfMissing:YES];
 }
 
 - (void)_fetchNewPreviousPage TOPAGINGVIEW_OBJC_DIRECT {
-    // Query the data source for a replacement previous page.
-    UIView<TOPagingViewPage> *previousPage = [_dataSource pagingView:self
-                                                     pageViewForType:TOPagingViewPageTypePrevious
-                                                   referencePageView:_previousPageView];
-
-    if (previousPage) {
-        // Insert the new page object and set its position (Will fall through if nil)
-        TOPagingViewInsertPageView(self, previousPage);
-        _previousPageView = previousPage;
-        _previousPageView.frame = _layoutMetrics.previousPageFrame;
-    } else {
-        // At this point the newly committed page is already centered in the middle slot,
-        // so if there is no farther page to continue to, the animator should settle there.
-        const CGFloat targetOffset = _layoutMetrics.pageWidth;
-        [_pageAnimator clampAnimationToOffset:targetOffset];
-    }
-
-    // If the previous page ended up being nil, set a flag so we don't check again until we need to.
-    _hasPreviousPage = (previousPage != nil);
+    [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious referencePageView:_previousPageView clampAnimatorIfMissing:YES];
 }
 
 - (void)_rearrangePagesForScrollDirection:(TOPagingViewDirection)direction TOPAGINGVIEW_OBJC_DIRECT {
