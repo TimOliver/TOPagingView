@@ -21,6 +21,7 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #import <Foundation/Foundation.h>
+#import "TOPagingViewTypes.h"
 
 /// Optional protocol that page views may implement.
 NS_SWIFT_NAME(PagingViewPage)

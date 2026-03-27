@@ -964,49 +964,48 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView) {
 #pragma mark - Page Transitions
 
 static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
-    // Don't start churning if we already confirmed there is no page after this.
+    // If there's no next page, exit out now, to avoid calling this on each frame tick
     if (!view->_hasNextPage) { return; }
-
-    // If we moved over to the threshold of the next page,
-    // re-enable the previous page
+    
+    // If we didn't have a previous page before, we will after this transaction
     if (!view->_hasPreviousPage) { view->_hasPreviousPage = YES; }
 
     view->_disableLayout = YES;
-
-    // Reclaim the previous view
-    TOPagingViewReclaimPageView(view, view->_previousPageView);
-
-    // Update all of the references by pushing each view back
-    view->_previousPageView = view->_currentPageView;
-    view->_currentPageView = view->_nextPageView;
-    view->_nextPageView = nil;
-
-    // Update the frames of the pages
-    view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
-    view->_previousPageView.frame = view->_layoutMetrics.previousPageFrame;
-
-    // Inform the delegate we have committed to a transition so we can update state for the next page.
-    if (view->_delegateFlags.delegateDidTurnToPage) {
-        [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypeNext];
+    {
+        // Reclaim the previous view
+        TOPagingViewReclaimPageView(view, view->_previousPageView);
+        
+        // Update all of the references by pushing each view back
+        view->_previousPageView = view->_currentPageView;
+        view->_currentPageView = view->_nextPageView;
+        view->_nextPageView = nil;
+        
+        // Update the frames of the pages
+        view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
+        view->_previousPageView.frame = view->_layoutMetrics.previousPageFrame;
+        
+        // Inform the delegate we have committed to a transition so we can update state for the next page.
+        if (view->_delegateFlags.delegateDidTurnToPage) {
+            [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypeNext];
+        }
+        
+        // Offload the heavy work to a new run-loop cycle so we don't overload the current one.
+        view->_needsNextPage = YES;
+        [view setNeedsLayout];
+        
+        // Move the scroll view back one segment
+        const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
+        const CGFloat previousOffsetX = view->_scrollView.contentOffset.x;
+        const CGFloat scrollViewPageWidth = view->_layoutMetrics.pageWidth;
+        const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? 1.0f : -1.0f);
+        CGPoint contentOffset = view->_scrollView.contentOffset;
+        contentOffset.x += offset;
+        view->_scrollView.contentOffset = contentOffset;
+        [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
+        
+        // If we're dragging, reset the state
+        if (view->_scrollView.isDragging) { view->_dragInteractionState.origin = -CGFLOAT_MAX; }
     }
-
-    // Offload the heavy work to a new run-loop cycle so we don't overload the current one.
-    view->_needsNextPage = YES;
-    [view setNeedsLayout];
-
-    // Move the scroll view back one segment
-    const CGFloat previousOffsetX = view->_scrollView.contentOffset.x;
-    CGPoint contentOffset = view->_scrollView.contentOffset;
-    const CGFloat scrollViewPageWidth = view->_layoutMetrics.pageWidth;
-    const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
-    const CGFloat offset = scrollViewPageWidth * (isDirectionReversed ? 1.0f : -1.0f);
-    contentOffset.x += offset;
-    view->_scrollView.contentOffset = contentOffset;
-    [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
-
-    // If we're dragging, reset the state
-    if (view->_scrollView.isDragging) { view->_dragInteractionState.origin = -CGFLOAT_MAX; }
-
     view->_disableLayout = NO;
 }
 
@@ -1115,20 +1114,13 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     // Don't continue if neither pages are pending
     if (!_needsNextPage && !_needsPreviousPage) { return; }
 
-    // Request a new next page
+    // Request a new next page if we're still pending
     if (_needsNextPage) {
-        // We shouldn't be in a state where a next page is already set,
-        // but re-use it if we do
-        if (_nextPageView != nil) {
-            TOPagingViewInsertPageView(self, _nextPageView);
-        } else {
-            [self _fetchNewNextPage];
-        }
-
-        // Reset the state
+        // Re-position the next page if we already have one, or otherwise fetch a new one
+        _nextPageView != nil ? TOPagingViewInsertPageView(self, _nextPageView) : [self _fetchNewNextPage];
         _needsNextPage = NO;
 
-        // If we also have a previous page, offload that to another tick
+        // If we also still need to fetch a previous page, defer that to the next layout pass
         if (_needsPreviousPage) {
             [self setNeedsLayout];
             return;
@@ -1136,30 +1128,20 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     }
 
     // If we have dynamic page detection, and we're on the origin page,
-    // don't request a previous page since we're re-using just the next page.
+    // don't request a previous page since we're just showing the next page on either edge right now.
     if (_isDynamicPageDirectionEnabled && TOPagingViewIsInitialPageForPageView(self, _currentPageView)) {
         _needsPreviousPage = NO;
         return;
     }
 
-    // Request a new previous page
+    // Request a new previous page if we're still pending
     if (_needsPreviousPage) {
-        // We shouldn't be in a state where a previous page is already set,
-        // but re-use it if we do
-        if (_previousPageView != nil) {
-            TOPagingViewInsertPageView(self, _previousPageView);
-        } else {
-            [self _fetchNewPreviousPage];
-        }
-
-        // Reset the state
+        // Re-position the previous page if we already have one, or otherwise fetch a new one
+        _previousPageView != nil ? TOPagingViewInsertPageView(self, _previousPageView) : [self _fetchNewPreviousPage];
         _needsPreviousPage = NO;
 
-        // If we also have a next page, offload that to another tick
-        if (_needsNextPage) {
-            [self setNeedsLayout];
-            return;
-        }
+        // If we also still need to fetch a next page, defer that to the next layout pass
+        if (_needsNextPage) { [self setNeedsLayout]; }
     }
 }
 
