@@ -31,6 +31,15 @@
 #import "TOPagingViewTypes.h"
 #import "TOScrollViewDelegateProxy.h"
 
+typedef struct {
+    CGFloat origin;
+    TOPagingViewPageType directionType;
+} TOPagingViewDraggingState;
+
+static inline TOPagingViewDraggingState TOPagingViewDraggingStateReset(void) {
+    return (TOPagingViewDraggingState){.origin = -CGFLOAT_MAX, .directionType = TOPagingViewPageTypeCurrent};
+}
+
 @implementation TOPagingView {
     /// The scroll view managed by this container.
     UIScrollView *__weak scrollView;
@@ -60,8 +69,7 @@
     BOOL _disableLayout;
 
     /// State tracking for when a user is dragging their finger on screen.
-    CGFloat _draggingOrigin;
-    TOPagingViewPageType _draggingDirectionType;
+    TOPagingViewDraggingState _dragInteractionState;
 
     /// State tracking for offloading view configuration to another run-loop tick.
     BOOL _needsNextPage;
@@ -109,7 +117,7 @@
     _pageViewProtocolFlags = [NSMapTable mapTableWithKeyOptions:NSPointerFunctionsOpaqueMemory | NSPointerFunctionsOpaquePersonality
                                                    valueOptions:NSPointerFunctionsStrongMemory];
     memset(&_delegateFlags, 0, sizeof(TOPagingViewDelegateFlags));
-    _draggingOrigin = -CGFLOAT_MAX;
+    _dragInteractionState = TOPagingViewDraggingStateReset();
 
     // Configure the main properties of this view
     self.clipsToBounds = YES;  // The scroll view intentionally overlaps, so this view MUST clip.
@@ -700,14 +708,13 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view, TOPagi
 
     // If we're not being dragged, reset the state
     if (view->_scrollView.isTracking == NO) {
-        view->_draggingDirectionType = TOPagingViewPageTypeCurrent;
-        view->_draggingOrigin = -CGFLOAT_MAX;
+        view->_dragInteractionState = TOPagingViewDraggingStateReset();
         return;
     }
 
     // If we just started dragging, capture the current offset and exit
-    if (view->_draggingOrigin <= -CGFLOAT_MAX + FLT_EPSILON) {
-        view->_draggingOrigin = metrics.offsetX;
+    if (view->_dragInteractionState.origin <= -CGFLOAT_MAX + FLT_EPSILON) {
+        view->_dragInteractionState.origin = metrics.offsetX;
         return;
     }
 
@@ -719,23 +726,23 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view, TOPagi
     // If we're detecting the direction, it will be 'next' regardless.
     if (isDetectingDirection) {
         directionType = TOPagingViewPageTypeNext;
-    } else if (metrics.offsetX < view->_draggingOrigin - FLT_EPSILON) {  // We dragged to the right
+    } else if (metrics.offsetX < view->_dragInteractionState.origin - FLT_EPSILON) {  // We dragged to the right
         directionType = metrics.isReversed ? TOPagingViewPageTypeNext : TOPagingViewPageTypePrevious;
-    } else if (metrics.offsetX > view->_draggingOrigin + FLT_EPSILON) {  // We dragged to the left
+    } else if (metrics.offsetX > view->_dragInteractionState.origin + FLT_EPSILON) {  // We dragged to the left
         directionType = metrics.isReversed ? TOPagingViewPageTypePrevious : TOPagingViewPageTypeNext;
     } else {
         return;
     }
 
     // If this is a new direction than before, inform the delegate, and then save to avoid repeating
-    if (directionType != view->_draggingDirectionType) {
+    if (directionType != view->_dragInteractionState.directionType) {
         // Offload this delegate call to another run-loop to avoid any heavy operations as the data source
         [view->_delegate pagingView:view willTurnToPageOfType:directionType];
-        view->_draggingDirectionType = directionType;
+        view->_dragInteractionState.directionType = directionType;
     }
 
     // Update with the new offset
-    view->_draggingOrigin = metrics.offsetX;
+    view->_dragInteractionState.origin = metrics.offsetX;
 }
 
 static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
@@ -1022,7 +1029,7 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
     [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
 
     // If we're dragging, reset the state
-    if (view->_scrollView.isDragging) { view->_draggingOrigin = -CGFLOAT_MAX; }
+    if (view->_scrollView.isDragging) { view->_dragInteractionState.origin = -CGFLOAT_MAX; }
 
     view->_disableLayout = NO;
 }
@@ -1069,7 +1076,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
 
     // If we're dragging, reset the state
-    if (view->_scrollView.isDragging) { view->_draggingOrigin = -CGFLOAT_MAX; }
+    if (view->_scrollView.isDragging) { view->_dragInteractionState.origin = -CGFLOAT_MAX; }
 
     view->_disableLayout = NO;
 }
