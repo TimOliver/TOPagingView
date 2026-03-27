@@ -66,3 +66,9 @@ typedef struct {
     CGFloat pixelSize;
     CGFloat animationDragCoefficient;
 } TOPagingViewAnimatorEnvironmentMetrics;
+
+/// State used to detect when the user starts or changes swiping directions
+typedef struct {
+    CGFloat origin;
+    TOPagingViewPageType directionType;
+} TOPagingViewDraggingState;

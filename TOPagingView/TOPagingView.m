@@ -31,14 +31,7 @@
 #import "TOPagingViewTypes.h"
 #import "TOScrollViewDelegateProxy.h"
 
-typedef struct {
-    CGFloat origin;
-    TOPagingViewPageType directionType;
-} TOPagingViewDraggingState;
 
-static inline TOPagingViewDraggingState TOPagingViewDraggingStateReset(void) {
-    return (TOPagingViewDraggingState){.origin = -CGFLOAT_MAX, .directionType = TOPagingViewPageTypeCurrent};
-}
 
 @implementation TOPagingView {
     /// The scroll view managed by this container.
@@ -49,40 +42,30 @@ static inline TOPagingViewDraggingState TOPagingViewDraggingStateReset(void) {
     NSMutableDictionary<NSString *, UIView *> *_uniqueIdentifierPages;      // uniqueIdentifier - specifc page on demand
     NSMutableDictionary<NSString *, NSValue *> *_registeredPageViewClasses;
 
+    /// Struct to cache the protocol state of each type of page view class used in this session.
+    /// Uses NSMapTable with pointer keys to avoid NSStringFromClass allocations on lookup.
+    NSMapTable<Class, TOPageViewProtocolCache *> *_pageViewProtocolFlags;
+    
     /// The views that are all currently in the scroll view, in specific order.
     UIView<TOPagingViewPage> * __weak _currentPageView;
     UIView<TOPagingViewPage> * __weak _nextPageView;
     UIView<TOPagingViewPage> * __weak _previousPageView;
 
-    /// Flags to avoid re-polling for adjacent pages once they are confirmed.
-    BOOL _hasNextPage;
-    BOOL _hasPreviousPage;
+    /// Flags tracking the current state of layout
+    BOOL _disableLayout;     // Pause all layout logic temporarily for fine-grained modifications.
+    BOOL _hasNextPage;       // Skip checking for an incoming next page once we've successfully dequeued one.
+    BOOL _hasPreviousPage;   // Skip checking for an outgoing previous page once we've successfully dequeued one.
+    BOOL _needsNextPage;     // Defers loading the next page until the next view layout pass to spread the work across runloops
+    BOOL _needsPreviousPage; // Defers loading the previous page until the next view layout pass to spread the work across runloops
 
-    /// Struct to cache the state of the delegate for performance.
-    TOPagingViewDelegateFlags _delegateFlags;
-
-    /// Struct to cache the protocol state of each type of page view class used in this session.
-    /// Uses NSMapTable with pointer keys to avoid NSStringFromClass allocations on lookup.
-    NSMapTable<Class, TOPageViewProtocolCache *> *_pageViewProtocolFlags;
-
-    /// Disable automatic layout when manually laying out content.
-    BOOL _disableLayout;
-
-    /// State tracking for when a user is dragging their finger on screen.
-    TOPagingViewDraggingState _dragInteractionState;
-
-    /// State tracking for offloading view configuration to another run-loop tick.
-    BOOL _needsNextPage;
-    BOOL _needsPreviousPage;
-
-    /// The animator used to play smooth transitions when turning pages.
-    TOPagingViewAnimator *_pageAnimator;
-
-    /// The delegate proxy that handles scroll view delegate calls.
-    TOScrollViewDelegateProxy *_scrollViewDelegateProxy;
+    /// Structs that cache long-lived state about the paging view
+    TOPagingViewDelegateFlags _delegateFlags;        // Which methods the current delegate implements
+    TOPagingViewLayoutMetrics _layoutMetrics;        // Layout metrics about the paging view that only change on frame change.
+    TOPagingViewDraggingState _dragInteractionState; // Tracking the user's dragging behaviour to detect when to alert of a sudden direction change
     
-    /// A snapshot of the current layout metrics for faster performance.
-    TOPagingViewLayoutMetrics _layoutMetrics;
+    /// Additional modularized components of the paging view
+    TOPagingViewAnimator *_pageAnimator;                 // A real-time animator that plays an interuptible page-turning animation
+    TOScrollViewDelegateProxy *_scrollViewDelegateProxy; // A proxy object that allows forwarding all UIScrollViewDelegate events to an external object
 }
 
 @synthesize scrollView = _scrollView;
@@ -308,6 +291,14 @@ void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
 /// Convenience function for detecting when the paging view is set right-to-left.
 static inline BOOL TOPagingViewIsDirectionReversed(TOPagingView *view) {
     return (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
+}
+
+/// Convenience function to reset dragging state once we've fired the previous delegate call.
+static inline TOPagingViewDraggingState TOPagingViewDraggingStateReset(void) {
+    return (TOPagingViewDraggingState){
+        .origin = -CGFLOAT_MAX,
+        .directionType = TOPagingViewPageTypeCurrent
+    };
 }
 
 #pragma mark - Page Setup -
