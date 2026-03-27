@@ -22,49 +22,16 @@
 
 #import <UIKit/UIKit.h>
 #import "TOPagingViewTypes.h"
+#import "TOPagingViewPage.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @class TOPagingView;
 
-/// Optional protocol that page views may implement.
-NS_SWIFT_NAME(PagingViewPage)
-@protocol TOPagingViewPage <NSObject>
 
-@optional
-
-/// A unique string value that can be used to let the pager view
-/// dequeue pre-made objects with the same identifier, or if pre-registered,
-/// create new instances automatically on request.
-///
-/// If this property is not overridden, the page will be treated as the default
-/// type that will be returned whenever the identifier is nil.
-+ (NSString *)pageIdentifier;
-
-/// A globally unique identifier that can be used to uniquely tag this specific
-/// page objects when they are in active use. This must be finalized before the page
-/// is inserted into the paging view.
-- (NSString *)uniqueIdentifier;
-
-/// Called just before the page object is removed from the visible page set,
-/// and re-enqueued by the data source. Use this method to return the page to a default state.
-/// Most importantly, be sure to use this method to release memory heavy objects like images.
-- (void)prepareForReuse;
-
-/// The current page on screen is the first page in the current sequence.
-/// When dynamic page direction is enabled, scrolling past the initial page in either
-/// direction will start incrementing pages in that direction.
-- (BOOL)isInitialPage;
-
-/// Passes the current reading direction from the hosting paging view to this page.
-/// Use this to re-arrange any sets of subviews that depend on the direction that the pages flow in.
-/// - Parameter direction: The ascending direction that the pages will flow in.
-- (void)setPageDirection:(TOPagingViewDirection)direction;
-
-@end
-
-// -------------------------------------------------------------------
-
+/// Supplies page views to the paging view on demand as the user moves through the sequence.
+/// Return configured page views relative to the supplied reference page, or `nil` to indicate
+/// that the sequence ends in that direction.
 NS_SWIFT_NAME(PagingViewDataSource)
 @protocol TOPagingViewDataSource <NSObject>
 
@@ -87,8 +54,8 @@ NS_SWIFT_NAME(PagingViewDataSource)
 
 @end
 
-// -------------------------------------------------------------------
-
+/// Receives lifecycle events about page turns and page-direction changes.
+/// Use this to preload content, update external state, or respond when a page turn commits.
 NS_SWIFT_NAME(PagingViewDataDelegate)
 @protocol TOPagingViewDelegate <NSObject>
 
@@ -115,8 +82,6 @@ NS_SWIFT_NAME(PagingViewDataDelegate)
 
 @end
 
-//-------------------------------------------------------------------
-
 /// A view that presents content as discrete horizontal scrolling pages.
 /// The interface has been designed so any arbitrary number of pages may be
 /// displayed without knowing the final number up front.
@@ -130,10 +95,12 @@ NS_SWIFT_NAME(PagingView)
 /// scrollView.delegate directly, as the paging view uses the delegate internally.
 @property (nonatomic, weak, nullable) id<UIScrollViewDelegate> scrollViewDelegate;
 
-/// The data source object that is in charge with configuring and providing views to this view.
+/// The object responsible for creating and configuring page views for this paging view.
+/// The pager consults this object whenever it needs the current page or an adjacent page.
 @property (nonatomic, weak, nullable) id<TOPagingViewDataSource> dataSource;
 
-/// The delegate broadcasts page turning events, so that the data source can update its state to match.
+/// The object notified as turns begin, commit, or when dynamic direction changes.
+/// Use this for side effects and external state updates rather than for supplying page views.
 @property (nonatomic, weak, nullable) id<TOPagingViewDelegate> delegate;
 
 /// Width of the spacing between pages in points (default value of 40).
