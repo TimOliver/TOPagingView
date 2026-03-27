@@ -32,7 +32,7 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol UIScrollViewDelegate;
 
 /// Supplies page views to the paging view on demand as the user moves through the sequence.
-/// Return configured page views relative to the supplied reference page, or `nil` to indicate
+/// Return configured page views relative to the current page, or `nil` to indicate
 /// that the sequence ends in that direction.
 NS_SWIFT_NAME(PagingViewDataSource)
 @protocol TOPagingViewDataSource <NSObject>
@@ -45,7 +45,7 @@ NS_SWIFT_NAME(PagingViewDataSource)
 /// In that case, the paging view will treat the supplied reference page as the end of the sequence in that direction
 /// and settle the scroll view there.
 /// @param pagingView The paging view requesting the new page view.
-/// @param type The type of page to be displayed in its relation to the reference page.
+/// @param type The type of page to be displayed in its relation to the current page.
 /// @param currentPageView The current page view on screen. Use this to determine which page should come before or after it.
 /// This will be nil only on the very first load, before any pages have been displayed.
 /// @return The newly dequeued and configured page. At any point, if it's determined that there are no more pages, return nil instead.

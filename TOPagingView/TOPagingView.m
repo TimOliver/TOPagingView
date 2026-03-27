@@ -145,7 +145,6 @@
 
 #pragma mark - View Lifecycle
 
-
 - (void)layoutSubviews {
     [super layoutSubviews];
     [self layoutContent];
@@ -623,16 +622,16 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
 
 static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
     UIView<TOPagingViewPage> * const nextPage = view->_nextPageView;
-    const CGFloat xPosition = CGRectGetMinX(view->_nextPageView.frame);
+    const CGFloat xPosition = CGRectGetMinX(nextPage.frame);
     const CGFloat offsetX = metrics.offsetX;
     const CGFloat segmentWidth = metrics.segmentWidth;
 
     // Check when the page starts moving in a certain direction and update the 'next' page to match if it hasn't already been updated.
     if (offsetX < segmentWidth - FLT_EPSILON && xPosition > segmentWidth) {
-        TOPagingViewSetPageDirectionForPageView(view, TOPagingViewDirectionRightToLeft, view->_nextPageView);
+        TOPagingViewSetPageDirectionForPageView(view, TOPagingViewDirectionRightToLeft, nextPage);
         nextPage.frame = view->_layoutMetrics.leftPageFrame;
     } else if (offsetX > segmentWidth + FLT_EPSILON && xPosition < segmentWidth) {
-        TOPagingViewSetPageDirectionForPageView(view, TOPagingViewDirectionLeftToRight, view->_nextPageView);
+        TOPagingViewSetPageDirectionForPageView(view, TOPagingViewDirectionLeftToRight, nextPage);
         nextPage.frame = view->_layoutMetrics.rightPageFrame;
     }
 
@@ -892,7 +891,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     [UIView animateWithDuration:_pageAnimator.duration
                           delay:0.0f
                         options:kTOPagingViewAnimationOptions
-                     animations:^{ [self->_scrollView setContentOffset:centerOffset animated:NO]; }
+                     animations:^{ [weakSelf->_scrollView setContentOffset:centerOffset animated:NO]; }
                      completion:completionBlock];
 }
 
@@ -938,7 +937,7 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView) {
     if (flags.protocolUniqueIdentifier) { [view->_uniqueIdentifierPages removeObjectForKey:[(id)pageView uniqueIdentifier]]; }
     if (flags.protocolPrepareForReuse) { [(id)pageView prepareForReuse]; }
 
-    // Hide the view and remove from the superview. (This might become a performance bottleneck down the line)
+    // Hide the view and remove from the superview.
     pageView.hidden = YES;
     [pageView removeFromSuperview];
 
@@ -1053,7 +1052,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     const BOOL leftDirection = (direction == TOPagingViewDirectionRightToLeft);
     const CGFloat segmentWidth = _layoutMetrics.pageWidth;
     const CGFloat contentWidth = _scrollView.contentSize.width;
-    const CGFloat halfSpacing = self.pageSpacing * 0.5f;
+    const CGFloat halfSpacing = _layoutMetrics.halfPageSpacing;
     const CGFloat rightOffset = (contentWidth - segmentWidth) + halfSpacing;
 
     // Move the next page to the left if direction is left, or vice versa
