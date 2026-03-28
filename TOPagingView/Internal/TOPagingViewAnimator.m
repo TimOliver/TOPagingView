@@ -325,7 +325,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 - (void)_createDisplayLink TOPAGINGVIEW_OBJC_DIRECT {
     _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(_displayLinkDidFire:)];
     if (@available(iOS 15.0, *)) {
-        _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(80.0, 120.0f, 120.0f);
+        _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(80.0f, 120.0f, 120.0f);
     } else {
         _displayLink.preferredFramesPerSecond = 120;
     }

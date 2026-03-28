@@ -38,7 +38,7 @@
 
     /// Dictionaries managing the pool of available pages and page classes.
     NSMutableDictionary<NSString *, NSMutableSet *> *_queuedPages;          // pageIdentifier - available reusable pages
-    NSMutableDictionary<NSString *, UIView *> *_uniqueIdentifierPages;      // uniqueIdentifier - specific page on demand
+    NSMutableDictionary<NSString *, UIView<TOPagingViewPage> *> *_uniqueIdentifierPages; // uniqueIdentifier - specific page on demand
     NSMutableDictionary<NSString *, NSValue *> *_registeredPageViewClasses;
 
     /// Struct to cache the protocol state of each type of page view class used in this session.
@@ -261,7 +261,7 @@ void TOPagingViewHandleScrollViewDidScroll(TOPagingView *pagingView) {
     [pagingView _layoutPages];
 }
 
-/// External hook for the scroll view proxy to forward scroll events to us
+/// External hook for the scroll view proxy to forward drag-begin events to us
 void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
     [pagingView _scrollViewWillBeginDragging];
 }
@@ -275,7 +275,7 @@ void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
     TOPagingViewCachedProtocolFlagsForPageViewClass(self, pageViewClass);
 
     // Fetch the page identifier (or use the default if none were provided).
-    const NSString *pageIdentifier = TOPagingViewIdentifierForPageViewClass(self, pageViewClass);
+    NSString *const pageIdentifier = TOPagingViewIdentifierForPageViewClass(self, pageViewClass);
 
     // Lazily make the store for the first time
     if (_registeredPageViewClasses == nil) { _registeredPageViewClasses = [NSMutableDictionary dictionary]; }
@@ -715,7 +715,7 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view, TOPagi
         return;
     }
 
-    // If this is a new direction than before, inform the delegate, and then save to avoid repeating
+    // If this is a different direction than before, inform the delegate, and then save to avoid repeating
     if (directionType != view->_dragInteractionState.directionType) {
         [view->_delegate pagingView:view willTurnToPageOfType:directionType];
         view->_dragInteractionState.directionType = directionType;
@@ -897,7 +897,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
                      completion:completionBlock];
 }
 
-- (nullable __kindof UIView *)pageViewForUniqueIdentifier:(NSString *)identifier {
+- (nullable __kindof UIView<TOPagingViewPage> *)pageViewForUniqueIdentifier:(NSString *)identifier {
     return _uniqueIdentifierPages[identifier];
 }
 
