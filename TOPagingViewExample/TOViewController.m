@@ -108,8 +108,8 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 
 #pragma mark - Gesture Recognizer -
 
-- (void)tapGestureRecognized:(UITapGestureRecognizer *)recgonizer {
-    CGPoint tapPoint = [recgonizer locationInView:self.view];
+- (void)tapGestureRecognized:(UITapGestureRecognizer *)recognizer {
+    CGPoint tapPoint = [recognizer locationInView:self.view];
     CGFloat halfBoundWidth = CGRectGetWidth(self.view.bounds) / 2.0f;
 
     if (tapPoint.x < halfBoundWidth) {
