@@ -147,6 +147,9 @@
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+    NSAssert(_scrollView.delegate == _scrollViewDelegateProxy,
+             @"The scroll view's delegate has been changed directly. "
+             "Use TOPagingView.scrollViewDelegate to set an external scroll view delegate.");
     [self _layoutContent];
 }
 
