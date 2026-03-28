@@ -80,6 +80,7 @@
 		22C3167E242A40F80063F6A6 /* TOPagingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingView.m; sourceTree = "<group>"; };
 		22D4A7B1293F5E8A00B1C2D3 /* TOPagingViewAnimator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewAnimator.h; sourceTree = "<group>"; };
 		22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingViewAnimator.m; sourceTree = "<group>"; };
+		22EE55062F77FA920077991F /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 		24F0A0032F24000100000001 /* TOPagingViewUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TOPagingViewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		24F0A0042F24000100000001 /* TOPagingViewUITests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingViewUITests.m; sourceTree = "<group>"; };
 		24F0A0052F24000100000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -143,6 +144,7 @@
 				22C31639242899AB0063F6A6 /* TOPagingViewTests */,
 				24F0A0062F24000100000001 /* TOPagingViewUITests */,
 				227BEDFC27AC1879009D6B6D /* TOPagingView.podspec */,
+				22EE55062F77FA920077991F /* Package.swift */,
 				227BEDFB27AC186F009D6B6D /* README.md */,
 				227BEDF927AC1867009D6B6D /* CHANGELOG.md */,
 				22C3161C242899AA0063F6A6 /* Products */,

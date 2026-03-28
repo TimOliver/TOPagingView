@@ -16,8 +16,9 @@ let package = Package(
         .target(
             name: "TOPagingView",
             path: "TOPagingView",
-            publicHeadersPath: ".",
+            publicHeadersPath: "include",
             cSettings: [
+                .headerSearchPath("."),
                 .headerSearchPath("Internal")
             ]
         )

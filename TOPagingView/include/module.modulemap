@@ -1,0 +1,6 @@
+framework module TOPagingView {
+    header "../TOPagingView.h"
+    header "../TOPagingViewTypes.h"
+    header "../TOPagingViewPage.h"
+    export *
+}

@@ -32,10 +32,10 @@ TOPagingView is an Objective-C iOS library for horizontal paged scrolling with a
 Open `TOPagingView.xcodeproj` in Xcode. Four targets:
 - **TOPagingView** - The library framework
 - **TOPagingViewExample** - Demo app with tap-to-turn, direction toggle, keyboard support
-- **TOPagingViewTests** - Unit tests (currently placeholder only)
+- **TOPagingViewTests** - Unit tests (initialization, recycling, boundaries, delegate callbacks, reload, direction)
 - **TOPagingViewUITests** - UI automation tests (rapid tap test, drag-during-animation test)
 
-Distribution: CocoaPods only (`TOPagingView.podspec`). No Swift Package Manager support yet.
+Distribution: CocoaPods (`TOPagingView.podspec`) and Swift Package Manager (`Package.swift`).
 
 ## Code Conventions
 
