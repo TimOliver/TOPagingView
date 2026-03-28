@@ -29,17 +29,21 @@
 }
 
 - (NSArray<UIKeyCommand *> *)keyCommands {
-    SEL selector = @selector(arrowKeyPressed:);
-    UIKeyCommand *leftArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:0 action:selector];
+    static NSArray<UIKeyCommand *> *commands;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        SEL selector = @selector(arrowKeyPressed:);
+        UIKeyCommand *leftArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:0 action:selector];
+        UIKeyCommand *rightArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:0 action:selector];
 
-    UIKeyCommand *rightArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:0 action:selector];
+        if (@available(iOS 15.0, *)) {
+            leftArrowCommand.wantsPriorityOverSystemBehavior = YES;
+            rightArrowCommand.wantsPriorityOverSystemBehavior = YES;
+        }
 
-    if (@available(iOS 15.0, *)) {
-        leftArrowCommand.wantsPriorityOverSystemBehavior = YES;
-        rightArrowCommand.wantsPriorityOverSystemBehavior = YES;
-    }
-
-    return @[leftArrowCommand, rightArrowCommand];
+        commands = @[leftArrowCommand, rightArrowCommand];
+    });
+    return commands;
 }
 
 - (void)arrowKeyPressed:(UIKeyCommand *)command {
