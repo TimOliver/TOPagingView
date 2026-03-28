@@ -57,7 +57,7 @@ NS_SWIFT_NAME(PagingViewDataSource)
 
 /// Receives lifecycle events about page turns and page-direction changes.
 /// Use this to preload content, update external state, or respond when a page turn commits.
-NS_SWIFT_NAME(PagingViewDataDelegate)
+NS_SWIFT_NAME(PagingViewDelegate)
 @protocol TOPagingViewDelegate <NSObject>
 
 @optional
