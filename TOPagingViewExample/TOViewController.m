@@ -43,7 +43,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 
 - (TOTestPageView *)pagingView:(TOPagingView *)pagingView
                pageViewForType:(TOPagingViewPageType)type
-             referencePageView:(TOTestPageView *)referencePageView {
+              currentPageView:(TOTestPageView *)currentPageView {
     TOTestPageView *pageView = [pagingView dequeueReusablePageView];
 
     switch (type) {
@@ -68,7 +68,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     // 'might' result in a page turn transaction occurring. This is useful as a catch to check the current
     // state of incoming data, and perform any new pre-loads that may have occurred in the meantime.
 
-    NSLog(@"Paging view will to turn to: %@", [self stringForType:type]);
+    NSLog(@"Paging view will turn to: %@", [self stringForType:type]);
 }
 
 - (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type {
@@ -85,7 +85,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 }
 
 - (void)pagingView:(TOPagingView *)pagingView didChangeToPageDirection:(TOPagingViewDirection)direction {
-    // This delegate is called when dynamic page direction detection is enabled and the scroll view
+    // This delegate is called when adaptive page direction detection is enabled and the scroll view
     // has determined the user has committed to a new page direction. It is only called once per interaction.
     BOOL isReversed = (direction == TOPagingViewDirectionRightToLeft);
     NSString *directionString = (isReversed ? @"Left" : @"Right");
@@ -108,8 +108,8 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 
 #pragma mark - Gesture Recognizer -
 
-- (void)tapGestureRecognized:(UITapGestureRecognizer *)recgonizer {
-    CGPoint tapPoint = [recgonizer locationInView:self.view];
+- (void)tapGestureRecognized:(UITapGestureRecognizer *)recognizer {
+    CGPoint tapPoint = [recognizer locationInView:self.view];
     CGFloat halfBoundWidth = CGRectGetWidth(self.view.bounds) / 2.0f;
 
     if (tapPoint.x < halfBoundWidth) {
@@ -150,7 +150,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
 
     // Paging view set-up and configuration
     self.pagingView = [[TOPagingView alloc] initWithFrame:self.view.bounds];
-    // self.pagingView.isDynamicPageDirectionEnabled = YES;
+    // self.pagingView.isAdaptivePageDirectionEnabled = YES;
     self.pagingView.dataSource = self;
     self.pagingView.delegate = self;
     self.pagingView.scrollViewDelegate = self;

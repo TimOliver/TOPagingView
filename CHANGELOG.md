@@ -8,7 +8,7 @@ x.y.z Release Notes (yyyy-MM-dd)
 
 * Dynamic page direction to allow the user to start advancing from either direction.
 
-## Enhancments
+## Enhancements
 
 * Refined the caching of delegate access checks for greater performance.
 

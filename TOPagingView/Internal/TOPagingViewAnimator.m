@@ -20,11 +20,15 @@
 //  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#import "TOPagingViewAnimator.h"
-#import "TOPagingViewTypes.h"
-
+#import <UIKit/UIScreen.h>
+#import <UIKit/UIScrollView.h>
+#import <UIKit/UIWindow.h>
 #import <QuartzCore/QuartzCore.h>
 #import <TargetConditionals.h>
+
+#import "TOPagingViewAnimator.h"
+#import "TOPagingViewTypes.h"
+#import "TOPagingViewTypesPrivate.h"
 
 // -----------------------------------------------------------------
 
@@ -108,7 +112,6 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     CADisplayLink *_displayLink;            /// The display link driving the frame-by-frame animation.
     CFTimeInterval _startTime;              /// The time at which the current animation segment started.
     UIRectEdge _direction;                  /// The direction we're turning in.
-    CFTimeInterval _activeDuration;         /// The duration of the current animation segment.
     CFTimeInterval _activeEffectiveDuration; /// The duration of the current segment after applying any active simulator drag coefficient.
     CGFloat _directionMultiplier;           /// The direction multiplier (+1 for right, -1 for left).
     CGFloat _startOffset;                   /// The absolute scroll view content offset when we started.
@@ -125,7 +128,6 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     self = [super init];
     if (self) {
         _duration = kTOAnimatorDefaultDuration;
-        _activeDuration = kTOAnimatorDefaultDuration;
         _environmentMetrics = (TOPagingViewAnimatorEnvironmentMetrics){.displayScale = 1.0f, .pixelSize = 1.0f, .animationDragCoefficient = 1.0f};
         _activeEffectiveDuration = kTOAnimatorDefaultDuration;
     }
@@ -183,7 +185,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     }
 }
 
-- (void)stopAnimation {
+- (void)stopAnimationWithCompletion:(BOOL)didComplete {
     if (!_isAnimating) { return; }
     // Cancel the display link.
     // The scroll view will stop at whatever offset it is now.
@@ -191,6 +193,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     _displayLink = nil;
     _isAnimating = NO;
     _scrollView.pagingEnabled = _originalPagingEnabled;
+    if (didComplete && _completionHandler) { _completionHandler(); }
+    _completionHandler = nil;
 }
 
 - (void)clampAnimationToOffset:(CGFloat)targetOffset {
@@ -273,8 +277,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 #pragma mark - Animation State -
 
 - (void)_updateEnvironmentMetrics TOPAGINGVIEW_OBJC_DIRECT {
-    // Capture device metrics that while may transiently change between animations,
-    // they won't likely change during this animation, and it is more performant to cache them.
+    // Capture device metrics that may change between animations but are stable
+    // enough to cache for the duration of one.
     
     // Capture the physical display scale of the screen (eg 2x = 0.5, 3x = 0.33333)
     const CGFloat displayScale = ({
@@ -313,7 +317,6 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     _startOffset = startOffset;
     _endOffset = endOffset;
     _startTime = referenceTime;
-    _activeDuration = duration;
     _activeEffectiveDuration = duration * _environmentMetrics.animationDragCoefficient;
 }
 
@@ -322,7 +325,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 - (void)_createDisplayLink TOPAGINGVIEW_OBJC_DIRECT {
     _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(_displayLinkDidFire:)];
     if (@available(iOS 15.0, *)) {
-        _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(80.0, 120.0f, 120.0f);
+        _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(80.0f, 120.0f, 120.0f);
     } else {
         _displayLink.preferredFramesPerSecond = 120;
     }
@@ -332,7 +335,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 - (void)_displayLinkDidFire:(CADisplayLink *)displayLink {
     UIScrollView *const scrollView = _scrollView;
     if (scrollView == nil) {
-        [self stopAnimation];
+        [self stopAnimationWithCompletion:NO];
         return;
     }
 
@@ -343,8 +346,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
 
     if (progress >= 1.0f - FLT_EPSILON && fabs(scrollView.contentOffset.x - _endOffset) <= _environmentMetrics.pixelSize) {
-        [self stopAnimation];
-        if (_completionHandler) { _completionHandler(); }
+        [self stopAnimationWithCompletion:YES];
     }
 }
 

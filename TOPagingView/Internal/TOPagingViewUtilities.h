@@ -1,5 +1,5 @@
 //
-//  TOScrollViewDelegateProxy.h
+//  TOPagingViewUtilities.h
 //
 //  Copyright 2018-2026 Timothy Oliver. All rights reserved.
 //
@@ -20,28 +20,33 @@
 //  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+#pragma once
+
 #import <Foundation/Foundation.h>
-#import <UIKit/UIScrollView.h>
+#import "TOPagingViewTypes.h"
+#import "TOPagingViewTypesPrivate.h"
 
-@class TOPagingView;
+/// Convert an Objective-C class pointer into an NSValue that can be stored in a dictionary.
+static inline NSValue *TOPagingViewValueForClass(Class *class) {
+    return [NSValue valueWithBytes:class objCType:@encode(Class)];
+}
 
-FOUNDATION_EXTERN void TOPagingViewHandleScrollViewDidScroll(TOPagingView *pagingView);
-FOUNDATION_EXTERN void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView);
+/// Convert an Objective-C class that was encoded to NSValue back out again.
+static inline Class TOPagingViewClassForValue(NSValue *value) {
+    Class class;
+    [value getValue:&class];
+    return class;
+}
 
-/// A lightweight proxy that intercepts UIScrollViewDelegate calls.
-/// Uses NSProxy message forwarding to automatically forward all delegate methods
-/// to the external delegate, while intercepting scrollViewDidScroll: and
-/// scrollViewWillBeginDragging: for internal state tracking.
-/// This approach avoids manually implementing every UIScrollViewDelegate method.
-@interface TOScrollViewDelegateProxy : NSProxy <UIScrollViewDelegate>
+/// Convenience function for detecting when the paging view is set right-to-left.
+static inline BOOL TOPagingViewIsDirectionReversed(TOPagingViewDirection direction) {
+    return (direction == TOPagingViewDirectionRightToLeft);
+}
 
-/// The parent paging view which delegate calls will be forwarded to
-@property (nonatomic, weak) TOPagingView *pagingView;
-
-/// The external object that has subscribed to `UIScrollViewDelegate`.
-@property (nonatomic, weak) id<UIScrollViewDelegate> externalDelegate;
-
-/// Creates a new instance of this proxy class.
-- (instancetype)init;
-
-@end
+/// Convenience function to reset dragging state once we've fired the previous delegate call.
+static inline TOPagingViewDraggingState TOPagingViewDraggingStateReset(void) {
+    return (TOPagingViewDraggingState){
+        .origin = -CGFLOAT_MAX,
+        .directionType = TOPagingViewPageTypeCurrent
+    };
+}

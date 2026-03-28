@@ -1,5 +1,5 @@
 //
-//  TOPagingViewTypes.h
+//  TOPagingViewTypesPrivate.h
 //
 //  Copyright 2018-2026 Timothy Oliver. All rights reserved.
 //
@@ -22,7 +22,8 @@
 
 #pragma once
 
-#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import "TOPagingViewTypes.h"
 
 /// A struct to cache which methods the current delegate implements.
 typedef struct {
@@ -66,3 +67,9 @@ typedef struct {
     CGFloat pixelSize;
     CGFloat animationDragCoefficient;
 } TOPagingViewAnimatorEnvironmentMetrics;
+
+/// State used to detect when the user starts or changes swiping directions
+typedef struct {
+    CGFloat origin;
+    TOPagingViewPageType directionType;
+} TOPagingViewDraggingState;

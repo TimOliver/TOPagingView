@@ -22,7 +22,7 @@
 
 #pragma once
 
-#import <UIKit/UIKit.h>
+#import <UIKit/UIView.h>
 
 /// For pages that don't specify an identifier, this string will be used.
 static NSString *const kTOPagingViewDefaultIdentifier = @"TOPagingView.DefaultPageIdentifier";
@@ -35,4 +35,4 @@ static const CGFloat kTOPagingViewBumperWidthCompact = 48.0f;
 static const CGFloat kTOPagingViewBumperWidthRegular = 96.0f;
 
 /// The animation options used for the bounce animation.
-static const NSInteger kTOPagingViewAnimationOptions = (UIViewAnimationOptionAllowUserInteraction);
+static const UIViewAnimationOptions kTOPagingViewAnimationOptions = UIViewAnimationOptionAllowUserInteraction;

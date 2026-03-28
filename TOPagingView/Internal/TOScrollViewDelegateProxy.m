@@ -38,7 +38,6 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
     TOPagingViewHandleScrollViewDidScroll(_pagingView);
-
     if ([_externalDelegate respondsToSelector:@selector(scrollViewDidScroll:)]) {
         [_externalDelegate scrollViewDidScroll:scrollView];
     }
@@ -46,7 +45,6 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
     TOPagingViewHandleScrollViewWillBeginDragging(_pagingView);
-
     if ([_externalDelegate respondsToSelector:@selector(scrollViewWillBeginDragging:)]) {
         [_externalDelegate scrollViewWillBeginDragging:scrollView];
     }
