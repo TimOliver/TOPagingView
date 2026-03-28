@@ -222,9 +222,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     // derivative of the curve at the current progress, so multiplying by the segment
     // distance and dividing by the effective duration yields points per second.
     const CGFloat easingVelocityMultiplier = TOPagingViewAnimatorEvaluateEasingVelocityMultiplier(linearProgress);
-    const CGFloat currentVelocity =
-        (_activeEffectiveDuration <= FLT_EPSILON) ? 0.0f
-                                                  : (((_endOffset - _startOffset) * easingVelocityMultiplier) / _activeEffectiveDuration);
+    const CGFloat currentVelocity = (_activeEffectiveDuration <= FLT_EPSILON) ?
+                                        0.0f : (((_endOffset - _startOffset) * easingVelocityMultiplier) / _activeEffectiveDuration);
     const CGFloat velocityTowardTarget = currentVelocity * ((remainingDistance >= 0.0f) ? 1.0f : -1.0f);
 
     // Fall back to a short settle segment when we can't infer a better duration.
