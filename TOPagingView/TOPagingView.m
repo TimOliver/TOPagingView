@@ -147,10 +147,10 @@
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    [self layoutContent];
+    [self _layoutContent];
 }
 
-- (void)layoutContent TOPAGINGVIEW_OBJC_DIRECT {
+- (void)_layoutContent TOPAGINGVIEW_OBJC_DIRECT {
     // If there are any pending previous or next page requests, fulfill them now.
     [self _requestPendingPages];
     
@@ -1195,7 +1195,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     if (fabs(_pageSpacing - pageSpacing) <= FLT_EPSILON) { return; }
     _pageSpacing = pageSpacing;
     [self _updateCachedLayoutMetrics];
-    [self layoutContent];
+    [self _layoutContent];
 }
 
 - (void)setIsAdaptivePageDirectionEnabled:(BOOL)isAdaptivePageDirectionEnabled {
