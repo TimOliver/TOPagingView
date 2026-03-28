@@ -28,20 +28,20 @@
 
 #import "TOPagingViewAnimator.h"
 #import "TOPagingViewTypes.h"
-#import "TOPagingViewTypesPrivate.h"
+#import "TOPagingViewTypesPrivate.h"	
 
 // -----------------------------------------------------------------
 
 /// Default duration for page turn animations.
-static const CFTimeInterval kTOAnimatorDefaultDuration = 0.4;
+static const CFTimeInterval kTOAnimatorDefaultDuration = 0.5f;
 
 /// Default fraction of a full turn duration to use when clamping to a nearer target.
 static const CGFloat kTOAnimatorClampDurationFactor = 0.45f;
 
 /// Cubic bezier control points for the ease-out curve.
 static const CGFloat kTOAnimatorControlPoint1X = 0.3f;
-static const CGFloat kTOAnimatorControlPoint1Y = 0.9f;
-static const CGFloat kTOAnimatorControlPoint2X = 0.45f;
+static const CGFloat kTOAnimatorControlPoint1Y = 0.75f;
+static const CGFloat kTOAnimatorControlPoint2X = 0.3f;
 static const CGFloat kTOAnimatorControlPoint2Y = 1.0f;
 
 // -----------------------------------------------------------------

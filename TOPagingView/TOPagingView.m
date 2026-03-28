@@ -893,8 +893,10 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // Animate the scroll view back to the center slot with a standard view animation.
     const CGPoint centerOffset = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
-    [UIView animateWithDuration:_pageAnimator.duration
-                          delay:0.0f
+    [UIView animateWithDuration:0.5f
+                          delay:0.0
+         usingSpringWithDamping:1.0f
+          initialSpringVelocity:1.0f
                         options:kTOPagingViewAnimationOptions
                      animations:^{ [self->_scrollView setContentOffset:centerOffset animated:NO]; }
                      completion:completionBlock];
