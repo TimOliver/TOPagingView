@@ -1,6 +1,19 @@
 x.y.z Release Notes (yyyy-MM-dd)
 =============================================================
 
+1.4.0 Release Notes (2026-03-30)
+=============================================================
+
+## Enhancements
+
+* Rebuilt scroll mechanism to rely on `UIScrollViewDelegate`, the official way to receive scroll notifications.
+* Rebuilt `turnToNextPage` APIs to be driven dynamically, allowing more fluid motion and interruptibility.
+
+## Breaking Changes
+
+* Renamed `dynmamicPageDirection` to `adaptivePageDirection`.
+* Accessing the `scrollView` delegate must now be done via `scrollViewDelegate`.
+
 1.3.0 Release Notes (2025-11-10)
 =============================================================
 
