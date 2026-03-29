@@ -100,6 +100,7 @@ static inline CFTimeInterval TOPagingViewAnimatorReferenceTime(CADisplayLink *_N
 
 /// Rounds a value to the nearest screen pixel for the given display scale.
 static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat scale) {
+    NSCAssert(scale > 0, @"Display scale must be positive.");
     return round(value * scale) / scale;
 }
 
@@ -142,6 +143,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 
 - (void)turnToPageInDirection:(UIRectEdge)pageDirection {
     UIScrollView *const scrollView = _scrollView;
+    NSAssert(_pageWidth > FLT_EPSILON, @"Page width must be set and positive before starting an animation.");
     if (scrollView == nil || _pageWidth <= FLT_EPSILON) { return; }
 
     const CGFloat dir = (pageDirection == UIRectEdgeRight) ? 1.0f : -1.0f;
@@ -342,6 +344,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
     CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
     targetOffset = TOPagingViewAnimatorRoundToPixel(targetOffset, _environmentMetrics.displayScale);
+    NSCAssert(isfinite(targetOffset), @"Animation target offset must be a finite number, got %f.", targetOffset);
     scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
 
     if (progress >= 1.0f - FLT_EPSILON && fabs(scrollView.contentOffset.x - _endOffset) <= _environmentMetrics.pixelSize) {

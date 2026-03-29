@@ -37,6 +37,7 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
 #pragma mark - Intercepted Methods
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    NSAssert(_pagingView != nil, @"Paging view must exist when the delegate proxy receives scroll events.");
     TOPagingViewHandleScrollViewDidScroll(_pagingView);
     if ([_externalDelegate respondsToSelector:@selector(scrollViewDidScroll:)]) {
         [_externalDelegate scrollViewDidScroll:scrollView];
@@ -44,6 +45,7 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
 }
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
+    NSAssert(_pagingView != nil, @"Paging view must exist when the delegate proxy receives scroll events.");
     TOPagingViewHandleScrollViewWillBeginDragging(_pagingView);
     if ([_externalDelegate respondsToSelector:@selector(scrollViewWillBeginDragging:)]) {
         [_externalDelegate scrollViewWillBeginDragging:scrollView];

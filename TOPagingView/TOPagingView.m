@@ -150,6 +150,7 @@
     NSAssert(_scrollView.delegate == _scrollViewDelegateProxy,
              @"The scroll view's delegate has been changed directly. "
              "Use TOPagingView.scrollViewDelegate to set an external scroll view delegate.");
+    NSAssert(_scrollView.superview == self, @"The internal scroll view must remain a direct subview of TOPagingView.");
     [self _layoutContent];
 }
 
@@ -272,6 +273,7 @@ void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
 #pragma mark - Page Setup
 
 - (void)registerPageViewClass:(Class)pageViewClass {
+    NSAssert(pageViewClass != nil, @"pageViewClass cannot be nil.");
     NSAssert([pageViewClass isSubclassOfClass:[UIView class]], @"Only UIView objects may be registered as pages.");
 
     // Cache the protocol methods this class implements to save checking each time
@@ -417,6 +419,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 - (nullable UIView<TOPagingViewPage> *)_fetchAdjacentPageForType:(TOPagingViewPageType)pageType
                                                 currentPageView:(nullable UIView<TOPagingViewPage> *)currentPageView
                                            clampAnimatorIfMissing:(BOOL)clampAnimatorIfMissing TOPAGINGVIEW_OBJC_DIRECT {
+    NSAssert(_dataSource != nil, @"Data source must be set before fetching pages.");
     // Fetch a new page from the data source
     UIView<TOPagingViewPage> *pageView = [_dataSource pagingView:self
                                                  pageViewForType:pageType
@@ -585,6 +588,7 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
 }
 
 static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
+    NSCAssert(view->_dataSource != nil, @"TOPagingView requires a data source before performing initial layout.");
     // Set these back to true for now, since we'll perform the check in here
     view->_hasNextPage = YES;
     view->_hasPreviousPage = YES;
@@ -627,6 +631,7 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
 
 static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
     UIView<TOPagingViewPage> * const nextPage = view->_nextPageView;
+    NSCAssert(nextPage != nil, @"Next page view must exist when handling adaptive page direction layout.");
     const CGFloat xPosition = CGRectGetMinX(nextPage.frame);
     const CGFloat offsetX = metrics.offsetX;
     const CGFloat segmentWidth = metrics.segmentWidth;
@@ -971,11 +976,12 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
         view->_previousPageView = view->_currentPageView;
         view->_currentPageView = view->_nextPageView;
         view->_nextPageView = nil;
-        
+        NSCAssert(view->_currentPageView != nil, @"Current page view must not be nil after transitioning to next page.");
+
         // Update the frames of the pages
         view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
         view->_previousPageView.frame = view->_layoutMetrics.previousPageFrame;
-        
+
         // Inform the delegate we have committed to a transition so we can update state for the next page.
         if (view->_delegateFlags.delegateDidTurnToPage) {
             [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypeNext];
@@ -1017,11 +1023,12 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         view->_nextPageView = view->_currentPageView;
         view->_currentPageView = view->_previousPageView;
         view->_previousPageView = nil;
-        
+        NSCAssert(view->_currentPageView != nil, @"Current page view must not be nil after transitioning to previous page.");
+
         // Update the frames of the pages
         view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
         view->_nextPageView.frame = view->_layoutMetrics.nextPageFrame;
-        
+
         // Inform the delegate we have just committed to a transition so we can update state for the previous page.
         if (view->_delegateFlags.delegateDidTurnToPage) {
             [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypePrevious];
