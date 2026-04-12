@@ -27,11 +27,30 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
     return sel == @selector(scrollViewDidScroll:) || sel == @selector(scrollViewWillBeginDragging:);
 }
 
-@implementation TOScrollViewDelegateProxy
+/// Cached respondsToSelector results for the two intercepted methods. Refreshed whenever
+/// the external delegate is (re)assigned so the forwarding hot path avoids per-tick lookups.
+typedef struct {
+    unsigned int externalRespondsToDidScroll : 1;
+    unsigned int externalRespondsToWillBeginDragging : 1;
+} TOScrollViewDelegateProxyFlags;
+
+@implementation TOScrollViewDelegateProxy {
+    TOScrollViewDelegateProxyFlags _externalDelegateFlags;
+}
 
 - (instancetype)init {
     // NSProxy doesn't have a default -init, so we just return self.
     return self;
+}
+
+#pragma mark - External Delegate
+
+- (void)setExternalDelegate:(id<UIScrollViewDelegate>)externalDelegate {
+    _externalDelegate = externalDelegate;
+    _externalDelegateFlags.externalRespondsToDidScroll =
+        [externalDelegate respondsToSelector:@selector(scrollViewDidScroll:)];
+    _externalDelegateFlags.externalRespondsToWillBeginDragging =
+        [externalDelegate respondsToSelector:@selector(scrollViewWillBeginDragging:)];
 }
 
 #pragma mark - Intercepted Methods
@@ -39,7 +58,7 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
     NSAssert(_pagingView != nil, @"Paging view must exist when the delegate proxy receives scroll events.");
     TOPagingViewHandleScrollViewDidScroll(_pagingView);
-    if ([_externalDelegate respondsToSelector:@selector(scrollViewDidScroll:)]) {
+    if (_externalDelegateFlags.externalRespondsToDidScroll) {
         [_externalDelegate scrollViewDidScroll:scrollView];
     }
 }
@@ -47,7 +66,7 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
     NSAssert(_pagingView != nil, @"Paging view must exist when the delegate proxy receives scroll events.");
     TOPagingViewHandleScrollViewWillBeginDragging(_pagingView);
-    if ([_externalDelegate respondsToSelector:@selector(scrollViewWillBeginDragging:)]) {
+    if (_externalDelegateFlags.externalRespondsToWillBeginDragging) {
         [_externalDelegate scrollViewWillBeginDragging:scrollView];
     }
 }
