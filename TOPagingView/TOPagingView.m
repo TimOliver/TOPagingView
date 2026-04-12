@@ -561,16 +561,23 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
         return;
     }
 
+    // Compute `isDetectingDirection` exactly once per scroll tick. The inner call invokes
+    // `[pageView isInitialPage]` (user code), so caching saves up to one user-code call per
+    // frame in the drag-tracking path below.
+    const BOOL isDetectingDirection = (view->_isAdaptivePageDirectionEnabled &&
+                                       TOPagingViewIsInitialPageForPageView(view, view->_currentPageView));
+
     TOPagingViewScrollMetrics metrics = {
         .offsetX = view->_scrollView.contentOffset.x,
         .segmentWidth = view->_layoutMetrics.pageWidth,
         .contentWidth = contentSize.width,
         .isReversed = TOPagingViewIsDirectionReversed(view->_pageScrollDirection),
+        .isDetectingDirection = isDetectingDirection,
     };
 
     // When adaptive paging is enabled, we swap the on-screen 'next' page to either
     // side of the initial page as the user swipes left and right
-    if (view->_isAdaptivePageDirectionEnabled && TOPagingViewIsInitialPageForPageView(view, view->_currentPageView)) {
+    if (isDetectingDirection) {
         TOPagingViewHandleAdaptivePageDirectionLayout(view, &metrics);
     }
 
@@ -720,13 +727,9 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view, TOPagi
         return;
     }
 
-    // Check the direction of the next step
-    const BOOL isDetectingDirection = (view->_isAdaptivePageDirectionEnabled &&
-                                       TOPagingViewIsInitialPageForPageView(view, view->_currentPageView));
-
     // If we're detecting the direction, it will be 'next' regardless.
     TOPagingViewPageType directionType;
-    if (isDetectingDirection) {
+    if (metrics.isDetectingDirection) {
         directionType = TOPagingViewPageTypeNext;
     } else if (metrics.offsetX < view->_dragInteractionState.origin - FLT_EPSILON) {  // We dragged to the right
         directionType = metrics.isReversed ? TOPagingViewPageTypeNext : TOPagingViewPageTypePrevious;

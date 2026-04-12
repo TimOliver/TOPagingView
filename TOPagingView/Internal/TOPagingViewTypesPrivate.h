@@ -47,6 +47,7 @@ typedef struct {
     CGFloat segmentWidth;
     CGFloat contentWidth;
     BOOL isReversed;
+    BOOL isDetectingDirection;
 } TOPagingViewScrollMetrics;
 
 /// Cached geometry values used throughout layout, scrolling, and transitions.
