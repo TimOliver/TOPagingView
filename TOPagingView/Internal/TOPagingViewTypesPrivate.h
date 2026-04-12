@@ -23,6 +23,7 @@
 #pragma once
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIView.h>
 #import "TOPagingViewTypes.h"
 
 /// A struct to cache which methods the current delegate implements.
@@ -69,6 +70,13 @@ typedef struct {
     CGFloat pixelSize;
     CGFloat animationDragCoefficient;
 } TOPagingViewAnimatorEnvironmentMetrics;
+
+/// Live animator state exposed to the paging view as a pointer so the per-tick layout
+/// helpers can read `isAnimating` / `direction` as plain loads instead of ObjC msg sends.
+typedef struct {
+    BOOL isAnimating;
+    UIRectEdge direction;
+} TOPagingViewAnimatorState;
 
 /// State used to detect when the user starts or changes swiping directions
 typedef struct {

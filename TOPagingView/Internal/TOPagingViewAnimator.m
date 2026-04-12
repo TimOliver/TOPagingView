@@ -112,16 +112,14 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 @implementation TOPagingViewAnimator {
     CADisplayLink *_displayLink;            /// The display link driving the frame-by-frame animation.
     CFTimeInterval _startTime;              /// The time at which the current animation segment started.
-    UIRectEdge _direction;                  /// The direction we're turning in.
     CFTimeInterval _activeEffectiveDuration; /// The duration of the current segment after applying any active simulator drag coefficient.
     CGFloat _directionMultiplier;           /// The direction multiplier (+1 for right, -1 for left).
     CGFloat _startOffset;                   /// The absolute scroll view content offset when we started.
     CGFloat _endOffset;                     /// The absolute scroll view content offset where this animation should end.
     BOOL _originalPagingEnabled;            /// The original pagingEnabled state before this animator temporarily disabled paging.
     TOPagingViewAnimatorEnvironmentMetrics _environmentMetrics; /// Cached environment values that stay stable for the life of an animation.
+    TOPagingViewAnimatorState _state;       /// Live state exposed via -statePointer so the paging view can read it without msg sends.
 }
-
-@synthesize direction = _direction;
 
 #pragma mark - Object Lifecycle -
 
@@ -139,6 +137,12 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     [_displayLink invalidate];
 }
 
+@dynamic isAnimating, direction;
+
+- (BOOL)isAnimating { return _state.isAnimating; }
+- (UIRectEdge)direction { return _state.direction; }
+- (const TOPagingViewAnimatorState *)statePointer { return &_state; }
+
 #pragma mark - Public Methods -
 
 - (void)turnToPageInDirection:(UIRectEdge)pageDirection {
@@ -154,7 +158,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     [self _updateEnvironmentMetrics];
 
     // If we were already animating, and another turn event comes through, stack it.
-    if (_isAnimating && dir == _directionMultiplier) {
+    if (_state.isAnimating && dir == _directionMultiplier) {
         const CGFloat linearProgress = [self _linearProgressAtReferenceTime:referenceTime];
         const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
         const CGFloat currentOffset =
@@ -168,7 +172,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     // page boundary in the requested direction. This naturally handles reversal
     // (tap left while going right snaps back to the page on screen) as well as
     // re-initiating the original direction mid-reversal without drift.
-    _direction = pageDirection;
+    _state.direction = pageDirection;
     _directionMultiplier = dir;
     const CGFloat startOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, _environmentMetrics.displayScale);
     CGFloat endOffset = (dir > 0.0f) ? ceil(startOffset / _pageWidth + FLT_EPSILON) * _pageWidth
@@ -179,8 +183,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     // If we weren't already in an animation loop, start the display link.
     // We also need to disable paging, otherwise our offset code ends up fighting
     // another display link, internal to UIScrollView that is managing the paging state.
-    if (!_isAnimating) {
-        _isAnimating = YES;
+    if (!_state.isAnimating) {
+        _state.isAnimating = YES;
         _originalPagingEnabled = scrollView.pagingEnabled;
         scrollView.pagingEnabled = NO;
         [self _createDisplayLink];
@@ -188,19 +192,19 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 }
 
 - (void)stopAnimationWithCompletion:(BOOL)didComplete {
-    if (!_isAnimating) { return; }
+    if (!_state.isAnimating) { return; }
     // Cancel the display link.
     // The scroll view will stop at whatever offset it is now.
     [_displayLink invalidate];
     _displayLink = nil;
-    _isAnimating = NO;
+    _state.isAnimating = NO;
     _scrollView.pagingEnabled = _originalPagingEnabled;
     if (didComplete && _completionHandler) { _completionHandler(); }
     _completionHandler = nil;
 }
 
 - (void)clampAnimationToOffset:(CGFloat)targetOffset {
-    if (!_isAnimating) { return; }
+    if (!_state.isAnimating) { return; }
 
     const CFTimeInterval referenceTime = TOPagingViewAnimatorReferenceTime(_displayLink);
     const CGFloat linearProgress = [self _linearProgressAtReferenceTime:referenceTime];
@@ -249,7 +253,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
 }
 
 - (void)didTransitionWithOffset:(CGFloat)offset {
-    if (!_isAnimating) { return; }
+    if (!_state.isAnimating) { return; }
     
     // When the paging view performs its transition, which ostensibly just moves all embedded pages either forward or back
     // by one slot, it is also necessary to apply the same slot distance to our animation start and end positions.

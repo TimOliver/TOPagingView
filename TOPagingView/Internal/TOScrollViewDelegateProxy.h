@@ -27,6 +27,7 @@
 
 FOUNDATION_EXTERN void TOPagingViewHandleScrollViewDidScroll(TOPagingView *pagingView);
 FOUNDATION_EXTERN void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView);
+FOUNDATION_EXTERN void TOPagingViewHandleScrollViewDidEndDragging(TOPagingView *pagingView);
 
 /// A lightweight proxy that intercepts UIScrollViewDelegate calls.
 /// Uses NSProxy message forwarding to automatically forward all delegate methods

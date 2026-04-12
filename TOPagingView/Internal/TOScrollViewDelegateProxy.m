@@ -24,14 +24,17 @@
 
 /// The delegate selectors we intercept to notify the paging view of scroll events.
 static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
-    return sel == @selector(scrollViewDidScroll:) || sel == @selector(scrollViewWillBeginDragging:);
+    return sel == @selector(scrollViewDidScroll:)
+        || sel == @selector(scrollViewWillBeginDragging:)
+        || sel == @selector(scrollViewDidEndDragging:willDecelerate:);
 }
 
-/// Cached respondsToSelector results for the two intercepted methods. Refreshed whenever
+/// Cached respondsToSelector results for the intercepted methods. Refreshed whenever
 /// the external delegate is (re)assigned so the forwarding hot path avoids per-tick lookups.
 typedef struct {
     unsigned int externalRespondsToDidScroll : 1;
     unsigned int externalRespondsToWillBeginDragging : 1;
+    unsigned int externalRespondsToDidEndDragging : 1;
 } TOScrollViewDelegateProxyFlags;
 
 @implementation TOScrollViewDelegateProxy {
@@ -51,6 +54,8 @@ typedef struct {
         [externalDelegate respondsToSelector:@selector(scrollViewDidScroll:)];
     _externalDelegateFlags.externalRespondsToWillBeginDragging =
         [externalDelegate respondsToSelector:@selector(scrollViewWillBeginDragging:)];
+    _externalDelegateFlags.externalRespondsToDidEndDragging =
+        [externalDelegate respondsToSelector:@selector(scrollViewDidEndDragging:willDecelerate:)];
 }
 
 #pragma mark - Intercepted Methods

@@ -71,6 +71,10 @@
     /// Additional modularized components of the paging view
     TOPagingViewAnimator *_pageAnimator;                 // A real-time animator that plays an interruptible page-turning animation
     TOScrollViewDelegateProxy *_scrollViewDelegateProxy; // A proxy object that allows forwarding all UIScrollViewDelegate events to an external object
+
+    /// Cached pointer into the animator's state struct so per-tick code can read isAnimating/direction
+    /// as plain memory loads without the cost of an ObjC property accessor.
+    const TOPagingViewAnimatorState *_animatorState;
 }
 
 @synthesize scrollView = _scrollView;
@@ -126,6 +130,7 @@
     // Configure the page view animator
     _pageAnimator = [[TOPagingViewAnimator alloc] init];
     _pageAnimator.scrollView = _scrollView;
+    _animatorState = [_pageAnimator statePointer];
 }
 
 - (void)_configureScrollView TOPAGINGVIEW_OBJC_DIRECT {
@@ -709,8 +714,9 @@ static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *v
     // the transition fires as soon as motion commits away from the middle slot (segmentWidth ± 1.0f).
     // Commit the direction at the same moment so `metrics->isReversed` stays in sync and the
     // transition handler routes to the correct `Next`/`Previous` call on the same frame.
-    const UIRectEdge animatorDirection = view->_pageAnimator.direction;
-    const BOOL isAnimating = view->_pageAnimator.isAnimating;
+    const TOPagingViewAnimatorState *animatorState = view->_animatorState;
+    const BOOL isAnimating = animatorState->isAnimating;
+    const UIRectEdge animatorDirection = animatorState->direction;
     const BOOL isAnimatingLeft = isAnimating && animatorDirection == UIRectEdgeLeft;
     const BOOL isAnimatingRight = isAnimating && animatorDirection == UIRectEdgeRight;
     const CGFloat leftCommitThreshold = isAnimatingLeft ? segmentWidth - 1.0f : FLT_EPSILON;
@@ -740,13 +746,13 @@ static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *v
 }
 
 static inline void TOPagingViewHandlePageTransitions(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
-    // Only read `direction` when we're actually animating — saves one ObjC message send per scroll
-    // tick in the common (non-animating) case.
-    const BOOL isAnimating = view->_pageAnimator.isAnimating;
+    // Read animator state directly from the cached struct pointer — no ObjC msg sends per tick.
+    const TOPagingViewAnimatorState *animatorState = view->_animatorState;
+    const BOOL isAnimating = animatorState->isAnimating;
     BOOL isAnimatingRight = NO;
     BOOL isAnimatingLeft = NO;
     if (isAnimating) {
-        const UIRectEdge direction = view->_pageAnimator.direction;
+        const UIRectEdge direction = animatorState->direction;
         isAnimatingRight = (direction == UIRectEdgeRight);
         isAnimatingLeft = (direction == UIRectEdgeLeft);
     }

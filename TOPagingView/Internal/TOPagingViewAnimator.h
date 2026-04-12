@@ -24,6 +24,7 @@
 #import <UIKit/UIGeometry.h>
 #import <Foundation/Foundation.h>
 #import "TOPagingViewMacros.h"
+#import "TOPagingViewTypesPrivate.h"
 
 @class UIScrollView;
 
@@ -72,6 +73,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// Called when we've detected we're in animation run and we're about to hit the outer boundary of pages.
 /// This method modifies the current velocity so it gracefully decelerates to the boundary instead.
 - (void)clampAnimationToOffset:(CGFloat)targetOffset TOPAGINGVIEW_OBJC_DIRECT;
+
+/// Returns a pointer to the animator's live state struct. The pointer's lifetime matches the animator's.
+/// Callers may cache it and read fields directly to avoid per-tick ObjC property accessors.
+- (const TOPagingViewAnimatorState *)statePointer TOPAGINGVIEW_OBJC_DIRECT NS_RETURNS_INNER_POINTER;
 
 @end
 
