@@ -645,15 +645,26 @@ static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *v
         nextPage.frame = view->_layoutMetrics.rightPageFrame;
     }
 
+    // Mirror the transition handler's thresholds: when the page animator is driving the scroll,
+    // the transition fires as soon as motion commits away from the middle slot (segmentWidth ± 1.0f).
+    // Commit the direction at the same moment so `metrics->isReversed` stays in sync and the
+    // transition handler routes to the correct `Next`/`Previous` call on the same frame.
+    const UIRectEdge animatorDirection = view->_pageAnimator.direction;
+    const BOOL isAnimating = view->_pageAnimator.isAnimating;
+    const BOOL isAnimatingLeft = isAnimating && animatorDirection == UIRectEdgeLeft;
+    const BOOL isAnimatingRight = isAnimating && animatorDirection == UIRectEdgeRight;
+    const CGFloat leftCommitThreshold = isAnimatingLeft ? segmentWidth - 1.0f : FLT_EPSILON;
+    const CGFloat rightCommitThreshold = isAnimatingRight ? segmentWidth + 1.0f : (segmentWidth * 2.0f) - FLT_EPSILON;
+
     // If we've sufficiently committed to this direction, update the hosting paging view's direction
     BOOL needsDelegateUpdate = NO;
-    if (offsetX <= FLT_EPSILON && view->_pageScrollDirection == TOPagingViewDirectionLeftToRight) {
-        // Scrolled all the way to the left
+    if (offsetX <= leftCommitThreshold && view->_pageScrollDirection == TOPagingViewDirectionLeftToRight) {
+        // Scrolled to the left
         view->_pageScrollDirection = TOPagingViewDirectionRightToLeft;
         metrics->isReversed = YES;
         needsDelegateUpdate = YES;
-    } else if (offsetX >= (segmentWidth * 2.0f) - FLT_EPSILON && view->_pageScrollDirection == TOPagingViewDirectionRightToLeft) {
-        // Scrolled all the way to the right
+    } else if (offsetX >= rightCommitThreshold && view->_pageScrollDirection == TOPagingViewDirectionRightToLeft) {
+        // Scrolled to the right
         view->_pageScrollDirection = TOPagingViewDirectionLeftToRight;
         metrics->isReversed = NO;
         needsDelegateUpdate = YES;
