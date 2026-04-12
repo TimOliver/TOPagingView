@@ -51,11 +51,12 @@
     UIView<TOPagingViewPage> * __weak _previousPageView;
 
     /// Flags tracking the current state of layout
-    BOOL _disableLayout;     // Pause all layout logic temporarily for fine-grained modifications.
-    BOOL _hasNextPage;       // Skip checking for an incoming next page once we've successfully dequeued one.
-    BOOL _hasPreviousPage;   // Skip checking for an adjacent previous page once we've successfully dequeued one.
-    BOOL _needsNextPage;     // Defers loading the next page until the next view layout pass to spread the work across run loops
-    BOOL _needsPreviousPage; // Defers loading the previous page until the next view layout pass to spread the work across run loops
+    BOOL _disableLayout;        // Pause all layout logic temporarily for fine-grained modifications.
+    BOOL _hasNextPage;          // Skip checking for an incoming next page once we've successfully dequeued one.
+    BOOL _hasPreviousPage;      // Skip checking for an adjacent previous page once we've successfully dequeued one.
+    BOOL _needsNextPage;        // Defers loading the next page until the next view layout pass to spread the work across run loops
+    BOOL _needsPreviousPage;    // Defers loading the previous page until the next view layout pass to spread the work across run loops
+    BOOL _isCurrentPageInitial; // Cached result of [_currentPageView isInitialPage]; refreshed only when _currentPageView changes.
 
     /// Structs that cache long-lived state about the paging view
     TOPagingViewDelegateFlags _delegateFlags;        // Which methods the current delegate implements
@@ -338,6 +339,13 @@ static inline BOOL TOPagingViewIsInitialPageForPageView(TOPagingView *view, UIVi
     return flags.protocolIsInitialPage ? [pageView isInitialPage] : NO;
 }
 
+/// Assigns `_currentPageView` and refreshes the cached `_isCurrentPageInitial` flag. Callers should
+/// funnel every `_currentPageView` write through this helper so the cache never goes stale.
+static inline void TOPagingViewSetCurrentPageView(TOPagingView *view, UIView<TOPagingViewPage> *pageView) {
+    view->_currentPageView = pageView;
+    view->_isCurrentPageInitial = TOPagingViewIsInitialPageForPageView(view, pageView);
+}
+
 static inline void TOPagingViewSetPageDirectionForPageView(TOPagingView *view, TOPagingViewDirection direction, UIView<TOPagingViewPage> *pageView) {
     // Check the page view supports the page direction protocol and set it if it does
     if (pageView == nil) { return; }
@@ -380,7 +388,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     }
 
     // Reset all of the active page references
-    _currentPageView = nil;
+    TOPagingViewSetCurrentPageView(self, nil);
     _previousPageView = nil;
     _nextPageView = nil;
 
@@ -410,7 +418,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
     // Fetch the next and previous pages
     [self _fetchNewNextPage];
-    if (!_isAdaptivePageDirectionEnabled || !TOPagingViewIsInitialPageForPageView(self, _currentPageView)) {
+    if (!_isAdaptivePageDirectionEnabled || !_isCurrentPageInitial) {
         [self _fetchNewPreviousPage];
     } else {
         _hasPreviousPage = _hasNextPage;
@@ -472,7 +480,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     }
 
     // If we're on the initial page, set the previous page state to match whatever the next state is
-    if (_isAdaptivePageDirectionEnabled && TOPagingViewIsInitialPageForPageView(self, _currentPageView)) {
+    if (_isAdaptivePageDirectionEnabled && _isCurrentPageInitial) {
         _hasPreviousPage = _hasNextPage;
     }
 
@@ -560,11 +568,9 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
         return;
     }
 
-    // Compute `isDetectingDirection` exactly once per scroll tick. The inner call invokes
-    // `[pageView isInitialPage]` (user code), so caching saves up to one user-code call per
-    // frame in the drag-tracking path below.
-    const BOOL isDetectingDirection = (view->_isAdaptivePageDirectionEnabled &&
-                                       TOPagingViewIsInitialPageForPageView(view, view->_currentPageView));
+    // `_isCurrentPageInitial` is cached whenever `_currentPageView` is (re)assigned, so this
+    // scroll-tick derivation of `isDetectingDirection` is just two ivar reads.
+    const BOOL isDetectingDirection = view->_isAdaptivePageDirectionEnabled && view->_isCurrentPageInitial;
 
     TOPagingViewScrollMetrics metrics = {
         .offsetX = view->_scrollView.contentOffset.x,
@@ -609,13 +615,13 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
                                                        pageViewForType:TOPagingViewPageTypeCurrent
                                                      currentPageView:nil];
     if (pageView == nil) { return; }
-    view->_currentPageView = pageView;
+    TOPagingViewSetCurrentPageView(view, pageView);
     TOPagingViewInsertPageView(view, pageView);
     view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
     
     // Fetch next and previous pages. If we're on the initial page when adaptive direction is enabled, skip previous for now.
     [view _fetchNewNextPage];
-    if (!view->_isAdaptivePageDirectionEnabled || !TOPagingViewIsInitialPageForPageView(view, view->_currentPageView)) {
+    if (!view->_isAdaptivePageDirectionEnabled || !view->_isCurrentPageInitial) {
         [view _fetchNewPreviousPage];
     } else {
         view->_hasPreviousPage = view->_hasNextPage;
@@ -686,10 +692,16 @@ static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *v
 }
 
 static inline void TOPagingViewHandlePageTransitions(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
-    const UIRectEdge direction = view->_pageAnimator.direction;
+    // Only read `direction` when we're actually animating — saves one ObjC message send per scroll
+    // tick in the common (non-animating) case.
     const BOOL isAnimating = view->_pageAnimator.isAnimating;
-    const BOOL isAnimatingRight = isAnimating && direction == UIRectEdgeRight;
-    const BOOL isAnimatingLeft = isAnimating && direction == UIRectEdgeLeft;
+    BOOL isAnimatingRight = NO;
+    BOOL isAnimatingLeft = NO;
+    if (isAnimating) {
+        const UIRectEdge direction = view->_pageAnimator.direction;
+        isAnimatingRight = (direction == UIRectEdgeRight);
+        isAnimatingLeft = (direction == UIRectEdgeLeft);
+    }
 
     // By default, we only perform transitions when a new page has fully landed on screen.
     // This defers heavier layout work until there is no visible motion.
@@ -802,7 +814,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 - (void)_turnToPageInDirection:(UIRectEdge)direction animated:(BOOL)animated TOPAGINGVIEW_OBJC_DIRECT {
     const BOOL isLeftDirection = (direction == UIRectEdgeLeft);
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
-    const BOOL isDetectingDirection = _isAdaptivePageDirectionEnabled && TOPagingViewIsInitialPageForPageView(self, _currentPageView);
+    const BOOL isDetectingDirection = _isAdaptivePageDirectionEnabled && _isCurrentPageInitial;
     const BOOL isPreviousPage = !isDetectingDirection && ((!isDirectionReversed && isLeftDirection) || (isDirectionReversed && !isLeftDirection));
 
     // Fire the willTurn delegate for each requested animated turn.
@@ -868,7 +880,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     if (!animated) {
         // Reclaim the current page and instantly swap to the new one.
         TOPagingViewReclaimPageView(self, _currentPageView);
-        _currentPageView = newPageView;
+        TOPagingViewSetCurrentPageView(self, newPageView);
         _currentPageView.frame = _layoutMetrics.currentPageFrame;
         TOPagingViewInsertPageView(self, _currentPageView);
 
@@ -886,7 +898,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     _previousPageView = _currentPageView;
 
     // Put the new view in the center point and promote it to new current
-    _currentPageView = newPageView;
+    TOPagingViewSetCurrentPageView(self, newPageView);
     _currentPageView.frame = _layoutMetrics.currentPageFrame;
     TOPagingViewInsertPageView(self, _currentPageView);
 
@@ -989,7 +1001,7 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
         
         // Update all of the references by pushing each view back
         view->_previousPageView = view->_currentPageView;
-        view->_currentPageView = view->_nextPageView;
+        TOPagingViewSetCurrentPageView(view, view->_nextPageView);
         view->_nextPageView = nil;
         NSCAssert(view->_currentPageView != nil, @"Current page view must not be nil after transitioning to next page.");
 
@@ -1036,7 +1048,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         
         // Update all of the references by pushing each view forward
         view->_nextPageView = view->_currentPageView;
-        view->_currentPageView = view->_previousPageView;
+        TOPagingViewSetCurrentPageView(view, view->_previousPageView);
         view->_previousPageView = nil;
         NSCAssert(view->_currentPageView != nil, @"Current page view must not be nil after transitioning to previous page.");
 
@@ -1132,7 +1144,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
 
     // If we have adaptive page detection, and we're on the origin page,
     // don't request a previous page since we're just showing the next page on either edge right now.
-    if (_isAdaptivePageDirectionEnabled && TOPagingViewIsInitialPageForPageView(self, _currentPageView)) {
+    if (_isAdaptivePageDirectionEnabled && _isCurrentPageInitial) {
         _needsPreviousPage = NO;
         return;
     }
