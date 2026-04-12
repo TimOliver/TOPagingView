@@ -76,6 +76,14 @@ typedef struct {
     }
 }
 
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate {
+    NSAssert(_pagingView != nil, @"Paging view must exist when the delegate proxy receives scroll events.");
+    TOPagingViewHandleScrollViewDidEndDragging(_pagingView);
+    if (_externalDelegateFlags.externalRespondsToDidEndDragging) {
+        [_externalDelegate scrollViewDidEndDragging:scrollView willDecelerate:decelerate];
+    }
+}
+
 #pragma mark - NSProxy Message Forwarding
 
 - (BOOL)respondsToSelector:(SEL)sel {

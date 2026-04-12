@@ -57,6 +57,7 @@
     BOOL _needsNextPage;        // Defers loading the next page until the next view layout pass to spread the work across run loops
     BOOL _needsPreviousPage;    // Defers loading the previous page until the next view layout pass to spread the work across run loops
     BOOL _isCurrentPageInitial; // Cached result of [_currentPageView isInitialPage]; refreshed only when _currentPageView changes.
+    BOOL _isDragging;           // Mirrors UIScrollView's drag state via the proxy hooks; avoids per-tick `isTracking` msg sends.
 
     /// Structs that cache long-lived state about the paging view
     TOPagingViewDelegateFlags _delegateFlags;        // Which methods the current delegate implements
@@ -261,9 +262,16 @@
 
 /// Called by the scroll view delegate proxy when the user begins dragging.
 - (void)_scrollViewWillBeginDragging TOPAGINGVIEW_OBJC_DIRECT {
+    _isDragging = YES;
     if (_pageAnimator.isAnimating) {
         [_pageAnimator stopAnimationWithCompletion:YES];
     }
+}
+
+/// Called by the scroll view delegate proxy when the user lifts their finger.
+/// Cleared regardless of whether deceleration follows — matches the prior `isTracking == NO` semantic.
+- (void)_scrollViewDidEndDragging TOPAGINGVIEW_OBJC_DIRECT {
+    _isDragging = NO;
 }
 
 /// Perform a layout pass for the pages
@@ -280,6 +288,11 @@ void TOPagingViewHandleScrollViewDidScroll(TOPagingView *pagingView) {
 /// External hook for the scroll view proxy to forward drag-begin events to us
 void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
     [pagingView _scrollViewWillBeginDragging];
+}
+
+/// External hook for the scroll view proxy to forward drag-end events to us
+void TOPagingViewHandleScrollViewDidEndDragging(TOPagingView *pagingView) {
+    [pagingView _scrollViewDidEndDragging];
 }
 
 #pragma mark - Page Setup
@@ -401,6 +414,8 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     TOPagingViewSetCurrentPageView(self, nil);
     _previousPageView = nil;
     _nextPageView = nil;
+    _isDragging = NO;
+    _dragInteractionState = TOPagingViewDraggingStateReset();
 
     // Clean out all of the pages in the queues
     [_queuedPages removeAllObjects];
@@ -780,9 +795,12 @@ static inline void TOPagingViewUpdateDragInteractions(TOPagingView *view, TOPagi
     // Exit out if we don't actually use the delegate
     if (view->_delegateFlags.delegateWillTurnToPage == NO) { return; }
 
-    // If we're not being dragged, reset the state
-    if (view->_scrollView.isTracking == NO) {
-        view->_dragInteractionState = TOPagingViewDraggingStateReset();
+    // If we're not being dragged, reset the state — but only if it isn't already reset, to
+    // avoid rewriting the struct every tick during deceleration.
+    if (view->_isDragging == NO) {
+        if (view->_dragInteractionState.origin > -CGFLOAT_MAX + FLT_EPSILON) {
+            view->_dragInteractionState = TOPagingViewDraggingStateReset();
+        }
         return;
     }
 
