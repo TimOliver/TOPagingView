@@ -62,6 +62,11 @@
     TOPagingViewDelegateFlags _delegateFlags;        // Which methods the current delegate implements
     TOPagingViewLayoutMetrics _layoutMetrics;        // Layout metrics about the paging view that only change on frame change.
     TOPagingViewDraggingState _dragInteractionState; // Tracking the user's dragging behavior to detect when to alert of a sudden direction change
+
+    /// Cached scroll view content inset values. Mirrored on every write so the per-tick slot-enable logic
+    /// can short-circuit without going through the UIScrollView property accessor.
+    CGFloat _cachedInsetLeft;
+    CGFloat _cachedInsetRight;
     
     /// Additional modularized components of the paging view
     TOPagingViewAnimator *_pageAnimator;                 // A real-time animator that plays an interruptible page-turning animation
@@ -821,26 +826,22 @@ static inline void TOPagingViewUpdateEnabledPages(TOPagingView *view, TOPagingVi
 }
 
 static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabled, UIRectEdge edge, CGFloat segmentWidth) {
-    UIEdgeInsets insets = view->_scrollView.contentInset;
-
-    // Exit out if we don't need to set the state already
+    // Compare against the cached inset value first so the common per-tick case avoids the
+    // UIScrollView contentInset accessor entirely.
     const BOOL isLeft = (edge == UIRectEdgeLeft);
-    const CGFloat inset = isLeft ? insets.left : insets.right;
-    if (enabled && inset == segmentWidth) {
-        return;
-    } else if (!enabled && inset == -segmentWidth) {
-        return;
-    }
-
-    // When the slot is enabled, expand the scrollable region by an extra slot
-    // so it won't bump against the edge of the scroll region when scrolling rapidly.
-    // Otherwise, inset it a whole slot to disable it completely.
+    const CGFloat cachedInset = isLeft ? view->_cachedInsetLeft : view->_cachedInsetRight;
     const CGFloat value = enabled ? segmentWidth : -segmentWidth;
+    if (cachedInset == value) { return; }
+
+    // State is changing: read the live insets so we preserve any top/bottom values, then write back.
+    UIEdgeInsets insets = view->_scrollView.contentInset;
     const CGPoint contentOffset = view->_scrollView.contentOffset;
     if (isLeft) {
         insets.left = value;
+        view->_cachedInsetLeft = value;
     } else {
         insets.right = value;
+        view->_cachedInsetRight = value;
     }
 
     // Set the inset and then restore the offset
@@ -1225,6 +1226,8 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
     CGFloat leftInset = insets.left;
     insets.left = insets.right;
     insets.right = leftInset;
+    _cachedInsetLeft = insets.left;
+    _cachedInsetRight = insets.right;
     _disableLayout = YES;
     _scrollView.contentInset = insets;
     _disableLayout = NO;
