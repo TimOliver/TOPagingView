@@ -1,5 +1,5 @@
 //
-//  TOPagingViewDelegateProxy.m
+//  TOScrollViewDelegateProxy.m
 //
 //  Copyright 2018-2026 Timothy Oliver. All rights reserved.
 //
@@ -30,7 +30,7 @@ static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
 }
 
 /// Cached respondsToSelector results for the intercepted methods. Refreshed whenever
-/// the external delegate is (re)assigned so the forwarding hot path avoids per-tick lookups.
+/// the external delegate is (re)assigned so the interception hot path avoids per-tick lookups.
 typedef struct {
     unsigned int externalRespondsToDidScroll : 1;
     unsigned int externalRespondsToWillBeginDragging : 1;

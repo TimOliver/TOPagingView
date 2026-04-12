@@ -57,21 +57,18 @@
     BOOL _needsNextPage;        // Defers loading the next page until the next view layout pass to spread the work across run loops
     BOOL _needsPreviousPage;    // Defers loading the previous page until the next view layout pass to spread the work across run loops
     BOOL _isCurrentPageInitial; // Cached result of [_currentPageView isInitialPage]; refreshed only when _currentPageView changes.
-    BOOL _isDragging;           // Mirrors UIScrollView's drag state via the proxy hooks; avoids per-tick `isTracking` msg sends.
 
     /// Structs that cache long-lived state about the paging view
     TOPagingViewDelegateFlags _delegateFlags;        // Which methods the current delegate implements
     TOPagingViewLayoutMetrics _layoutMetrics;        // Layout metrics about the paging view that only change on frame change.
     TOPagingViewDraggingState _dragInteractionState; // Tracking the user's dragging behavior to detect when to alert of a sudden direction change
 
-    /// Cached scroll view content inset values. Mirrored on every write so the per-tick slot-enable logic
-    /// can short-circuit without going through the UIScrollView property accessor.
-    CGFloat _cachedInsetLeft;
-    CGFloat _cachedInsetRight;
-
-    /// Cached `_nextPageView.frame.origin.x`. Updated on every frame write through TOPagingViewSetNextPageFrame
-    /// so the adaptive direction handler can avoid the per-tick `frame` getter.
-    CGFloat _nextPageXPosition;
+    /// Mirrored UIScrollView state, kept in sync via our proxy hooks and helpers so the per-tick logic
+    /// can short-circuit without going through ObjC property accessors.
+    BOOL _isDragging;          // Mirrors UIScrollView's drag state via the proxy hooks; avoids per-tick `isTracking` msg sends.
+    CGFloat _cachedInsetLeft;  // Last value written to _scrollView.contentInset.left; used by the slot-enable short circuit.
+    CGFloat _cachedInsetRight; // Last value written to _scrollView.contentInset.right; used by the slot-enable short circuit.
+    CGFloat _nextPageXPosition; // Mirrors _nextPageView.frame.origin.x; maintained via TOPagingViewSetNextPageFrame.
     
     /// Additional modularized components of the paging view
     TOPagingViewAnimator *_pageAnimator;                 // A real-time animator that plays an interruptible page-turning animation
@@ -223,7 +220,7 @@
     [self reload];
 }
 
-#pragma mark - Scroll View Management
+#pragma mark - Scroll View Layout Metrics
 
 - (void)_updateCachedLayoutMetrics TOPAGINGVIEW_OBJC_DIRECT {
     const CGRect bounds = self.bounds;
@@ -263,6 +260,8 @@
     offset.x -= _layoutMetrics.halfPageSpacing;
     _scrollView.contentOffset = offset;
 }
+
+#pragma mark - Scroll View Delegate Hooks
 
 /// Called by the scroll view delegate proxy when the user begins dragging.
 - (void)_scrollViewWillBeginDragging TOPAGINGVIEW_OBJC_DIRECT {
@@ -415,7 +414,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 #pragma mark - External Page Control
 
 - (void)reload {
-    // Remove all currently visible pages from the scroll views
+    // Remove all currently visible pages from the scroll view
     for (UIView *view in _scrollView.subviews) {
         TOPagingViewReclaimPageView(self, view);
         [view removeFromSuperview];

@@ -28,7 +28,7 @@
 
 #import "TOPagingViewAnimator.h"
 #import "TOPagingViewTypes.h"
-#import "TOPagingViewTypesPrivate.h"	
+#import "TOPagingViewTypesPrivate.h"
 
 // -----------------------------------------------------------------
 
