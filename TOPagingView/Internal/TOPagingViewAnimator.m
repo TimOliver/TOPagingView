@@ -248,7 +248,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     // Capture device metrics that may change between animations but are stable
     // enough to cache for the duration of one.
     
-    // Capture the physical display scale of the screen (eg 2x = 0.5, 3x = 0.33333)
+    // Capture the physical display scale of the screen (eg @2x = 2.0, @3x = 3.0).
+    // `pixelSize` is derived below as its reciprocal.
     const CGFloat displayScale = ({
         CGFloat scale = _scrollView.window.screen.scale;
         if (scale <= FLT_EPSILON) { scale = _scrollView.traitCollection.displayScale; }

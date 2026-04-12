@@ -50,3 +50,8 @@ static inline TOPagingViewDraggingState TOPagingViewDraggingStateReset(void) {
         .directionType = TOPagingViewPageTypeCurrent
     };
 }
+
+/// Returns whether a dragging state is still holding its reset sentinel (no origin captured yet).
+static inline BOOL TOPagingViewDraggingStateIsReset(TOPagingViewDraggingState state) {
+    return state.origin <= -CGFLOAT_MAX + FLT_EPSILON;
+}
