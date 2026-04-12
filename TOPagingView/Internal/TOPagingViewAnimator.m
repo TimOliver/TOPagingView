@@ -35,9 +35,6 @@
 /// Default duration for page turn animations.
 static const CFTimeInterval kTOAnimatorDefaultDuration = 0.5f;
 
-/// Default fraction of a full turn duration to use when clamping to a nearer target.
-static const CGFloat kTOAnimatorClampDurationFactor = 0.45f;
-
 /// Cubic bezier control points for the ease-out curve.
 static const CGFloat kTOAnimatorControlPoint1X = 0.3f;
 static const CGFloat kTOAnimatorControlPoint1Y = 0.75f;
@@ -65,23 +62,6 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     const CGFloat oneMinusU = 1.0f - u;
     return 3.0f * oneMinusU * oneMinusU * u * kTOAnimatorControlPoint1Y + 3.0f * oneMinusU * u * u * kTOAnimatorControlPoint2Y +
            u * u * u;
-}
-
-/// Returns the easing curve's normalized velocity multiplier at a given linear progress.
-///
-/// This is the first derivative of the eased progress with respect to linear time progress.
-/// A value of 1.0 means the curve is moving linearly at that instant, values above 1.0
-/// are moving faster than linear, and values near 0.0 indicate the curve is flattening out.
-///
-/// We approximate the derivative numerically by sampling just before and after `t`.
-/// That is accurate enough for animation velocity matching, and keeps the math simple.
-static inline CGFloat TOPagingViewAnimatorEvaluateEasingVelocityMultiplier(CGFloat t) {
-    const CGFloat delta = 0.001f;
-    const CGFloat lower = fmax(0.0f, t - delta);
-    const CGFloat upper = fmin(1.0f, t + delta);
-    const CGFloat range = upper - lower;
-    if (range <= FLT_EPSILON) { return 0.0f; }
-    return (TOPagingViewAnimatorEvaluateEasing(upper) - TOPagingViewAnimatorEvaluateEasing(lower)) / range;
 }
 
 /// Snaps a value to the nearest page boundary only when already within one pixel of that boundary.
@@ -223,29 +203,12 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
         return;
     }
 
-    // Recover the current instantaneous velocity from the active easing curve.
-    // `TOPagingViewAnimatorEvaluateEasingVelocityMultiplier` returns the normalized
-    // derivative of the curve at the current progress, so multiplying by the segment
-    // distance and dividing by the effective duration yields points per second.
-    const CGFloat easingVelocityMultiplier = TOPagingViewAnimatorEvaluateEasingVelocityMultiplier(linearProgress);
-    const CGFloat currentVelocity = (_activeEffectiveDuration <= FLT_EPSILON) ?
-                                        0.0f : (((_endOffset - _startOffset) * easingVelocityMultiplier) / _activeEffectiveDuration);
-    const CGFloat velocityTowardTarget = currentVelocity * ((remainingDistance >= 0.0f) ? 1.0f : -1.0f);
+    // Scale the clamp duration by how much ground is left to cover. A close target gets a
+    // quick settle, a far one gets closer to a full page turn's worth of time, so the ease-out
+    // curve always plays out at its natural tempo regardless of the current animation's state.
+    const CGFloat distanceRatio = fmin(1.0f, fabs(remainingDistance) / _pageWidth);
+    const CFTimeInterval settleDuration = TOPagingViewAnimatorClampSettleDuration(_duration * distanceRatio);
 
-    // Fall back to a short settle segment when we can't infer a better duration.
-    CFTimeInterval settleDuration = TOPagingViewAnimatorClampSettleDuration(_duration * kTOAnimatorClampDurationFactor);
-    if (velocityTowardTarget > FLT_EPSILON) {
-        // Start a fresh ease-out segment that initially moves at the same velocity as the
-        // current segment. We do that by solving for a duration whose t=0 derivative
-        // matches the captured velocity toward the new target.
-        const CGFloat initialVelocityMultiplier = TOPagingViewAnimatorEvaluateEasingVelocityMultiplier(0.0f);
-        if (initialVelocityMultiplier > FLT_EPSILON) {
-            const CFTimeInterval effectiveSettleDuration = (fabs(remainingDistance) * initialVelocityMultiplier) / velocityTowardTarget;
-            settleDuration = TOPagingViewAnimatorClampSettleDuration(effectiveSettleDuration / _environmentMetrics.animationDragCoefficient);
-        }
-    }
-
-    // Otherwise commit to the full, new segment animation
     [self _configureSegmentWithStartOffset:currentOffset
                                  endOffset:clampedTargetOffset
                              referenceTime:referenceTime
