@@ -54,6 +54,7 @@ typedef struct {
 typedef struct {
     CGFloat pageWidth;
     CGFloat halfPageSpacing;
+    CGFloat contentWidth;
     CGRect scrollViewFrame;
     CGRect currentPageFrame;
     CGRect nextPageFrame;
