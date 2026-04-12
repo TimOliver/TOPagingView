@@ -107,12 +107,12 @@
 #pragma mark - Setup
 
 - (void)_setUp TOPAGINGVIEW_OBJC_DIRECT {
-    // Set default values
+    // Set default values. Ivars are zero-initialized by ARC, so only non-zero defaults
+    // (e.g. the dragging state's sentinel) need explicit assignment here.
     _pageSpacing = 40.0f;
     _queuedPages = [NSMutableDictionary dictionary];
     _pageViewProtocolFlags = [NSMapTable mapTableWithKeyOptions:NSPointerFunctionsOpaqueMemory | NSPointerFunctionsOpaquePersonality
                                                    valueOptions:NSPointerFunctionsStrongMemory];
-    memset(&_delegateFlags, 0, sizeof(TOPagingViewDelegateFlags));
     _dragInteractionState = TOPagingViewDraggingStateReset();
 
     // Configure the main properties of this view
@@ -1140,7 +1140,8 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
         view->_scrollView.contentOffset = contentOffset;
         [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
         
-        // If we're dragging, reset the state
+        // If we're mid-drag, re-arm origin detection for the next tick but keep the committed
+        // directionType so we don't re-announce the same willTurnToPage for this drag.
         if (view->_isDragging) { view->_dragInteractionState.origin = -CGFLOAT_MAX; }
     }
     view->_disableLayout = NO;
@@ -1187,7 +1188,8 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         view->_scrollView.contentOffset = contentOffset;
         [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
         
-        // If we're dragging, reset the state
+        // If we're mid-drag, re-arm origin detection for the next tick but keep the committed
+        // directionType so we don't re-announce the same willTurnToPage for this drag.
         if (view->_isDragging) { view->_dragInteractionState.origin = -CGFLOAT_MAX; }
     }
     view->_disableLayout = NO;
