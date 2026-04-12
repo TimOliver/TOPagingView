@@ -235,6 +235,7 @@
     CGSize contentSize = self.bounds.size;
     contentSize.width = _layoutMetrics.pageWidth * kTOPagingViewPageSlotCount;
     _scrollView.contentSize = contentSize;
+    _layoutMetrics.contentWidth = contentSize.width;
 }
 
 - (void)_resetContentOffset TOPAGINGVIEW_OBJC_DIRECT {
@@ -277,10 +278,10 @@ void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
     NSAssert([pageViewClass isSubclassOfClass:[UIView class]], @"Only UIView objects may be registered as pages.");
 
     // Cache the protocol methods this class implements to save checking each time
-    TOPagingViewCachedProtocolFlagsForPageViewClass(self, pageViewClass);
+    const TOPageViewProtocolFlags flags = TOPagingViewCachedProtocolFlagsForPageViewClass(self, pageViewClass);
 
     // Fetch the page identifier (or use the default if none were provided).
-    NSString *const pageIdentifier = TOPagingViewIdentifierForPageViewClass(self, pageViewClass);
+    NSString *const pageIdentifier = TOPagingViewIdentifierForPageViewClass(pageViewClass, flags);
 
     // Lazily make the store for the first time
     if (_registeredPageViewClasses == nil) { _registeredPageViewClasses = [NSMutableDictionary dictionary]; }
@@ -324,9 +325,8 @@ void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView) {
     return nil;
 }
 
-static inline NSString *TOPagingViewIdentifierForPageViewClass(TOPagingView *view, Class pageViewClass) {
+static inline NSString *TOPagingViewIdentifierForPageViewClass(Class pageViewClass, TOPageViewProtocolFlags flags) {
     // If the page class supports the pageIdentifier protocol, return it, otherwise use the default string
-    TOPageViewProtocolFlags flags = TOPagingViewCachedProtocolFlagsForPageViewClass(view, pageViewClass);
     if (flags.protocolPageIdentifier) { return [pageViewClass pageIdentifier]; }
     return kTOPagingViewDefaultIdentifier;
 }
@@ -391,6 +391,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     _disableLayout = YES;
     {
         _scrollView.contentSize = CGSizeZero;
+        _layoutMetrics.contentWidth = 0.0f;
     }
     _disableLayout = NO;
 
@@ -553,10 +554,8 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
     // and we're not being disabled by an active animation.
     if (view->_dataSource == nil || view->_disableLayout) { return; }
 
-    const CGSize contentSize = view->_scrollView.contentSize;
-
     // On first run, set up the initial pages layout
-    if (view->_currentPageView == nil || contentSize.width < FLT_EPSILON) {
+    if (view->_currentPageView == nil || view->_layoutMetrics.contentWidth < FLT_EPSILON) {
         TOPagingViewPerformInitialLayout(view);
         return;
     }
@@ -570,7 +569,7 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
     TOPagingViewScrollMetrics metrics = {
         .offsetX = view->_scrollView.contentOffset.x,
         .segmentWidth = view->_layoutMetrics.pageWidth,
-        .contentWidth = contentSize.width,
+        .contentWidth = view->_layoutMetrics.contentWidth,
         .isReversed = TOPagingViewIsDirectionReversed(view->_pageScrollDirection),
         .isDetectingDirection = isDetectingDirection,
     };
@@ -950,7 +949,7 @@ static void TOPagingViewInsertPageView(TOPagingView *view, UIView<TOPagingViewPa
     if (flags.protocolSetPageDirection) { [pageView setPageDirection:view->_pageScrollDirection]; }
 
     // Remove it from the pool of recycled pages
-    NSString *pageIdentifier = TOPagingViewIdentifierForPageViewClass(view, pageView.class);
+    NSString *pageIdentifier = TOPagingViewIdentifierForPageViewClass(pageView.class, flags);
     [view->_queuedPages[pageIdentifier] removeObject:pageView];
 }
 
@@ -970,7 +969,7 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView) {
     [pageView removeFromSuperview];
 
     // Re-add it to the recycled pages pool
-    NSString *pageIdentifier = TOPagingViewIdentifierForPageViewClass(view, pageView.class);
+    NSString *pageIdentifier = TOPagingViewIdentifierForPageViewClass(pageView.class, flags);
     [view->_queuedPages[pageIdentifier] addObject:pageView];
 }
 
@@ -1039,9 +1038,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         view->_nextPageView = view->_currentPageView;
         view->_currentPageView = view->_previousPageView;
         view->_previousPageView = nil;
-        if (view->_currentPageView == nil) {
-            NSCAssert(view->_currentPageView != nil, @"Current page view must not be nil after transitioning to previous page.");
-        }
+        NSCAssert(view->_currentPageView != nil, @"Current page view must not be nil after transitioning to previous page.");
 
         // Update the frames of the pages
         view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
