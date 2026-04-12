@@ -561,7 +561,7 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
         return;
     }
 
-    const TOPagingViewScrollMetrics metrics = {
+    TOPagingViewScrollMetrics metrics = {
         .offsetX = view->_scrollView.contentOffset.x,
         .segmentWidth = view->_layoutMetrics.pageWidth,
         .contentWidth = contentSize.width,
@@ -571,7 +571,7 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
     // When adaptive paging is enabled, we swap the on-screen 'next' page to either
     // side of the initial page as the user swipes left and right
     if (view->_isAdaptivePageDirectionEnabled && TOPagingViewIsInitialPageForPageView(view, view->_currentPageView)) {
-        TOPagingViewHandleAdaptivePageDirectionLayout(view, metrics);
+        TOPagingViewHandleAdaptivePageDirectionLayout(view, &metrics);
     }
 
     // Check the offset of the scroll view, and when it passes over
@@ -629,12 +629,12 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
     }
 }
 
-static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
+static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *view, TOPagingViewScrollMetrics *metrics) {
     UIView<TOPagingViewPage> * const nextPage = view->_nextPageView;
     NSCAssert(nextPage != nil, @"Next page view must exist when handling adaptive page direction layout.");
     const CGFloat xPosition = CGRectGetMinX(nextPage.frame);
-    const CGFloat offsetX = metrics.offsetX;
-    const CGFloat segmentWidth = metrics.segmentWidth;
+    const CGFloat offsetX = metrics->offsetX;
+    const CGFloat segmentWidth = metrics->segmentWidth;
 
     // Check when the page starts moving in a certain direction and update the 'next' page to match if it hasn't already been updated.
     if (offsetX < segmentWidth - FLT_EPSILON && xPosition > segmentWidth) {
@@ -650,10 +650,12 @@ static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *v
     if (offsetX <= FLT_EPSILON && view->_pageScrollDirection == TOPagingViewDirectionLeftToRight) {
         // Scrolled all the way to the left
         view->_pageScrollDirection = TOPagingViewDirectionRightToLeft;
+        metrics->isReversed = YES;
         needsDelegateUpdate = YES;
     } else if (offsetX >= (segmentWidth * 2.0f) - FLT_EPSILON && view->_pageScrollDirection == TOPagingViewDirectionRightToLeft) {
         // Scrolled all the way to the right
         view->_pageScrollDirection = TOPagingViewDirectionLeftToRight;
+        metrics->isReversed = NO;
         needsDelegateUpdate = YES;
     }
 
@@ -1023,7 +1025,9 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         view->_nextPageView = view->_currentPageView;
         view->_currentPageView = view->_previousPageView;
         view->_previousPageView = nil;
-        NSCAssert(view->_currentPageView != nil, @"Current page view must not be nil after transitioning to previous page.");
+        if (view->_currentPageView == nil) {
+            NSCAssert(view->_currentPageView != nil, @"Current page view must not be nil after transitioning to previous page.");
+        }
 
         // Update the frames of the pages
         view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
