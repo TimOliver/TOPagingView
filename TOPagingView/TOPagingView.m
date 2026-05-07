@@ -115,6 +115,12 @@
                                                    valueOptions:NSPointerFunctionsStrongMemory];
     _dragInteractionState = TOPagingViewDraggingStateReset();
 
+    // Seed the inset cache with a sentinel so the first call to TOPagingViewSetPageSlotEnabled
+    // is always a miss. Otherwise the zero-init would silently match a legitimate request to
+    // write 0 to an inset.
+    _cachedInsetLeft = CGFLOAT_MAX;
+    _cachedInsetRight = CGFLOAT_MAX;
+
     // Configure the main properties of this view
     self.clipsToBounds = YES;  // The scroll view intentionally overlaps, so this view MUST clip.
     self.backgroundColor = [UIColor clearColor];
@@ -379,6 +385,14 @@ static inline void TOPagingViewSetNextPageFrame(TOPagingView *view, CGRect frame
     view->_nextPageXPosition = frame.origin.x;
 }
 
+/// Assigns `_nextPageView` and clears the cached X position when the new value is nil so the
+/// cache can never be read pointing at a freed page. Non-nil assignments leave the cache to be
+/// refreshed by the upcoming `TOPagingViewSetNextPageFrame` call that positions the new page.
+static inline void TOPagingViewSetNextPageView(TOPagingView *view, UIView<TOPagingViewPage> *pageView) {
+    view->_nextPageView = pageView;
+    if (pageView == nil) { view->_nextPageXPosition = 0.0f; }
+}
+
 static inline void TOPagingViewSetPageDirectionForPageView(TOPagingView *view, TOPagingViewDirection direction, UIView<TOPagingViewPage> *pageView) {
     // Check the page view supports the page direction protocol and set it if it does
     if (pageView == nil) { return; }
@@ -423,7 +437,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     // Reset all of the active page references
     TOPagingViewSetCurrentPageView(self, nil);
     _previousPageView = nil;
-    _nextPageView = nil;
+    TOPagingViewSetNextPageView(self, nil);
     _isDragging = NO;
     _dragInteractionState = TOPagingViewDraggingStateReset();
 
@@ -444,7 +458,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (void)reloadAdjacentPages {
     // Reclaim the previous and next pages
-    TOPagingViewReclaimPageView(self, _nextPageView);     _nextPageView = nil;
+    TOPagingViewReclaimPageView(self, _nextPageView);     TOPagingViewSetNextPageView(self, nil);
     TOPagingViewReclaimPageView(self, _previousPageView); _previousPageView = nil;
 
     // Set the flags to yes to ensure the following flow isn't blocked
@@ -477,7 +491,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
         // Insert the new page into the scroll view and position it in the appropriate slot.
         TOPagingViewInsertPageView(self, pageView);
         if (isNext) {
-            _nextPageView = pageView;
+            TOPagingViewSetNextPageView(self, pageView);
             TOPagingViewSetNextPageFrame(self, _layoutMetrics.nextPageFrame);
         } else {
             _previousPageView = pageView;
@@ -651,8 +665,10 @@ static inline void TOPagingViewLayoutPages(TOPagingView *view) {
     };
 
     // When adaptive paging is enabled, we swap the on-screen 'next' page to either
-    // side of the initial page as the user swipes left and right
-    if (isDetectingDirection) {
+    // side of the initial page as the user swipes left and right. With no next page available
+    // (e.g. single-page data source, or last page reached) there's nothing to swap and the
+    // helper's `_nextPageView` invariant doesn't hold, so skip it.
+    if (isDetectingDirection && view->_hasNextPage) {
         TOPagingViewHandleAdaptivePageDirectionLayout(view, &metrics);
     }
 
@@ -768,13 +784,9 @@ static inline void TOPagingViewHandlePageTransitions(TOPagingView *view, TOPagin
     // Read animator state directly from the cached struct pointer — no ObjC msg sends per tick.
     const TOPagingViewAnimatorState *animatorState = view->_animatorState;
     const BOOL isAnimating = animatorState->isAnimating;
-    BOOL isAnimatingRight = NO;
-    BOOL isAnimatingLeft = NO;
-    if (isAnimating) {
-        const UIRectEdge direction = animatorState->direction;
-        isAnimatingRight = (direction == UIRectEdgeRight);
-        isAnimatingLeft = (direction == UIRectEdgeLeft);
-    }
+    const UIRectEdge animatorDirection = animatorState->direction;
+    const BOOL isAnimatingRight = isAnimating && animatorDirection == UIRectEdgeRight;
+    const BOOL isAnimatingLeft = isAnimating && animatorDirection == UIRectEdgeLeft;
 
     // By default, we only perform transitions when a new page has fully landed on screen.
     // This defers heavier layout work until there is no visible motion.
@@ -954,7 +966,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // Zero out the adjacent pages and set the
     // next/previous flags to ensure we'll query for new pages
-    _nextPageView = nil; _hasNextPage = NO;
+    TOPagingViewSetNextPageView(self, nil); _hasNextPage = NO;
     _previousPageView = nil; _hasPreviousPage = NO;
 
     // If we're not animating, we can rearrange everything statically and cancel out here
@@ -1114,7 +1126,7 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
         // Update all of the references by pushing each view back
         view->_previousPageView = view->_currentPageView;
         TOPagingViewSetCurrentPageView(view, view->_nextPageView);
-        view->_nextPageView = nil;
+        TOPagingViewSetNextPageView(view, nil);
         NSCAssert(view->_currentPageView != nil, @"Current page view must not be nil after transitioning to next page.");
 
         // Update the frames of the pages
@@ -1160,7 +1172,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         TOPagingViewReclaimPageView(view, view->_nextPageView);
         
         // Update all of the references by pushing each view forward
-        view->_nextPageView = view->_currentPageView;
+        TOPagingViewSetNextPageView(view, view->_currentPageView);
         TOPagingViewSetCurrentPageView(view, view->_previousPageView);
         view->_previousPageView = nil;
         NSCAssert(view->_currentPageView != nil, @"Current page view must not be nil after transitioning to previous page.");
