@@ -97,6 +97,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     CGFloat _startOffset;                   /// The absolute scroll view content offset when we started.
     CGFloat _endOffset;                     /// The absolute scroll view content offset where this animation should end.
     BOOL _originalPagingEnabled;            /// The original pagingEnabled state before this animator temporarily disabled paging.
+    BOOL _isClampingSegment;                /// Whether the current segment should be evaluated as a velocity-matching cubic Hermite instead of the standard bezier ease-out.
+    CGFloat _clampStartVelocity;            /// Signed wall-clock velocity (points/second) the clamp segment should pick up from. Only meaningful when _isClampingSegment is YES.
     TOPagingViewAnimatorEnvironmentMetrics _environmentMetrics; /// Cached environment values that stay stable for the life of an animation.
     TOPagingViewAnimatorState _state;       /// Live state exposed via -statePointer so the paging view can read it without msg sends.
 }
@@ -178,6 +180,7 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     [_displayLink invalidate];
     _displayLink = nil;
     _state.isAnimating = NO;
+    _isClampingSegment = NO;
     _scrollView.pagingEnabled = _originalPagingEnabled;
     if (didComplete && _completionHandler) { _completionHandler(); }
     _completionHandler = nil;
@@ -203,9 +206,26 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
         return;
     }
 
+    // Sample the bezier's instantaneous slope around the current linear progress so the clamp
+    // leg can pick up the in-flight wall-clock velocity. Without this, the Hermite tangent at
+    // t=0 would be zero and we'd see the same velocity discontinuity (visible at slow motion)
+    // that the previous bezier-restart had.
+    CGFloat startVelocity = 0.0f;
+    if (_activeEffectiveDuration > FLT_EPSILON) {
+        const CGFloat slopeDelta = (CGFloat)1e-3;
+        const CGFloat tA = (CGFloat)fmin(1.0, linearProgress + slopeDelta);
+        const CGFloat tB = (CGFloat)fmax(0.0, linearProgress - slopeDelta);
+        const CGFloat dxSpan = tA - tB;
+        if (dxSpan > FLT_EPSILON) {
+            const CGFloat dySpan = TOPagingViewAnimatorEvaluateEasing(tA) - TOPagingViewAnimatorEvaluateEasing(tB);
+            const CGFloat normalizedSlope = dySpan / dxSpan;
+            startVelocity = (_endOffset - _startOffset) * normalizedSlope / (CGFloat)_activeEffectiveDuration;
+        }
+    }
+
     // Scale the clamp duration by how much ground is left to cover. A close target gets a
-    // quick settle, a far one gets closer to a full page turn's worth of time, so the ease-out
-    // curve always plays out at its natural tempo regardless of the current animation's state.
+    // quick settle, a far one gets closer to a full page turn's worth of time, so the curve
+    // plays out at its natural tempo regardless of when the clamp was triggered.
     const CGFloat distanceRatio = fmin(1.0f, fabs(remainingDistance) / _pageWidth);
     const CFTimeInterval settleDuration = TOPagingViewAnimatorClampSettleDuration(_duration * distanceRatio);
 
@@ -213,6 +233,13 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
                                  endOffset:clampedTargetOffset
                              referenceTime:referenceTime
                                   duration:settleDuration];
+
+    // Arm the Hermite leg AFTER the configure call (which clears the flag for the bezier default).
+    // The display link will now interpolate as a cubic Hermite from (currentOffset, startVelocity)
+    // to (clampedTargetOffset, 0), giving C¹ continuity through the clamp instead of cold-starting
+    // an ease-out from rest.
+    _isClampingSegment = YES;
+    _clampStartVelocity = startVelocity;
 }
 
 - (void)didTransitionWithOffset:(CGFloat)offset {
@@ -287,6 +314,8 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     _endOffset = endOffset;
     _startTime = referenceTime;
     _activeEffectiveDuration = duration * _environmentMetrics.animationDragCoefficient;
+    // Default to the bezier path; the clamp call site re-arms the Hermite leg after this returns.
+    _isClampingSegment = NO;
 }
 
 #pragma mark - Display Link -
@@ -309,13 +338,28 @@ static inline CFTimeInterval TOPagingViewAnimatorClampSettleDuration(CFTimeInter
     }
 
     const CGFloat linearProgress = [self _linearProgressAtReferenceTime:displayLink.targetTimestamp];
-    const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
-    CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
+    CGFloat targetOffset;
+    if (_isClampingSegment) {
+        // Cubic Hermite with H(0)=startOffset, H(1)=endOffset, H'(0)=m0 (matches in-flight velocity),
+        // H'(1)=0 (settle at rest). Tangent is in position-per-unit-t, so convert from points/sec
+        // by multiplying the wall-clock velocity by the segment's wall-clock duration.
+        const CGFloat t = linearProgress;
+        const CGFloat t2 = t * t;
+        const CGFloat t3 = t2 * t;
+        const CGFloat h00 = 2.0f * t3 - 3.0f * t2 + 1.0f;
+        const CGFloat h10 = t3 - 2.0f * t2 + t;
+        const CGFloat h01 = -2.0f * t3 + 3.0f * t2;
+        const CGFloat m0 = _clampStartVelocity * (CGFloat)_activeEffectiveDuration;
+        targetOffset = h00 * _startOffset + h10 * m0 + h01 * _endOffset;
+    } else {
+        const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
+        targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
+    }
     targetOffset = TOPagingViewAnimatorRoundToPixel(targetOffset, _environmentMetrics.displayScale);
     NSCAssert(isfinite(targetOffset), @"Animation target offset must be a finite number, got %f.", targetOffset);
     scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
 
-    if (progress >= 1.0f - FLT_EPSILON && fabs(scrollView.contentOffset.x - _endOffset) <= _environmentMetrics.pixelSize) {
+    if (linearProgress >= 1.0f - FLT_EPSILON && fabs(scrollView.contentOffset.x - _endOffset) <= _environmentMetrics.pixelSize) {
         [self stopAnimationWithCompletion:YES];
     }
 }
