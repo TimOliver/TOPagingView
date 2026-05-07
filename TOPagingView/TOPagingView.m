@@ -596,7 +596,20 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     const BOOL isAnimating = _pageAnimator.isAnimating;
     const BOOL isAnimatingLeft = isAnimating && _pageAnimator.direction == UIRectEdgeLeft;
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
-    const BOOL hasLeftPage = (isDirectionReversed && _hasNextPage) || (!isDirectionReversed && _hasPreviousPage);
+    BOOL hasLeftPage = (isDirectionReversed && _hasNextPage) || (!isDirectionReversed && _hasPreviousPage);
+
+    // Re-poll the data source if the requested direction has no page slot. A user tap is the
+    // freshest signal that they want to advance — if the data source has finished loading the
+    // page since we last asked, pick it up here rather than wait for the async refresh path.
+    // If a clamp Hermite is mid-flight and the retry resolves the page, drop the settle so we
+    // can redirect forward from the current visual position.
+    if (!hasLeftPage) {
+        [self fetchAdjacentPagesIfAvailable];
+        hasLeftPage = (isDirectionReversed && _hasNextPage) || (!isDirectionReversed && _hasPreviousPage);
+        if (hasLeftPage && _pageAnimator.isAnimating) {
+            [_pageAnimator stopAnimationWithCompletion:NO];
+        }
+    }
 
     // Play a bouncy animation if there's no page available on that side and
     // the scroll view isn't already settling from a user-driven swipe.
@@ -616,7 +629,17 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     const BOOL isAnimating = _pageAnimator.isAnimating;
     const BOOL isAnimatingRight = isAnimating && _pageAnimator.direction == UIRectEdgeRight;
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
-    const BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) || (!isDirectionReversed && _hasNextPage);
+    BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) || (!isDirectionReversed && _hasNextPage);
+
+    // Re-poll the data source if the requested direction has no page slot. See the matching
+    // block in -turnToLeftPageAnimated: for rationale.
+    if (!hasRightPage) {
+        [self fetchAdjacentPagesIfAvailable];
+        hasRightPage = (isDirectionReversed && _hasPreviousPage) || (!isDirectionReversed && _hasNextPage);
+        if (hasRightPage && _pageAnimator.isAnimating) {
+            [_pageAnimator stopAnimationWithCompletion:NO];
+        }
+    }
 
     // If we're partially at the last page and animating in, skip turning again to let it bottom out.
     // Otherwise, we've hit the edge, so play a 'bounce' visual cue to make it clear there's no more pages.
