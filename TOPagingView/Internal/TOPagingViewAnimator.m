@@ -36,7 +36,7 @@
 static const CFTimeInterval kTOAnimatorDefaultDuration = 0.5f;
 
 /// Cubic bezier control points for the ease-out curve.
-static const CGFloat kTOAnimatorControlPoint1X = 0.3f;
+static const CGFloat kTOAnimatorControlPoint1X = 0.35f;
 static const CGFloat kTOAnimatorControlPoint1Y = 0.75f;
 static const CGFloat kTOAnimatorControlPoint2X = 0.3f;
 static const CGFloat kTOAnimatorControlPoint2Y = 1.0f;
