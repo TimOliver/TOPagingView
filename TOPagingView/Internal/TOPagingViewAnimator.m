@@ -30,7 +30,7 @@
 #import "TOPagingViewTypes.h"
 #import "TOPagingViewTypesPrivate.h"
 
-// -----------------------------------------------------------------
+// MARK: - Constants
 
 /// Default duration for page turn animations.
 static const CFTimeInterval kTOAnimatorDefaultDuration = 0.5f;
@@ -47,7 +47,7 @@ static const CGFloat kTOAnimatorControlPoint1Y = 0.75f;
 static const CGFloat kTOAnimatorControlPoint2X = 0.3f;
 static const CGFloat kTOAnimatorControlPoint2Y = 1.0f;
 
-// -----------------------------------------------------------------
+// MARK: - Helpers
 
 /// Cubic bezier ease-out: solves for u where x(u) = t (Newton), then returns y(u).
 static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
@@ -89,9 +89,12 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     return round(value * scale) / scale;
 }
 
-// =================================================================
+/// +1 for right, −1 for left. Centralizes the direction-to-multiplier conversion.
+static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge direction) {
+    return (direction == UIRectEdgeRight) ? 1.0f : -1.0f;
+}
+
 // MARK: - Timing Parameters
-// =================================================================
 
 /// 1-D timing source. `valueAtTime:` returns the offset at time t (relative to the parameters'
 /// own start). `duration` is the wall-clock window after which the parameters are considered
@@ -119,9 +122,9 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     CFTimeInterval _duration;
 }
 
+// `duration` only comes from the protocol so it needs an explicit synthesize; the other two
+// auto-synthesize from their @interface declarations.
 @synthesize duration = _duration;
-@synthesize startOffset = _startOffset;
-@synthesize endOffset = _endOffset;
 
 + (instancetype)timingParametersWithStartOffset:(CGFloat)startOffset
                                        endOffset:(CGFloat)endOffset
@@ -204,15 +207,12 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
 @end
 
-// =================================================================
 // MARK: - Animator
-// =================================================================
 
 @implementation TOPagingViewAnimator {
     CADisplayLink *_displayLink;            /// Drives valueAtTime: each frame onto the scroll view.
     CFTimeInterval _activeStartTime;        /// Wall-clock when _activeTiming was installed.
     id<TOPagingViewTimingParameters> _activeTiming; /// Current bezier or spring source.
-    CGFloat _directionMultiplier;           /// +1 right, −1 left.
     BOOL _originalPagingEnabled;            /// Pre-animation pagingEnabled, restored on stop.
     TOPagingViewAnimatorEnvironmentMetrics _environmentMetrics; /// Cached display scale + slow-animation drag coefficient.
     TOPagingViewAnimatorState _state;       /// Live state pointer-readable by the paging view.
@@ -246,19 +246,21 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     NSAssert(_pageWidth > FLT_EPSILON, @"Page width must be set and positive before starting an animation.");
     if (scrollView == nil || _pageWidth <= FLT_EPSILON) { return; }
 
-    const CGFloat dir = (pageDirection == UIRectEdgeRight) ? 1.0f : -1.0f;
-
     // Discard same-direction taps while the rubber-band is settling; reversal is allowed below.
-    if (_rubberBandsAtRest && dir == _directionMultiplier) { return; }
+    if (_rubberBandsAtRest && pageDirection == _state.direction) { return; }
 
     const CFTimeInterval now = CACurrentMediaTime();
-    const CFTimeInterval referenceTime = (_displayLink != nil) ? _displayLink.targetTimestamp : now;
     [self _updateEnvironmentMetrics];
     const CFTimeInterval segmentDuration = _duration * _environmentMetrics.animationDragCoefficient;
 
-    // Stacking: same-direction tap mid-flight extends the bezier by another page.
-    if (_state.isAnimating && dir == _directionMultiplier) {
+    // Stacking: same-direction tap mid-flight extends the active bezier by another page. The
+    // class check guards against an externally-cleared `rubberBandsAtRest` while a spring is
+    // in flight — without it the cast would target a spring and read garbage.
+    if (_state.isAnimating && pageDirection == _state.direction
+        && [_activeTiming isKindOfClass:[TOPagingViewBezierTimingParameters class]]) {
         TOPagingViewBezierTimingParameters *const bezier = (TOPagingViewBezierTimingParameters *)_activeTiming;
+        const CFTimeInterval referenceTime = (_displayLink != nil) ? _displayLink.targetTimestamp : now;
+        const CGFloat dir = TOPagingViewAnimatorDirectionMultiplier(pageDirection);
         const CGFloat currentOffset = TOPagingViewAnimatorRoundToPixel([bezier valueAtTime:(referenceTime - _activeStartTime)],
                                                                        _environmentMetrics.displayScale);
         const CGFloat newEnd = TOPagingViewAnimatorRoundToPixel(bezier.endOffset + dir * _pageWidth, _environmentMetrics.displayScale);
@@ -271,12 +273,11 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
     // Fresh direction (or fresh start). Reversal drops any rubber-band state.
     _state.direction = pageDirection;
-    _directionMultiplier = dir;
     _rubberBandsAtRest = NO;
 
     const CGFloat startOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, _environmentMetrics.displayScale);
-    CGFloat endOffset = (dir > 0.0f) ? ceil(startOffset / _pageWidth + FLT_EPSILON) * _pageWidth
-                                     : floor(startOffset / _pageWidth - FLT_EPSILON) * _pageWidth;
+    CGFloat endOffset = (pageDirection == UIRectEdgeRight) ? ceil(startOffset / _pageWidth + FLT_EPSILON) * _pageWidth
+                                                           : floor(startOffset / _pageWidth - FLT_EPSILON) * _pageWidth;
     endOffset = TOPagingViewAnimatorRoundToPixel(endOffset, _environmentMetrics.displayScale);
     _activeTiming = [TOPagingViewBezierTimingParameters timingParametersWithStartOffset:startOffset
                                                                               endOffset:endOffset
@@ -370,7 +371,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 - (BOOL)_handOffBezierToSpringIfCrossingBoundaryAtValue:(CGFloat)value time:(CFTimeInterval)now TOPAGINGVIEW_OBJC_DIRECT {
     if (!_rubberBandsAtRest) { return NO; }
     if (![_activeTiming isKindOfClass:[TOPagingViewBezierTimingParameters class]]) { return NO; }
-    if (_directionMultiplier * (value - _pageWidth) <= 0.0f) { return NO; }
+    if (TOPagingViewAnimatorDirectionMultiplier(_state.direction) * (value - _pageWidth) <= 0.0f) { return NO; }
 
     TOPagingViewBezierTimingParameters *const bezier = (TOPagingViewBezierTimingParameters *)_activeTiming;
     const CGFloat velocity = [bezier velocityAtTime:(now - _activeStartTime)];

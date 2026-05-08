@@ -45,7 +45,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// Must be set before calling `turnToPageInDirection:`.
 @property (nonatomic, assign) CGFloat pageWidth;
 
-/// The duration of each animation cycle in seconds (default 0.4).
+/// The duration of each animation cycle in seconds (default 0.5).
 @property (nonatomic, assign) CFTimeInterval duration;
 
 /// Whether an animation is currently in progress.
@@ -57,11 +57,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// Called when the animation completes naturally (not when stopped mid-way).
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
 
-/// When YES, the in-flight animation passes any offset past the rest position (`pageWidth`)
-/// in the direction of motion through UIScrollView's rubber-band formula. The bezier's velocity
-/// at the crossing drives how far the visible offset stretches, with a soft asymptote one page
-/// wide so the page never scrolls fully into the void. Cleared on stop and on a fresh-direction
-/// turn so a reversal isn't resisted.
+/// When YES, the moment the in-flight bezier crosses the rest position the animator hands off
+/// to a critically damped spring whose initial velocity matches the bezier. The spring continues
+/// past briefly, peaks, and decays back to rest as one continuous motion. Cleared on stop and
+/// on a fresh-direction turn so a reversal isn't resisted.
 @property (nonatomic, assign) BOOL rubberBandsAtRest;
 
 /// Animates toward the next page in the given direction.
