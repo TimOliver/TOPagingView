@@ -498,10 +498,9 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
             _previousPageView.frame = _layoutMetrics.previousPageFrame;
         }
     } else if (clampAnimatorIfMissing) {
-        // No further page in this direction. Arm the animator to apply UIScrollView's rubber-band
-        // formula to any travel past the rest position — a legitimate landing on the new last
-        // page completes unchanged (no overshoot), and a stacked turn past it stretches with
-        // velocity-driven resistance instead of running off into the void.
+        // No further page in this direction.
+        // Arm the animator to apply UIScrollView's rubber-band
+        // formula to any travel past the rest position.
         _pageAnimator.rubberBandsAtRest = YES;
     }
 
