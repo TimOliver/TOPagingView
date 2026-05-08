@@ -35,19 +35,12 @@
 /// Default duration for page turn animations.
 static const CFTimeInterval kTOAnimatorDefaultDuration = 0.5f;
 
-/// Critically damped spring that takes over from the bezier the moment the offset crosses the
-/// rest boundary in rubber-band mode. Picks up the bezier's velocity as v0; the spring's natural
-/// motion then carries the offset past the boundary, peaks, and decays back to rest as one
-/// continuous solution. Modeled on https://github.com/super-ultra/ScrollMechanics
-/// (SpringTimingParameters.swift): for damping ratio 1, x(t) = exp(-β·t)·(c1 + c2·t), where
-/// β = damping/(2·mass), c1 = displacement, c2 = velocity + β·displacement.
-///
-/// Higher stiffness = faster oscillation (shorter overshoot peak time, shorter overall settle).
-/// `settleThreshold` is the visible-position threshold below which the spring is considered
-/// finished — sub-pixel motion isn't perceptible, so we stop ticking past that.
-static const CGFloat kTOAnimatorRubberBandSpringMass         = 1.0f;
-static const CGFloat kTOAnimatorRubberBandSpringStiffness    = 300.0f;
-static const CGFloat kTOAnimatorRubberBandSpringDampingRatio = 1.0f;
+/// Critically damped rubber-band spring. Closed-form x(t) = exp(-β·t)·(c1 + c2·t) per
+/// ScrollMechanics' SpringTimingParameters. Higher stiffness = snappier; settleThreshold caps
+/// the duration once visible motion is sub-pixel.
+static const CGFloat kTOAnimatorRubberBandSpringMass            = 1.0f;
+static const CGFloat kTOAnimatorRubberBandSpringStiffness       = 300.0f;
+static const CGFloat kTOAnimatorRubberBandSpringDampingRatio    = 1.0f;
 static const CGFloat kTOAnimatorRubberBandSpringSettleThreshold = 0.5f;
 
 /// Cubic bezier control points for the ease-out curve.
@@ -107,16 +100,12 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     CGFloat _startOffset;                   /// The absolute scroll view content offset when we started.
     CGFloat _endOffset;                     /// The absolute scroll view content offset where this animation should end.
     BOOL _originalPagingEnabled;            /// The original pagingEnabled state before this animator temporarily disabled paging.
-
-    /// Spring physics state — armed when the bezier crosses the rubber-band boundary, drives
-    /// contentOffset until the analytical settle duration elapses.
-    BOOL _isInSpringSettle;
-    CFTimeInterval _springStartTime;
-    CFTimeInterval _springDuration;
+    BOOL _isInSpringSettle;                 /// YES while the rubber-band spring drives contentOffset.
+    CFTimeInterval _springStartTime;        /// Wall-clock when the spring took over from the bezier.
+    CFTimeInterval _springDuration;         /// Analytical settle time for the current spring state.
     CGFloat _springBeta;                    /// damping / (2·mass) — exponential decay rate.
-    CGFloat _springC1;                      /// = initial displacement past the rest boundary.
-    CGFloat _springC2;                      /// = initial velocity + β·displacement (per the closed-form solution).
-
+    CGFloat _springC1;                      /// Initial displacement past the rest boundary.
+    CGFloat _springC2;                      /// = initialVelocity + β·displacement (closed-form coefficient).
     TOPagingViewAnimatorEnvironmentMetrics _environmentMetrics; /// Cached environment values that stay stable for the life of an animation.
     TOPagingViewAnimatorState _state;       /// Live state exposed via -statePointer so the paging view can read it without msg sends.
 }
@@ -152,9 +141,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
     const CGFloat dir = (pageDirection == UIRectEdgeRight) ? 1.0f : -1.0f;
 
-    // While the rubber-band sequence is in flight, discard further turns in the same direction —
-    // the user has exhausted travel that way and must wait for the snap-back to settle. A turn
-    // in the opposite direction is allowed and will cancel the snap-back below.
+    // Discard same-direction taps while the rubber-band is settling; reversal is allowed below.
     if (_rubberBandsAtRest && dir == _directionMultiplier) { return; }
 
     const CFTimeInterval now = CACurrentMediaTime();
@@ -180,8 +167,7 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     // re-initiating the original direction mid-reversal without drift.
     _state.direction = pageDirection;
     _directionMultiplier = dir;
-    // Direction change discards any rubber-band state from the previous direction. The spring
-    // phase, if any, just stops being driven — the bezier branch takes over from this tick.
+    // Reversal drops any rubber-band state; bezier branch picks up from this tick.
     _rubberBandsAtRest = NO;
     _isInSpringSettle = NO;
     const CGFloat startOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, _environmentMetrics.displayScale);
@@ -303,28 +289,9 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
 - (void)_displayLinkDidFire:(CADisplayLink *)displayLink {
     UIScrollView *const scrollView = _scrollView;
-    if (scrollView == nil) {
-        [self stopAnimationWithCompletion:NO];
-        return;
-    }
+    if (scrollView == nil) { [self stopAnimationWithCompletion:NO]; return; }
 
-    // Spring phase: closed-form critical-damped oscillator drives contentOffset until it settles
-    // at the rest boundary. x(t) = exp(-β·t)·(c1 + c2·t) gives the signed displacement past the
-    // boundary in the direction of motion; absolute offset = pageWidth + sign · x.
-    if (_isInSpringSettle) {
-        const CFTimeInterval t = displayLink.targetTimestamp - _springStartTime;
-        if (t >= _springDuration) {
-            scrollView.contentOffset = (CGPoint){_pageWidth, 0.0f};
-            _isInSpringSettle = NO;
-            [self stopAnimationWithCompletion:YES];
-            return;
-        }
-        const CGFloat x = (CGFloat)(exp(-_springBeta * t) * (_springC1 + _springC2 * t));
-        const CGFloat absoluteOffset = TOPagingViewAnimatorRoundToPixel(_pageWidth + _directionMultiplier * x,
-                                                                         _environmentMetrics.displayScale);
-        scrollView.contentOffset = (CGPoint){absoluteOffset, 0.0f};
-        return;
-    }
+    if (_isInSpringSettle) { [self _tickRubberBandSpringAtTime:displayLink.targetTimestamp scrollView:scrollView]; return; }
 
     const CGFloat linearProgress = [self _linearProgressAtReferenceTime:displayLink.targetTimestamp];
     const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
@@ -332,77 +299,79 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     targetOffset = TOPagingViewAnimatorRoundToPixel(targetOffset, _environmentMetrics.displayScale);
     NSCAssert(isfinite(targetOffset), @"Animation target offset must be a finite number, got %f.", targetOffset);
 
-    // Rubber-band hand-off: when the bezier first carries the offset past the rest boundary in
-    // rubber-band mode, recover its instantaneous velocity and pass it as v0 to a critically
-    // damped spring. The spring then takes over — its natural motion handles the overshoot peak
-    // and the snap-back as one continuous solution, matching SpringTimingParameters' approach.
-    if (_rubberBandsAtRest) {
-        const CGFloat overshoot = _directionMultiplier * (targetOffset - _pageWidth);
-        if (overshoot > 0.0f) {
-            CGFloat absVelocity = 0.0f;
-            if (_activeEffectiveDuration > FLT_EPSILON) {
-                const CGFloat slopeDelta = (CGFloat)1e-3;
-                const CGFloat tA = (CGFloat)fmin(1.0, linearProgress + slopeDelta);
-                const CGFloat tB = (CGFloat)fmax(0.0, linearProgress - slopeDelta);
-                const CGFloat dxSpan = tA - tB;
-                if (dxSpan > FLT_EPSILON) {
-                    const CGFloat dySpan = TOPagingViewAnimatorEvaluateEasing(tA) - TOPagingViewAnimatorEvaluateEasing(tB);
-                    const CGFloat slope = dySpan / dxSpan;
-                    absVelocity = (_endOffset - _startOffset) * slope / (CGFloat)_activeEffectiveDuration;
-                }
-            }
-            const CGFloat signedVelocityIntoVoid = _directionMultiplier * absVelocity;
-            [self _startRubberBandSpringFromDisplacement:overshoot
-                                                velocity:signedVelocityIntoVoid
-                                                  atTime:displayLink.targetTimestamp];
-            // Apply this tick's spring value (which equals overshoot at t=0) so position is
-            // continuous through the hand-off; subsequent ticks fall into the spring branch.
-            const CGFloat absoluteOffset = TOPagingViewAnimatorRoundToPixel(_pageWidth + _directionMultiplier * overshoot,
-                                                                             _environmentMetrics.displayScale);
-            scrollView.contentOffset = (CGPoint){absoluteOffset, 0.0f};
-            return;
-        }
+    // Hand off to the rubber-band spring the first tick the bezier crosses the rest boundary.
+    if (_rubberBandsAtRest && (_directionMultiplier * (targetOffset - _pageWidth)) > 0.0f) {
+        [self _handOffToRubberBandSpringAtLinearProgress:linearProgress targetOffset:targetOffset
+                                                  atTime:displayLink.targetTimestamp scrollView:scrollView];
+        return;
     }
 
     scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
-
-    // Natural-end for the regular bezier path. The rubber-band path can't reach here because
-    // it always exits via the spring hand-off above before the bezier completes.
     if (progress >= 1.0f - FLT_EPSILON && fabs(scrollView.contentOffset.x - _endOffset) <= _environmentMetrics.pixelSize) {
         [self stopAnimationWithCompletion:YES];
     }
 }
 
-- (void)_startRubberBandSpringFromDisplacement:(CGFloat)x0
-                                        velocity:(CGFloat)v0
-                                          atTime:(CFTimeInterval)now TOPAGINGVIEW_OBJC_DIRECT {
-    // Critical damping: damping = 2·dampingRatio·sqrt(mass·stiffness), β = damping / (2·mass).
-    // For the closed-form solution x(t) = exp(-β·t)·(c1 + c2·t), c1 is the initial displacement
-    // and c2 is initialVelocity + β·displacement. v0 here is signed in the direction of motion,
-    // so positive means "still moving away from the rest position" — the spring then naturally
-    // continues past, peaks, and decays back toward 0.
-    const CGFloat damping = 2.0f * kTOAnimatorRubberBandSpringDampingRatio
-                                 * sqrt(kTOAnimatorRubberBandSpringMass * kTOAnimatorRubberBandSpringStiffness);
-    const CGFloat beta = damping / (2.0f * kTOAnimatorRubberBandSpringMass);
+#pragma mark - Rubber-band Spring -
 
+/// Evaluates the closed-form spring at `now` and writes the resulting offset, or settles to rest
+/// once the analytical duration has elapsed.
+- (void)_tickRubberBandSpringAtTime:(CFTimeInterval)now scrollView:(UIScrollView *)scrollView TOPAGINGVIEW_OBJC_DIRECT {
+    const CFTimeInterval t = now - _springStartTime;
+    if (t >= _springDuration) {
+        scrollView.contentOffset = (CGPoint){_pageWidth, 0.0f};
+        _isInSpringSettle = NO;
+        [self stopAnimationWithCompletion:YES];
+        return;
+    }
+    const CGFloat x = (CGFloat)(exp(-_springBeta * t) * (_springC1 + _springC2 * t));
+    scrollView.contentOffset = (CGPoint){TOPagingViewAnimatorRoundToPixel(_pageWidth + _directionMultiplier * x,
+                                                                          _environmentMetrics.displayScale), 0.0f};
+}
+
+/// Recovers the bezier's instantaneous velocity and arms the spring with that as v0, then writes
+/// the t=0 spring value (= overshoot) so the hand-off is continuous.
+- (void)_handOffToRubberBandSpringAtLinearProgress:(CGFloat)linearProgress
+                                       targetOffset:(CGFloat)targetOffset
+                                             atTime:(CFTimeInterval)now
+                                         scrollView:(UIScrollView *)scrollView TOPAGINGVIEW_OBJC_DIRECT {
+    const CGFloat overshoot = _directionMultiplier * (targetOffset - _pageWidth);
+    [self _armRubberBandSpringWithDisplacement:overshoot
+                                       velocity:_directionMultiplier * [self _bezierVelocityAtLinearProgress:linearProgress]
+                                         atTime:now];
+    scrollView.contentOffset = (CGPoint){TOPagingViewAnimatorRoundToPixel(_pageWidth + _directionMultiplier * overshoot,
+                                                                          _environmentMetrics.displayScale), 0.0f};
+}
+
+/// Samples the bezier slope around `linearProgress` and converts to wall-clock pts/sec.
+- (CGFloat)_bezierVelocityAtLinearProgress:(CGFloat)linearProgress TOPAGINGVIEW_OBJC_DIRECT {
+    if (_activeEffectiveDuration <= FLT_EPSILON) { return 0.0f; }
+    const CGFloat slopeDelta = (CGFloat)1e-3;
+    const CGFloat tA = (CGFloat)fmin(1.0, linearProgress + slopeDelta);
+    const CGFloat tB = (CGFloat)fmax(0.0, linearProgress - slopeDelta);
+    const CGFloat dxSpan = tA - tB;
+    if (dxSpan <= FLT_EPSILON) { return 0.0f; }
+    const CGFloat dySpan = TOPagingViewAnimatorEvaluateEasing(tA) - TOPagingViewAnimatorEvaluateEasing(tB);
+    return (_endOffset - _startOffset) * (dySpan / dxSpan) / (CGFloat)_activeEffectiveDuration;
+}
+
+/// Sets up x(t) = exp(-β·t)·(c1 + c2·t) and computes its analytical settle duration. v0 is signed
+/// in the direction of motion; positive means "still moving away from rest".
+- (void)_armRubberBandSpringWithDisplacement:(CGFloat)x0 velocity:(CGFloat)v0 atTime:(CFTimeInterval)now TOPAGINGVIEW_OBJC_DIRECT {
+    const CGFloat beta = sqrt(kTOAnimatorRubberBandSpringStiffness / kTOAnimatorRubberBandSpringMass)
+                       * kTOAnimatorRubberBandSpringDampingRatio;
     _springBeta = beta;
     _springC1 = x0;
     _springC2 = v0 + beta * x0;
     _springStartTime = now;
 
-    // Analytical settle duration (per ScrollMechanics' SpringTimingParameters): max of the times
-    // each component falls below the visible-motion threshold. If a component is already below
-    // the threshold (negative log argument) treat its contribution as zero.
+    // Settle time: max of when each closed-form component decays below `threshold`. Components
+    // already under the threshold contribute 0.
     const CGFloat threshold = kTOAnimatorRubberBandSpringSettleThreshold;
-    CFTimeInterval t1 = 0.0;
-    if (fabs(_springC1) > threshold * 0.5f) {
-        t1 = (1.0 / beta) * log(2.0 * fabs(_springC1) / threshold);
-    }
-    CFTimeInterval t2 = 0.0;
-    const CGFloat c2_lower_bound = (CGFloat)(M_E) * beta * threshold * 0.25f;
-    if (fabs(_springC2) > c2_lower_bound) {
-        t2 = (2.0 / beta) * log(4.0 * fabs(_springC2) / ((CGFloat)(M_E) * beta * threshold));
-    }
+    const CFTimeInterval t1 = (fabs(_springC1) > threshold * 0.5f)
+        ? (1.0 / beta) * log(2.0 * fabs(_springC1) / threshold) : 0.0;
+    const CFTimeInterval t2 = (fabs(_springC2) > (CGFloat)M_E * beta * threshold * 0.25f)
+        ? (2.0 / beta) * log(4.0 * fabs(_springC2) / ((CGFloat)M_E * beta * threshold)) : 0.0;
     _springDuration = fmax(0.0, fmax(t1, t2));
     _isInSpringSettle = YES;
 }
