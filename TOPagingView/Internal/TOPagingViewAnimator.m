@@ -47,6 +47,10 @@ static const CGFloat kTOAnimatorControlPoint1Y = 0.75f;
 static const CGFloat kTOAnimatorControlPoint2X = 0.3f;
 static const CGFloat kTOAnimatorControlPoint2Y = 1.0f;
 
+/// Initial dy/dx of the bezier at u=0 — equals (3·CP1Y) / (3·CP1X) = CP1Y/CP1X. Used by the
+/// rubber-band impulse path to reproduce the velocity a fresh bezier-from-rest would impart.
+static const CGFloat kTOAnimatorBezierInitialSlope = kTOAnimatorControlPoint1Y / kTOAnimatorControlPoint1X;
+
 // MARK: - Helpers
 
 /// Cubic bezier ease-out: solves for u where x(u) = t (Newton), then returns y(u).
@@ -165,6 +169,8 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
                                             mass:(CGFloat)mass
                                        stiffness:(CGFloat)stiffness
                                        threshold:(CGFloat)threshold TOPAGINGVIEW_OBJC_DIRECT;
+/// Closed-form velocity at time t: x'(t) = exp(-β·t)·(c2 − β·(c1 + c2·t)).
+- (CGFloat)velocityAtTime:(CFTimeInterval)t TOPAGINGVIEW_OBJC_DIRECT;
 @end
 
 @implementation TOPagingViewSpringTimingParameters {
@@ -203,6 +209,11 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
 - (CGFloat)valueAtTime:(CFTimeInterval)t {
     if (t >= _duration) { return _restOffset; }
     return _restOffset + (CGFloat)(exp(-_beta * t) * (_c1 + _c2 * t));
+}
+
+- (CGFloat)velocityAtTime:(CFTimeInterval)t {
+    if (t >= _duration) { return 0.0f; }
+    return (CGFloat)(exp(-_beta * t) * (_c2 - _beta * (_c1 + _c2 * t)));
 }
 
 @end
@@ -246,17 +257,40 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
     NSAssert(_pageWidth > FLT_EPSILON, @"Page width must be set and positive before starting an animation.");
     if (scrollView == nil || _pageWidth <= FLT_EPSILON) { return; }
 
-    // Discard same-direction taps while the rubber-band is settling; reversal is allowed below.
-    if (_rubberBandsAtRest && pageDirection == _state.direction) { return; }
-
     const CFTimeInterval now = CACurrentMediaTime();
     [self _updateEnvironmentMetrics];
     const CFTimeInterval segmentDuration = _duration * _environmentMetrics.animationDragCoefficient;
 
-    // Stacking: same-direction tap mid-flight extends the active bezier by another page. The
-    // class check guards against an externally-cleared `rubberBandsAtRest` while a spring is
-    // in flight — without it the cast would target a spring and read garbage.
-    if (_state.isAnimating && pageDirection == _state.direction
+    // Same-direction tap during a settling rubber-band: kick the spring with another impulse
+    // rather than swapping to a fresh bezier (which would stall a frame on the bezier→spring
+    // handoff before any visible movement). Position stays continuous, velocity gets the same
+    // boost a fresh bezier-from-rest would impart, so each tap visibly punts the offset
+    // further out before the spring pulls it back.
+    if (_state.isAnimating && pageDirection == _state.direction && _rubberBandsAtRest
+        && [_activeTiming isKindOfClass:[TOPagingViewSpringTimingParameters class]]) {
+        TOPagingViewSpringTimingParameters *const oldSpring = (TOPagingViewSpringTimingParameters *)_activeTiming;
+        const CFTimeInterval referenceTime = (_displayLink != nil) ? _displayLink.targetTimestamp : now;
+        const CFTimeInterval elapsed = referenceTime - _activeStartTime;
+        const CGFloat currentValue = [oldSpring valueAtTime:elapsed];
+        const CGFloat currentVelocity = [oldSpring velocityAtTime:elapsed];
+        // Impulse magnitude matches a fresh bezier-from-rest's initial velocity:
+        // span * slopeAtStart / duration, with span = _pageWidth.
+        const CGFloat dir = TOPagingViewAnimatorDirectionMultiplier(pageDirection);
+        const CGFloat impulse = dir * _pageWidth * kTOAnimatorBezierInitialSlope / (CGFloat)segmentDuration;
+        _activeTiming = [TOPagingViewSpringTimingParameters timingParametersWithRestOffset:_pageWidth
+                                                                              displacement:(currentValue - _pageWidth)
+                                                                                  velocity:(currentVelocity + impulse)
+                                                                                      mass:kTOAnimatorRubberBandSpringMass
+                                                                                 stiffness:kTOAnimatorRubberBandSpringStiffness
+                                                                                 threshold:kTOAnimatorRubberBandSpringSettleThreshold];
+        _activeStartTime = referenceTime;
+        return;
+    }
+
+    // Stacking: same-direction tap mid-flight extends the active bezier by another page. Only
+    // valid for normal page chains while the active timing is still a bezier — rubber-band
+    // taps go through the impulse branch above instead.
+    if (_state.isAnimating && pageDirection == _state.direction && !_rubberBandsAtRest
         && [_activeTiming isKindOfClass:[TOPagingViewBezierTimingParameters class]]) {
         TOPagingViewBezierTimingParameters *const bezier = (TOPagingViewBezierTimingParameters *)_activeTiming;
         const CFTimeInterval referenceTime = (_displayLink != nil) ? _displayLink.targetTimestamp : now;
@@ -271,9 +305,11 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
         return;
     }
 
-    // Fresh direction (or fresh start). Reversal drops any rubber-band state.
+    // Reversal drops any in-flight rubber-band so a back-tap isn't resisted. A same-direction
+    // tap during a settling spring keeps the flag armed: the impulse branch above re-energises
+    // it without resetting the trajectory.
+    if (pageDirection != _state.direction) { _rubberBandsAtRest = NO; }
     _state.direction = pageDirection;
-    _rubberBandsAtRest = NO;
 
     // Target the page boundary one full page past where natural decel would settle: round
     // startOffset to the nearest boundary (its decel rest), then advance one page in tap dir.

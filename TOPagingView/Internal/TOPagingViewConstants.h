@@ -30,9 +30,5 @@ static NSString *const kTOPagingViewDefaultIdentifier = @"TOPagingView.DefaultPa
 /// There are always 3 slots, with content insetting used to block pages on either side.
 static const CGFloat kTOPagingViewPageSlotCount = 3.0f;
 
-/// The amount of padding along the edge of the screen shown when the "no incoming page" animation plays.
-static const CGFloat kTOPagingViewBumperWidthCompact = 128.0f;
-static const CGFloat kTOPagingViewBumperWidthRegular = 256.0f;
-
-/// The animation options used for the bounce animation.
+/// Animation options shared by the spring animations used during page rearrangement.
 static const UIViewAnimationOptions kTOPagingViewAnimationOptions = UIViewAnimationOptionAllowUserInteraction;

@@ -593,10 +593,6 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 }
 
 - (void)turnToLeftPageAnimated:(BOOL)animated {
-    const CGFloat offset = _scrollView.contentOffset.x;
-    const CGFloat pageWidth = _layoutMetrics.pageWidth;
-    const BOOL isAnimating = _pageAnimator.isAnimating;
-    const BOOL isAnimatingLeft = isAnimating && _pageAnimator.direction == UIRectEdgeLeft;
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
     BOOL hasLeftPage = (isDirectionReversed && _hasNextPage) || (!isDirectionReversed && _hasPreviousPage);
 
@@ -613,23 +609,19 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
         }
     }
 
-    // Play a bouncy animation if there's no page available on that side and
-    // the scroll view isn't already settling from a user-driven swipe.
-    if (!hasLeftPage && (offset <= pageWidth + FLT_EPSILON || isAnimatingLeft)) {
-        if (!animated || isAnimating) { return; }
-        [self _playBounceAnimationInDirection:UIRectEdgeLeft];
-        return;
+    // No page in this direction: arm the animator's rubber-band so the bezier→spring handoff
+    // bumps against the edge and snaps back. Each subsequent tap re-energises the spring,
+    // giving the user immediate feedback rather than a frozen wait. Without animation we
+    // have nowhere meaningful to land, so just no-op.
+    if (!hasLeftPage) {
+        if (!animated) { return; }
+        _pageAnimator.rubberBandsAtRest = YES;
     }
 
-    // Turn to the left side page
     [self _turnToPageInDirection:UIRectEdgeLeft animated:animated];
 }
 
 - (void)turnToRightPageAnimated:(BOOL)animated {
-    const CGFloat offset = _scrollView.contentOffset.x;
-    const CGFloat pageWidth = _layoutMetrics.pageWidth;
-    const BOOL isAnimating = _pageAnimator.isAnimating;
-    const BOOL isAnimatingRight = isAnimating && _pageAnimator.direction == UIRectEdgeRight;
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
     BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) || (!isDirectionReversed && _hasNextPage);
 
@@ -643,12 +635,10 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
         }
     }
 
-    // If we're partially at the last page and animating in, skip turning again to let it bottom out.
-    // Otherwise, we've hit the edge, so play a 'bounce' visual cue to make it clear there's no more pages.
-    if (!hasRightPage && (offset >= pageWidth - FLT_EPSILON || isAnimatingRight)) {
-        if (!animated || isAnimating) { return; }
-        [self _playBounceAnimationInDirection:UIRectEdgeRight];
-        return;
+    // See -turnToLeftPageAnimated: for the rationale on the rubber-band hand-off.
+    if (!hasRightPage) {
+        if (!animated) { return; }
+        _pageAnimator.rubberBandsAtRest = YES;
     }
 
     [self _turnToPageInDirection:UIRectEdgeRight animated:animated];
@@ -1047,45 +1037,6 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
                         options:kTOPagingViewAnimationOptions
                      animations:^{ [self->_scrollView setContentOffset:centerOffset animated:NO]; }
                      completion:completionBlock];
-}
-
-- (void)_playBounceAnimationInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT {
-    const BOOL isCompactSizeClass = self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact;
-    const CGFloat offsetModifier = (direction == UIRectEdgeLeft) ? -1.0f : 1.0f;
-    const CGFloat bumperPadding = ((isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) + _pageSpacing)
-                                    * offsetModifier;
-    const CGPoint origin = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
-    const CGPoint bumperOffset = (CGPoint){origin.x + bumperPadding, 0.0f};
-
-    // Set the various animation blocks so we pull to the side, and then snap back to the middle
-    void (^pullAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:bumperOffset animated:NO]; };
-    void (^popAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:origin animated:NO]; };
-    void (^popAnimationCompletionBlock)(BOOL) = ^(BOOL success) { self->_disableLayout = NO; };
-
-    // Completion block after the initial pull back is started
-    void (^pullAnimationCompletionBlock)(BOOL) = ^(BOOL success) {
-        // Play a very wobbly spring back animation snapping back into place
-        [UIView animateWithDuration:0.65f
-                              delay:0.0f
-             usingSpringWithDamping:1.0f
-              initialSpringVelocity:1.0f
-                            options:kTOPagingViewAnimationOptions
-                         animations:popAnimationBlock
-                         completion:popAnimationCompletionBlock];
-    };
-
-    // Disable layout since the animation will manage everything
-    _disableLayout = YES;
-
-    // Kickstart the animation chain.
-    // Play a very quick rubber-banding slide out to the bumper padding
-    [UIView animateWithDuration:0.3f
-                          delay:0.0f
-         usingSpringWithDamping:1.0f
-          initialSpringVelocity:0.0f
-                        options:kTOPagingViewAnimationOptions
-                     animations:pullAnimationBlock
-                     completion:pullAnimationCompletionBlock];
 }
 
 #pragma mark - Page View Recycling

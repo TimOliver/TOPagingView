@@ -60,7 +60,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// When YES, the moment the in-flight bezier crosses the rest position the animator hands off
 /// to a critically damped spring whose initial velocity matches the bezier. The spring continues
 /// past briefly, peaks, and decays back to rest as one continuous motion. Cleared on stop and
-/// on a fresh-direction turn so a reversal isn't resisted.
+/// on direction reversal — same-direction taps during settle keep the flag armed so each tap
+/// re-energises the spring rather than getting absorbed.
 @property (nonatomic, assign) BOOL rubberBandsAtRest;
 
 /// Animates toward the next page in the given direction.
