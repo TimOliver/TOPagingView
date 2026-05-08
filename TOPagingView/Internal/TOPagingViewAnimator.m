@@ -40,7 +40,6 @@ static const CFTimeInterval kTOAnimatorDefaultDuration = 0.5f;
 /// the duration once visible motion is sub-pixel.
 static const CGFloat kTOAnimatorRubberBandSpringMass            = 1.0f;
 static const CGFloat kTOAnimatorRubberBandSpringStiffness       = 300.0f;
-static const CGFloat kTOAnimatorRubberBandSpringDampingRatio    = 1.0f;
 static const CGFloat kTOAnimatorRubberBandSpringSettleThreshold = 0.5f;
 
 /// Cubic bezier control points for the ease-out curve.
@@ -51,9 +50,7 @@ static const CGFloat kTOAnimatorControlPoint2Y = 1.0f;
 
 // -----------------------------------------------------------------
 
-/// Evaluates a cubic bezier easing curve for the given linear time progress.
-/// @param t Linear time progress from 0.0 to 1.0.
-/// @return Eased progress from 0.0 to 1.0.
+/// Cubic bezier ease-out: solves for u where x(u) = t (Newton), then returns y(u).
 static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
     CGFloat u = t;
     for (int i = 0; i < 8; i++) {
@@ -72,7 +69,7 @@ static inline CGFloat TOPagingViewAnimatorEvaluateEasing(CGFloat t) {
            u * u * u;
 }
 
-/// Snaps a value to the nearest page boundary only when already within one pixel of that boundary.
+/// Snaps to the nearest page boundary if within one pixel.
 static inline CGFloat TOPagingViewAnimatorSnapToPageBoundary(CGFloat value, CGFloat pageWidth, CGFloat scale) {
     if (pageWidth <= FLT_EPSILON) { return value; }
     const CGFloat nearestPageBoundary = round(value / pageWidth) * pageWidth;
@@ -81,33 +78,145 @@ static inline CGFloat TOPagingViewAnimatorSnapToPageBoundary(CGFloat value, CGFl
     return value;
 }
 
-/// Fetches the reference time of the current animation, derived from the CADisplayLink's time if available, or CACurrentMediaTime otherwise.
+/// Reference time for the current frame: the displayLink's targetTimestamp if available,
+/// otherwise wall-clock now.
 static inline CFTimeInterval TOPagingViewAnimatorReferenceTime(CADisplayLink *_Nullable displayLink) {
     return (displayLink != nil) ? displayLink.targetTimestamp : CACurrentMediaTime();
 }
 
-/// Rounds a value to the nearest screen pixel for the given display scale.
+/// Rounds to the nearest screen pixel for the given display scale.
 static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat scale) {
     NSCAssert(scale > 0, @"Display scale must be positive.");
     return round(value * scale) / scale;
 }
 
+// =================================================================
+// MARK: - Timing Parameters
+// =================================================================
+
+/// 1-D timing source. `valueAtTime:` returns the offset at time t (relative to the parameters'
+/// own start). `duration` is the wall-clock window after which the parameters are considered
+/// complete and the animator should stop.
+@protocol TOPagingViewTimingParameters <NSObject>
+@property (nonatomic, readonly) CFTimeInterval duration;
+- (CGFloat)valueAtTime:(CFTimeInterval)t;
+@end
+
+// -- Bezier ease-out --
+
+@interface TOPagingViewBezierTimingParameters : NSObject <TOPagingViewTimingParameters>
+@property (nonatomic, readonly) CGFloat startOffset;
+@property (nonatomic, readonly) CGFloat endOffset;
++ (instancetype)timingParametersWithStartOffset:(CGFloat)startOffset
+                                       endOffset:(CGFloat)endOffset
+                                        duration:(CFTimeInterval)duration TOPAGINGVIEW_OBJC_DIRECT;
+/// Wall-clock velocity (pts/sec) at time t — sampled finite-difference of the easing curve.
+- (CGFloat)velocityAtTime:(CFTimeInterval)t TOPAGINGVIEW_OBJC_DIRECT;
+@end
+
+@implementation TOPagingViewBezierTimingParameters {
+    CGFloat _startOffset;
+    CGFloat _endOffset;
+    CFTimeInterval _duration;
+}
+
+@synthesize duration = _duration;
+@synthesize startOffset = _startOffset;
+@synthesize endOffset = _endOffset;
+
++ (instancetype)timingParametersWithStartOffset:(CGFloat)startOffset
+                                       endOffset:(CGFloat)endOffset
+                                        duration:(CFTimeInterval)duration {
+    TOPagingViewBezierTimingParameters *p = [self new];
+    p->_startOffset = startOffset;
+    p->_endOffset = endOffset;
+    p->_duration = duration;
+    return p;
+}
+
+- (CGFloat)valueAtTime:(CFTimeInterval)t {
+    if (_duration <= FLT_EPSILON) { return _endOffset; }
+    const CGFloat linearProgress = (CGFloat)fmin(t / _duration, 1.0);
+    return _startOffset + (_endOffset - _startOffset) * TOPagingViewAnimatorEvaluateEasing(linearProgress);
+}
+
+- (CGFloat)velocityAtTime:(CFTimeInterval)t {
+    if (_duration <= FLT_EPSILON) { return 0.0f; }
+    const CGFloat linearProgress = (CGFloat)fmin(t / _duration, 1.0);
+    const CGFloat slopeDelta = (CGFloat)1e-3;
+    const CGFloat tA = (CGFloat)fmin(1.0, linearProgress + slopeDelta);
+    const CGFloat tB = (CGFloat)fmax(0.0, linearProgress - slopeDelta);
+    const CGFloat dxSpan = tA - tB;
+    if (dxSpan <= FLT_EPSILON) { return 0.0f; }
+    const CGFloat dySpan = TOPagingViewAnimatorEvaluateEasing(tA) - TOPagingViewAnimatorEvaluateEasing(tB);
+    return (_endOffset - _startOffset) * (dySpan / dxSpan) / (CGFloat)_duration;
+}
+
+@end
+
+// -- Critically damped spring --
+
+@interface TOPagingViewSpringTimingParameters : NSObject <TOPagingViewTimingParameters>
++ (instancetype)timingParametersWithRestOffset:(CGFloat)restOffset
+                                    displacement:(CGFloat)displacement
+                                        velocity:(CGFloat)velocity
+                                            mass:(CGFloat)mass
+                                       stiffness:(CGFloat)stiffness
+                                       threshold:(CGFloat)threshold TOPAGINGVIEW_OBJC_DIRECT;
+@end
+
+@implementation TOPagingViewSpringTimingParameters {
+    CGFloat _restOffset;
+    CGFloat _beta;
+    CGFloat _c1;
+    CGFloat _c2;
+    CFTimeInterval _duration;
+}
+
+@synthesize duration = _duration;
+
++ (instancetype)timingParametersWithRestOffset:(CGFloat)restOffset
+                                    displacement:(CGFloat)displacement
+                                        velocity:(CGFloat)velocity
+                                            mass:(CGFloat)mass
+                                       stiffness:(CGFloat)stiffness
+                                       threshold:(CGFloat)threshold {
+    TOPagingViewSpringTimingParameters *p = [self new];
+    const CGFloat beta = (CGFloat)sqrt(stiffness / mass); // critical damping (ζ = 1)
+    p->_restOffset = restOffset;
+    p->_beta = beta;
+    p->_c1 = displacement;
+    p->_c2 = velocity + beta * displacement;
+
+    // Settle time: per-component upper bound (max of when each part falls below threshold).
+    // Components already under the threshold contribute 0.
+    const CFTimeInterval t1 = (fabs(p->_c1) > threshold * 0.5f)
+        ? (1.0 / beta) * log(2.0 * fabs(p->_c1) / threshold) : 0.0;
+    const CFTimeInterval t2 = (fabs(p->_c2) > (CGFloat)M_E * beta * threshold * 0.25f)
+        ? (2.0 / beta) * log(4.0 * fabs(p->_c2) / ((CGFloat)M_E * beta * threshold)) : 0.0;
+    p->_duration = fmax(0.0, fmax(t1, t2));
+    return p;
+}
+
+- (CGFloat)valueAtTime:(CFTimeInterval)t {
+    if (t >= _duration) { return _restOffset; }
+    return _restOffset + (CGFloat)(exp(-_beta * t) * (_c1 + _c2 * t));
+}
+
+@end
+
+// =================================================================
+// MARK: - Animator
+// =================================================================
+
 @implementation TOPagingViewAnimator {
-    CADisplayLink *_displayLink;            /// The display link driving the frame-by-frame animation.
-    CFTimeInterval _startTime;              /// The time at which the current animation segment started.
-    CFTimeInterval _activeEffectiveDuration; /// The duration of the current segment after applying any active simulator drag coefficient.
-    CGFloat _directionMultiplier;           /// The direction multiplier (+1 for right, -1 for left).
-    CGFloat _startOffset;                   /// The absolute scroll view content offset when we started.
-    CGFloat _endOffset;                     /// The absolute scroll view content offset where this animation should end.
-    BOOL _originalPagingEnabled;            /// The original pagingEnabled state before this animator temporarily disabled paging.
-    BOOL _isInSpringSettle;                 /// YES while the rubber-band spring drives contentOffset.
-    CFTimeInterval _springStartTime;        /// Wall-clock when the spring took over from the bezier.
-    CFTimeInterval _springDuration;         /// Analytical settle time for the current spring state.
-    CGFloat _springBeta;                    /// damping / (2·mass) — exponential decay rate.
-    CGFloat _springC1;                      /// Initial displacement past the rest boundary.
-    CGFloat _springC2;                      /// = initialVelocity + β·displacement (closed-form coefficient).
-    TOPagingViewAnimatorEnvironmentMetrics _environmentMetrics; /// Cached environment values that stay stable for the life of an animation.
-    TOPagingViewAnimatorState _state;       /// Live state exposed via -statePointer so the paging view can read it without msg sends.
+    CADisplayLink *_displayLink;            /// Drives valueAtTime: each frame onto the scroll view.
+    CFTimeInterval _activeStartTime;        /// Wall-clock when _activeTiming was installed.
+    id<TOPagingViewTimingParameters> _activeTiming; /// Current bezier or spring source.
+    CGFloat _directionMultiplier;           /// +1 right, −1 left.
+    BOOL _originalPagingEnabled;            /// Pre-animation pagingEnabled, restored on stop.
+    TOPagingViewAnimatorEnvironmentMetrics _environmentMetrics; /// Cached display scale + slow-animation drag coefficient.
+    TOPagingViewAnimatorState _state;       /// Live state pointer-readable by the paging view.
 }
 
 #pragma mark - Object Lifecycle -
@@ -117,7 +226,6 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     if (self) {
         _duration = kTOAnimatorDefaultDuration;
         _environmentMetrics = (TOPagingViewAnimatorEnvironmentMetrics){.displayScale = 1.0f, .pixelSize = 1.0f, .animationDragCoefficient = 1.0f};
-        _activeEffectiveDuration = kTOAnimatorDefaultDuration;
     }
     return self;
 }
@@ -146,39 +254,36 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
     const CFTimeInterval now = CACurrentMediaTime();
     const CFTimeInterval referenceTime = (_displayLink != nil) ? _displayLink.targetTimestamp : now;
-    
-    // Cache all of the device metrics that won't change in this animation run.
     [self _updateEnvironmentMetrics];
+    const CFTimeInterval segmentDuration = _duration * _environmentMetrics.animationDragCoefficient;
 
-    // If we were already animating, and another turn event comes through, stack it.
+    // Stacking: same-direction tap mid-flight extends the bezier by another page.
     if (_state.isAnimating && dir == _directionMultiplier) {
-        const CGFloat linearProgress = [self _linearProgressAtReferenceTime:referenceTime];
-        const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
-        const CGFloat currentOffset =
-            TOPagingViewAnimatorRoundToPixel(_startOffset + ((_endOffset - _startOffset) * progress), _environmentMetrics.displayScale);
-        const CGFloat endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset + (dir * _pageWidth), _environmentMetrics.displayScale);
-        [self _configureSegmentWithStartOffset:currentOffset endOffset:endOffset referenceTime:now duration:_duration];
+        TOPagingViewBezierTimingParameters *const bezier = (TOPagingViewBezierTimingParameters *)_activeTiming;
+        const CGFloat currentOffset = TOPagingViewAnimatorRoundToPixel([bezier valueAtTime:(referenceTime - _activeStartTime)],
+                                                                       _environmentMetrics.displayScale);
+        const CGFloat newEnd = TOPagingViewAnimatorRoundToPixel(bezier.endOffset + dir * _pageWidth, _environmentMetrics.displayScale);
+        _activeTiming = [TOPagingViewBezierTimingParameters timingParametersWithStartOffset:currentOffset
+                                                                                  endOffset:newEnd
+                                                                                   duration:segmentDuration];
+        _activeStartTime = now;
         return;
     }
 
-    // New direction or fresh start: animate from the current position to the nearest
-    // page boundary in the requested direction. This naturally handles reversal
-    // (tap left while going right snaps back to the page on screen) as well as
-    // re-initiating the original direction mid-reversal without drift.
+    // Fresh direction (or fresh start). Reversal drops any rubber-band state.
     _state.direction = pageDirection;
     _directionMultiplier = dir;
-    // Reversal drops any rubber-band state; bezier branch picks up from this tick.
     _rubberBandsAtRest = NO;
-    _isInSpringSettle = NO;
+
     const CGFloat startOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, _environmentMetrics.displayScale);
     CGFloat endOffset = (dir > 0.0f) ? ceil(startOffset / _pageWidth + FLT_EPSILON) * _pageWidth
                                      : floor(startOffset / _pageWidth - FLT_EPSILON) * _pageWidth;
     endOffset = TOPagingViewAnimatorRoundToPixel(endOffset, _environmentMetrics.displayScale);
-    [self _configureSegmentWithStartOffset:startOffset endOffset:endOffset referenceTime:now duration:_duration];
+    _activeTiming = [TOPagingViewBezierTimingParameters timingParametersWithStartOffset:startOffset
+                                                                              endOffset:endOffset
+                                                                               duration:segmentDuration];
+    _activeStartTime = now;
 
-    // If we weren't already in an animation loop, start the display link.
-    // We also need to disable paging, otherwise our offset code ends up fighting
-    // another display link, internal to UIScrollView that is managing the paging state.
     if (!_state.isAnimating) {
         _state.isAnimating = YES;
         _originalPagingEnabled = scrollView.pagingEnabled;
@@ -189,13 +294,11 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
 - (void)stopAnimationWithCompletion:(BOOL)didComplete {
     if (!_state.isAnimating) { return; }
-    // Cancel the display link.
-    // The scroll view will stop at whatever offset it is now.
     [_displayLink invalidate];
     _displayLink = nil;
     _state.isAnimating = NO;
     _rubberBandsAtRest = NO;
-    _isInSpringSettle = NO;
+    _activeTiming = nil;
     _scrollView.pagingEnabled = _originalPagingEnabled;
     if (didComplete && _completionHandler) { _completionHandler(); }
     _completionHandler = nil;
@@ -203,76 +306,35 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
 
 - (void)didTransitionWithOffset:(CGFloat)offset {
     if (!_state.isAnimating) { return; }
-    
-    // When the paging view performs its transition, which ostensibly just moves all embedded pages either forward or back
-    // by one slot, it is also necessary to apply the same slot distance to our animation start and end positions.
+    if (![_activeTiming isKindOfClass:[TOPagingViewBezierTimingParameters class]]) { return; }
+
+    // Slot rotation shifted everything by `offset`; rebase the bezier so the visible position
+    // stays continuous through the page transition.
+    TOPagingViewBezierTimingParameters *const bezier = (TOPagingViewBezierTimingParameters *)_activeTiming;
     const CGFloat actualOffset = TOPagingViewAnimatorRoundToPixel(_scrollView.contentOffset.x, _environmentMetrics.displayScale);
-    const CFTimeInterval referenceTime = TOPagingViewAnimatorReferenceTime(_displayLink);
-    const CGFloat linearProgress = [self _linearProgressAtReferenceTime:referenceTime];
-    const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
+    const CFTimeInterval t = TOPagingViewAnimatorReferenceTime(_displayLink) - _activeStartTime;
+    const CGFloat span = bezier.endOffset - bezier.startOffset;
+    const CGFloat progress = (fabs(span) > FLT_EPSILON) ? ([bezier valueAtTime:t] - bezier.startOffset) / span : 1.0f;
 
-    _endOffset += offset;
-    _endOffset = TOPagingViewAnimatorRoundToPixel(_endOffset, _environmentMetrics.displayScale);
-    _endOffset = TOPagingViewAnimatorSnapToPageBoundary(_endOffset, _pageWidth, _environmentMetrics.displayScale);
+    CGFloat newEnd = TOPagingViewAnimatorRoundToPixel(bezier.endOffset + offset, _environmentMetrics.displayScale);
+    newEnd = TOPagingViewAnimatorSnapToPageBoundary(newEnd, _pageWidth, _environmentMetrics.displayScale);
 
-    // If we were effectively at the end already, let's just exit out.
+    CGFloat newStart;
     const CGFloat remainingProgress = 1.0f - progress;
     if (remainingProgress <= FLT_EPSILON) {
-        _startOffset = actualOffset;
-        _endOffset = actualOffset;
-        return;
+        newStart = actualOffset;
+        newEnd = actualOffset;
+    } else {
+        newStart = (actualOffset - (newEnd * progress)) / remainingProgress;
+        newStart = TOPagingViewAnimatorRoundToPixel(newStart, _environmentMetrics.displayScale);
+        newStart = TOPagingViewAnimatorSnapToPageBoundary(newStart, _pageWidth, _environmentMetrics.displayScale);
     }
 
-    _startOffset = (actualOffset - (_endOffset * progress)) / remainingProgress;
-    _startOffset = TOPagingViewAnimatorRoundToPixel(_startOffset, _environmentMetrics.displayScale);
-    _startOffset = TOPagingViewAnimatorSnapToPageBoundary(_startOffset, _pageWidth, _environmentMetrics.displayScale);
-}
-
-#pragma mark - Animation State -
-
-- (void)_updateEnvironmentMetrics TOPAGINGVIEW_OBJC_DIRECT {
-    // Capture device metrics that may change between animations but are stable
-    // enough to cache for the duration of one.
-    
-    // Capture the physical display scale of the screen (eg @2x = 2.0, @3x = 3.0).
-    // `pixelSize` is derived below as its reciprocal.
-    const CGFloat displayScale = ({
-        CGFloat scale = _scrollView.window.screen.scale;
-        if (scale <= FLT_EPSILON) { scale = _scrollView.traitCollection.displayScale; }
-        (scale <= FLT_EPSILON) ? 1.0f : scale;
-    });
-    
-    // When on the simulator, and 'Slow Animations' is enabled, add that coefficient to our animation speed.
-    const CGFloat animationDragCoefficient = ({
-        #if TARGET_OS_SIMULATOR
-            extern float UIAnimationDragCoefficient(void) __attribute__((weak_import));
-            const float dragCoefficient = (UIAnimationDragCoefficient != NULL) ? UIAnimationDragCoefficient() : 1.0f;
-            (dragCoefficient > FLT_EPSILON) ? dragCoefficient : 1.0f;
-        #else
-            1.0f;
-        #endif
-    });
-    
-    // Apply the metrics. These will be regenerated on each new animation run.
-    _environmentMetrics = (TOPagingViewAnimatorEnvironmentMetrics){
-        .displayScale = displayScale,
-        .pixelSize = 1.0f / fmax(displayScale, 1.0f),
-        .animationDragCoefficient = animationDragCoefficient,
-    };
-}
-
-- (CGFloat)_linearProgressAtReferenceTime:(CFTimeInterval)referenceTime TOPAGINGVIEW_OBJC_DIRECT {
-    return (_activeEffectiveDuration <= FLT_EPSILON) ? 1.0f : (CGFloat)fmin((referenceTime - _startTime) / _activeEffectiveDuration, 1.0);
-}
-
-- (void)_configureSegmentWithStartOffset:(CGFloat)startOffset
-                               endOffset:(CGFloat)endOffset
-                           referenceTime:(CFTimeInterval)referenceTime
-                                duration:(CFTimeInterval)duration TOPAGINGVIEW_OBJC_DIRECT {
-    _startOffset = startOffset;
-    _endOffset = endOffset;
-    _startTime = referenceTime;
-    _activeEffectiveDuration = duration * _environmentMetrics.animationDragCoefficient;
+    // Replace the bezier with the rebased version; preserve _activeStartTime so progress is
+    // continuous across the transition.
+    _activeTiming = [TOPagingViewBezierTimingParameters timingParametersWithStartOffset:newStart
+                                                                              endOffset:newEnd
+                                                                               duration:bezier.duration];
 }
 
 #pragma mark - Display Link -
@@ -291,89 +353,65 @@ static inline CGFloat TOPagingViewAnimatorRoundToPixel(CGFloat value, CGFloat sc
     UIScrollView *const scrollView = _scrollView;
     if (scrollView == nil) { [self stopAnimationWithCompletion:NO]; return; }
 
-    if (_isInSpringSettle) { [self _tickRubberBandSpringAtTime:displayLink.targetTimestamp scrollView:scrollView]; return; }
+    const CFTimeInterval now = displayLink.targetTimestamp;
+    const CFTimeInterval t = now - _activeStartTime;
+    const CGFloat value = [_activeTiming valueAtTime:t];
 
-    const CGFloat linearProgress = [self _linearProgressAtReferenceTime:displayLink.targetTimestamp];
-    const CGFloat progress = TOPagingViewAnimatorEvaluateEasing(linearProgress);
-    CGFloat targetOffset = _startOffset + ((_endOffset - _startOffset) * progress);
-    targetOffset = TOPagingViewAnimatorRoundToPixel(targetOffset, _environmentMetrics.displayScale);
-    NSCAssert(isfinite(targetOffset), @"Animation target offset must be a finite number, got %f.", targetOffset);
+    // First tick the bezier crosses the rest boundary in rubber-band mode, swap to the spring.
+    if ([self _handOffBezierToSpringIfCrossingBoundaryAtValue:value time:now]) { return; }
 
-    // Hand off to the rubber-band spring the first tick the bezier crosses the rest boundary.
-    if (_rubberBandsAtRest && (_directionMultiplier * (targetOffset - _pageWidth)) > 0.0f) {
-        [self _handOffToRubberBandSpringAtLinearProgress:linearProgress targetOffset:targetOffset
-                                                  atTime:displayLink.targetTimestamp scrollView:scrollView];
-        return;
-    }
-
-    scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
-    if (progress >= 1.0f - FLT_EPSILON && fabs(scrollView.contentOffset.x - _endOffset) <= _environmentMetrics.pixelSize) {
-        [self stopAnimationWithCompletion:YES];
-    }
+    scrollView.contentOffset = (CGPoint){TOPagingViewAnimatorRoundToPixel(value, _environmentMetrics.displayScale), 0.0f};
+    if (t >= _activeTiming.duration) { [self stopAnimationWithCompletion:YES]; }
 }
 
 #pragma mark - Rubber-band Spring -
 
-/// Evaluates the closed-form spring at `now` and writes the resulting offset, or settles to rest
-/// once the analytical duration has elapsed.
-- (void)_tickRubberBandSpringAtTime:(CFTimeInterval)now scrollView:(UIScrollView *)scrollView TOPAGINGVIEW_OBJC_DIRECT {
-    const CFTimeInterval t = now - _springStartTime;
-    if (t >= _springDuration) {
-        scrollView.contentOffset = (CGPoint){_pageWidth, 0.0f};
-        _isInSpringSettle = NO;
-        [self stopAnimationWithCompletion:YES];
-        return;
-    }
-    const CGFloat x = (CGFloat)(exp(-_springBeta * t) * (_springC1 + _springC2 * t));
-    scrollView.contentOffset = (CGPoint){TOPagingViewAnimatorRoundToPixel(_pageWidth + _directionMultiplier * x,
-                                                                          _environmentMetrics.displayScale), 0.0f};
+/// If the active bezier has just carried the offset past the rest boundary, replace it with a
+/// spring whose v0 matches the bezier's instantaneous velocity. Returns YES if the swap fired.
+- (BOOL)_handOffBezierToSpringIfCrossingBoundaryAtValue:(CGFloat)value time:(CFTimeInterval)now TOPAGINGVIEW_OBJC_DIRECT {
+    if (!_rubberBandsAtRest) { return NO; }
+    if (![_activeTiming isKindOfClass:[TOPagingViewBezierTimingParameters class]]) { return NO; }
+    if (_directionMultiplier * (value - _pageWidth) <= 0.0f) { return NO; }
+
+    TOPagingViewBezierTimingParameters *const bezier = (TOPagingViewBezierTimingParameters *)_activeTiming;
+    const CGFloat velocity = [bezier velocityAtTime:(now - _activeStartTime)];
+    _activeTiming = [TOPagingViewSpringTimingParameters timingParametersWithRestOffset:_pageWidth
+                                                                          displacement:(value - _pageWidth)
+                                                                              velocity:velocity
+                                                                                  mass:kTOAnimatorRubberBandSpringMass
+                                                                             stiffness:kTOAnimatorRubberBandSpringStiffness
+                                                                             threshold:kTOAnimatorRubberBandSpringSettleThreshold];
+    _activeStartTime = now;
+    _scrollView.contentOffset = (CGPoint){TOPagingViewAnimatorRoundToPixel(value, _environmentMetrics.displayScale), 0.0f};
+    return YES;
 }
 
-/// Recovers the bezier's instantaneous velocity and arms the spring with that as v0, then writes
-/// the t=0 spring value (= overshoot) so the hand-off is continuous.
-- (void)_handOffToRubberBandSpringAtLinearProgress:(CGFloat)linearProgress
-                                       targetOffset:(CGFloat)targetOffset
-                                             atTime:(CFTimeInterval)now
-                                         scrollView:(UIScrollView *)scrollView TOPAGINGVIEW_OBJC_DIRECT {
-    const CGFloat overshoot = _directionMultiplier * (targetOffset - _pageWidth);
-    [self _armRubberBandSpringWithDisplacement:overshoot
-                                       velocity:_directionMultiplier * [self _bezierVelocityAtLinearProgress:linearProgress]
-                                         atTime:now];
-    scrollView.contentOffset = (CGPoint){TOPagingViewAnimatorRoundToPixel(_pageWidth + _directionMultiplier * overshoot,
-                                                                          _environmentMetrics.displayScale), 0.0f};
-}
+#pragma mark - Environment -
 
-/// Samples the bezier slope around `linearProgress` and converts to wall-clock pts/sec.
-- (CGFloat)_bezierVelocityAtLinearProgress:(CGFloat)linearProgress TOPAGINGVIEW_OBJC_DIRECT {
-    if (_activeEffectiveDuration <= FLT_EPSILON) { return 0.0f; }
-    const CGFloat slopeDelta = (CGFloat)1e-3;
-    const CGFloat tA = (CGFloat)fmin(1.0, linearProgress + slopeDelta);
-    const CGFloat tB = (CGFloat)fmax(0.0, linearProgress - slopeDelta);
-    const CGFloat dxSpan = tA - tB;
-    if (dxSpan <= FLT_EPSILON) { return 0.0f; }
-    const CGFloat dySpan = TOPagingViewAnimatorEvaluateEasing(tA) - TOPagingViewAnimatorEvaluateEasing(tB);
-    return (_endOffset - _startOffset) * (dySpan / dxSpan) / (CGFloat)_activeEffectiveDuration;
-}
+- (void)_updateEnvironmentMetrics TOPAGINGVIEW_OBJC_DIRECT {
+    // Display scale (eg @2x = 2.0, @3x = 3.0). pixelSize is the reciprocal.
+    const CGFloat displayScale = ({
+        CGFloat scale = _scrollView.window.screen.scale;
+        if (scale <= FLT_EPSILON) { scale = _scrollView.traitCollection.displayScale; }
+        (scale <= FLT_EPSILON) ? 1.0f : scale;
+    });
 
-/// Sets up x(t) = exp(-β·t)·(c1 + c2·t) and computes its analytical settle duration. v0 is signed
-/// in the direction of motion; positive means "still moving away from rest".
-- (void)_armRubberBandSpringWithDisplacement:(CGFloat)x0 velocity:(CGFloat)v0 atTime:(CFTimeInterval)now TOPAGINGVIEW_OBJC_DIRECT {
-    const CGFloat beta = sqrt(kTOAnimatorRubberBandSpringStiffness / kTOAnimatorRubberBandSpringMass)
-                       * kTOAnimatorRubberBandSpringDampingRatio;
-    _springBeta = beta;
-    _springC1 = x0;
-    _springC2 = v0 + beta * x0;
-    _springStartTime = now;
+    // 'Slow Animations' coefficient on the simulator; 1.0 on device.
+    const CGFloat animationDragCoefficient = ({
+        #if TARGET_OS_SIMULATOR
+            extern float UIAnimationDragCoefficient(void) __attribute__((weak_import));
+            const float dragCoefficient = (UIAnimationDragCoefficient != NULL) ? UIAnimationDragCoefficient() : 1.0f;
+            (dragCoefficient > FLT_EPSILON) ? dragCoefficient : 1.0f;
+        #else
+            1.0f;
+        #endif
+    });
 
-    // Settle time: max of when each closed-form component decays below `threshold`. Components
-    // already under the threshold contribute 0.
-    const CGFloat threshold = kTOAnimatorRubberBandSpringSettleThreshold;
-    const CFTimeInterval t1 = (fabs(_springC1) > threshold * 0.5f)
-        ? (1.0 / beta) * log(2.0 * fabs(_springC1) / threshold) : 0.0;
-    const CFTimeInterval t2 = (fabs(_springC2) > (CGFloat)M_E * beta * threshold * 0.25f)
-        ? (2.0 / beta) * log(4.0 * fabs(_springC2) / ((CGFloat)M_E * beta * threshold)) : 0.0;
-    _springDuration = fmax(0.0, fmax(t1, t2));
-    _isInSpringSettle = YES;
+    _environmentMetrics = (TOPagingViewAnimatorEnvironmentMetrics){
+        .displayScale = displayScale,
+        .pixelSize = 1.0f / fmax(displayScale, 1.0f),
+        .animationDragCoefficient = animationDragCoefficient,
+    };
 }
 
 @end

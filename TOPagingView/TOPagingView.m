@@ -1064,10 +1064,10 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     // Completion block after the initial pull back is started
     void (^pullAnimationCompletionBlock)(BOOL) = ^(BOOL success) {
         // Play a very wobbly spring back animation snapping back into place
-        [UIView animateWithDuration:0.4f
+        [UIView animateWithDuration:0.65f
                               delay:0.0f
-             usingSpringWithDamping:0.3f
-              initialSpringVelocity:0.1f
+             usingSpringWithDamping:1.0f
+              initialSpringVelocity:1.0f
                             options:kTOPagingViewAnimationOptions
                          animations:popAnimationBlock
                          completion:popAnimationCompletionBlock];
@@ -1078,10 +1078,10 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // Kickstart the animation chain.
     // Play a very quick rubber-banding slide out to the bumper padding
-    [UIView animateWithDuration:0.1f
+    [UIView animateWithDuration:0.3f
                           delay:0.0f
          usingSpringWithDamping:1.0f
-          initialSpringVelocity:2.5f
+          initialSpringVelocity:0.0f
                         options:kTOPagingViewAnimationOptions
                      animations:pullAnimationBlock
                      completion:pullAnimationCompletionBlock];

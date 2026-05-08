@@ -31,8 +31,8 @@ static NSString *const kTOPagingViewDefaultIdentifier = @"TOPagingView.DefaultPa
 static const CGFloat kTOPagingViewPageSlotCount = 3.0f;
 
 /// The amount of padding along the edge of the screen shown when the "no incoming page" animation plays.
-static const CGFloat kTOPagingViewBumperWidthCompact = 48.0f;
-static const CGFloat kTOPagingViewBumperWidthRegular = 96.0f;
+static const CGFloat kTOPagingViewBumperWidthCompact = 96.0f;
+static const CGFloat kTOPagingViewBumperWidthRegular = 192.0f;
 
 /// The animation options used for the bounce animation.
 static const UIViewAnimationOptions kTOPagingViewAnimationOptions = UIViewAnimationOptionAllowUserInteraction;
