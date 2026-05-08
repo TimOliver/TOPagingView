@@ -57,6 +57,13 @@ NS_ASSUME_NONNULL_BEGIN
 /// Called when the animation completes naturally (not when stopped mid-way).
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
 
+/// When YES, the in-flight animation passes any offset past the rest position (`pageWidth`)
+/// in the direction of motion through UIScrollView's rubber-band formula. The bezier's velocity
+/// at the crossing drives how far the visible offset stretches, with a soft asymptote one page
+/// wide so the page never scrolls fully into the void. Cleared on stop and on a fresh-direction
+/// turn so a reversal isn't resisted.
+@property (nonatomic, assign) BOOL rubberBandsAtRest;
+
 /// Animates toward the next page in the given direction.
 /// @param direction The edge to turn toward (UIRectEdgeLeft or UIRectEdgeRight).
 - (void)turnToPageInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT;
@@ -69,10 +76,6 @@ NS_ASSUME_NONNULL_BEGIN
 /// were offset by one page segment. We pass that segment delta here so the
 /// animator can rebase its absolute content offset targets.
 - (void)didTransitionWithOffset:(CGFloat)offset TOPAGINGVIEW_OBJC_DIRECT;
-
-/// Called when we've detected we're in animation run and we're about to hit the outer boundary of pages.
-/// This method modifies the current velocity so it gracefully decelerates to the boundary instead.
-- (void)clampAnimationToOffset:(CGFloat)targetOffset TOPAGINGVIEW_OBJC_DIRECT;
 
 /// Returns a pointer to the animator's live state struct. The pointer's lifetime matches the animator's.
 /// Callers may cache it and read fields directly to avoid per-tick ObjC property accessors.
