@@ -476,7 +476,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (nullable UIView<TOPagingViewPage> *)_fetchAdjacentPageForType:(TOPagingViewPageType)pageType
                                                 currentPageView:(nullable UIView<TOPagingViewPage> *)currentPageView
-                                         clampAnimatorIfMissing:(BOOL)clampAnimatorIfMissing TOPAGINGVIEW_OBJC_DIRECT {
+                                         rubberBandIfMissing:(BOOL)rubberBandIfMissing TOPAGINGVIEW_OBJC_DIRECT {
     NSAssert(_dataSource != nil, @"Data source must be set before fetching pages.");
     NSAssert(pageType == TOPagingViewPageTypeNext || pageType == TOPagingViewPageTypePrevious,
              @"_fetchAdjacentPageForType: only handles Next or Previous page types.");
@@ -497,7 +497,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
             _previousPageView = pageView;
             _previousPageView.frame = _layoutMetrics.previousPageFrame;
         }
-    } else if (clampAnimatorIfMissing) {
+    } else if (rubberBandIfMissing) {
         // No further page in this direction.
         // Arm the animator to apply UIScrollView's rubber-band
         // formula to any travel past the rest position.
@@ -510,11 +510,11 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 }
 
 - (void)_fetchNewNextPage TOPAGINGVIEW_OBJC_DIRECT {
-    [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext currentPageView:_currentPageView clampAnimatorIfMissing:YES];
+    [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext currentPageView:_currentPageView rubberBandIfMissing:YES];
 }
 
 - (void)_fetchNewPreviousPage TOPAGINGVIEW_OBJC_DIRECT {
-    [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious currentPageView:_currentPageView clampAnimatorIfMissing:YES];
+    [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious currentPageView:_currentPageView rubberBandIfMissing:YES];
 }
 
 - (void)fetchAdjacentPagesIfAvailable {
@@ -522,12 +522,12 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
     // If there currently isn't a previous page, check again to see if there is one now.
     if (!_hasPreviousPage) {
-        [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious currentPageView:_currentPageView clampAnimatorIfMissing:NO];
+        [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious currentPageView:_currentPageView rubberBandIfMissing:NO];
     }
 
     // If there currently isn't a next page, check again
     if (!_hasNextPage) {
-        [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext currentPageView:_currentPageView clampAnimatorIfMissing:NO];
+        [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext currentPageView:_currentPageView rubberBandIfMissing:NO];
     }
 
     // If we're on the initial page, set the previous page state to match whatever the next state is
@@ -603,7 +603,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     // Re-poll the data source if the requested direction has no page slot. A user tap is the
     // freshest signal that they want to advance — if the data source has finished loading the
     // page since we last asked, pick it up here rather than wait for the async refresh path.
-    // If a clamp Hermite is mid-flight and the retry resolves the page, drop the settle so we
+    // If a rubber-band animation is mid-flight and the retry resolves the page, stop it so we
     // can redirect forward from the current visual position.
     if (!hasLeftPage) {
         [self fetchAdjacentPagesIfAvailable];
@@ -1055,7 +1055,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     const CGFloat bumperPadding = ((isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) + _pageSpacing)
                                     * offsetModifier;
     const CGPoint origin = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
-    const CGPoint bumperOffset = (CGPoint){origin.x + bumperPadding , 0.0f};
+    const CGPoint bumperOffset = (CGPoint){origin.x + bumperPadding, 0.0f};
 
     // Set the various animation blocks so we pull to the side, and then snap back to the middle
     void (^pullAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:bumperOffset animated:NO]; };

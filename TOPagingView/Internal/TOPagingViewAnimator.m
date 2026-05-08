@@ -371,6 +371,9 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
 
 /// If the active bezier has just carried the offset past the rest boundary, replace it with a
 /// spring whose v0 matches the bezier's instantaneous velocity. Returns YES if the swap fired.
+/// Assumes the rest position is `_pageWidth` (the middle slot), which is true for every site
+/// that arms `rubberBandsAtRest` today — the flag is only set when an adjacent-page fetch
+/// returns nil while the current page is centered.
 - (BOOL)_handOffBezierToSpringIfCrossingBoundaryAtValue:(CGFloat)value time:(CFTimeInterval)now TOPAGINGVIEW_OBJC_DIRECT {
     if (!_rubberBandsAtRest) { return NO; }
     if (![_activeTiming isKindOfClass:[TOPagingViewBezierTimingParameters class]]) { return NO; }
