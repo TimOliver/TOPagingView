@@ -275,9 +275,12 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
     _state.direction = pageDirection;
     _rubberBandsAtRest = NO;
 
+    // Target the page boundary one full page past where natural decel would settle: round
+    // startOffset to the nearest boundary (its decel rest), then advance one page in tap dir.
+    // This way a tap mid-decel always adds a full page beyond what the swipe would have done.
     const CGFloat startOffset = TOPagingViewAnimatorRoundToPixel(scrollView.contentOffset.x, _environmentMetrics.displayScale);
-    CGFloat endOffset = (pageDirection == UIRectEdgeRight) ? ceil(startOffset / _pageWidth + FLT_EPSILON) * _pageWidth
-                                                           : floor(startOffset / _pageWidth - FLT_EPSILON) * _pageWidth;
+    const CGFloat nearestRest = round(startOffset / _pageWidth) * _pageWidth;
+    CGFloat endOffset = nearestRest + TOPagingViewAnimatorDirectionMultiplier(pageDirection) * _pageWidth;
     endOffset = TOPagingViewAnimatorRoundToPixel(endOffset, _environmentMetrics.displayScale);
     _activeTiming = [TOPagingViewBezierTimingParameters timingParametersWithStartOffset:startOffset
                                                                               endOffset:endOffset
