@@ -1052,9 +1052,10 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 - (void)_playBounceAnimationInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT {
     const BOOL isCompactSizeClass = self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact;
     const CGFloat offsetModifier = (direction == UIRectEdgeLeft) ? -1.0f : 1.0f;
-    const CGFloat bumperPadding = (isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) * offsetModifier;
+    const CGFloat bumperPadding = ((isCompactSizeClass ? kTOPagingViewBumperWidthCompact : kTOPagingViewBumperWidthRegular) + _pageSpacing)
+                                    * offsetModifier;
     const CGPoint origin = (CGPoint){_layoutMetrics.pageWidth, 0.0f};
-    const CGPoint bumperOffset = (CGPoint){origin.x + bumperPadding, 0.0f};
+    const CGPoint bumperOffset = (CGPoint){origin.x + bumperPadding , 0.0f};
 
     // Set the various animation blocks so we pull to the side, and then snap back to the middle
     void (^pullAnimationBlock)(void) = ^{ [self->_scrollView setContentOffset:bumperOffset animated:NO]; };

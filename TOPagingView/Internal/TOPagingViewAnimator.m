@@ -35,11 +35,10 @@
 /// Default duration for page turn animations.
 static const CFTimeInterval kTOAnimatorDefaultDuration = 0.5f;
 
-/// Critically damped rubber-band spring. Closed-form x(t) = exp(-β·t)·(c1 + c2·t) per
-/// ScrollMechanics' SpringTimingParameters. Higher stiffness = snappier; settleThreshold caps
-/// the duration once visible motion is sub-pixel.
+/// Critically damped rubber-band spring. Closed-form x(t) = exp(-β·t)·(c1 + c2·t)
+/// Higher stiffness = snappier; settleThreshold caps the duration once visible motion is sub-pixel.
 static const CGFloat kTOAnimatorRubberBandSpringMass            = 1.0f;
-static const CGFloat kTOAnimatorRubberBandSpringStiffness       = 300.0f;
+static const CGFloat kTOAnimatorRubberBandSpringStiffness       = 250.0f;
 static const CGFloat kTOAnimatorRubberBandSpringSettleThreshold = 0.5f;
 
 /// Cubic bezier control points for the ease-out curve.
