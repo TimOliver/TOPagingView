@@ -498,9 +498,9 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
             _previousPageView.frame = _layoutMetrics.previousPageFrame;
         }
     } else if (rubberBandIfMissing) {
-        // No further page in this direction.
-        // Arm the animator to apply UIScrollView's rubber-band
-        // formula to any travel past the rest position.
+        // No further page in this direction. Arm the animator so any travel past the rest
+        // position hands off from the bezier to the critically-damped spring instead of
+        // sailing into the next slot.
         _pageAnimator.rubberBandsAtRest = YES;
     }
 

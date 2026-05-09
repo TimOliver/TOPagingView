@@ -277,12 +277,8 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
         // span * slopeAtStart / duration, with span = _pageWidth.
         const CGFloat dir = TOPagingViewAnimatorDirectionMultiplier(pageDirection);
         const CGFloat impulse = dir * _pageWidth * kTOAnimatorBezierInitialSlope / (CGFloat)segmentDuration;
-        _activeTiming = [TOPagingViewSpringTimingParameters timingParametersWithRestOffset:_pageWidth
-                                                                              displacement:(currentValue - _pageWidth)
-                                                                                  velocity:(currentVelocity + impulse)
-                                                                                      mass:kTOAnimatorRubberBandSpringMass
-                                                                                 stiffness:kTOAnimatorRubberBandSpringStiffness
-                                                                                 threshold:kTOAnimatorRubberBandSpringSettleThreshold];
+        _activeTiming = [self _rubberBandSpringFromDisplacement:(currentValue - _pageWidth)
+                                                        velocity:(currentVelocity + impulse)];
         _activeStartTime = referenceTime;
         return;
     }
@@ -407,9 +403,10 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
 
 /// If the active bezier has just carried the offset past the rest boundary, replace it with a
 /// spring whose v0 matches the bezier's instantaneous velocity. Returns YES if the swap fired.
-/// Assumes the rest position is `_pageWidth` (the middle slot), which is true for every site
-/// that arms `rubberBandsAtRest` today — the flag is only set when an adjacent-page fetch
-/// returns nil while the current page is centered.
+/// Assumes the rest position is `_pageWidth` (the middle slot). All callers that arm
+/// `rubberBandsAtRest` do so when the current page is centered — either implicitly when an
+/// adjacent-page fetch returns nil, or explicitly from the turn methods when the user taps
+/// past the last/first page.
 - (BOOL)_handOffBezierToSpringIfCrossingBoundaryAtValue:(CGFloat)value time:(CFTimeInterval)now TOPAGINGVIEW_OBJC_DIRECT {
     if (!_rubberBandsAtRest) { return NO; }
     if (![_activeTiming isKindOfClass:[TOPagingViewBezierTimingParameters class]]) { return NO; }
@@ -417,15 +414,23 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
 
     TOPagingViewBezierTimingParameters *const bezier = (TOPagingViewBezierTimingParameters *)_activeTiming;
     const CGFloat velocity = [bezier velocityAtTime:(now - _activeStartTime)];
-    _activeTiming = [TOPagingViewSpringTimingParameters timingParametersWithRestOffset:_pageWidth
-                                                                          displacement:(value - _pageWidth)
-                                                                              velocity:velocity
-                                                                                  mass:kTOAnimatorRubberBandSpringMass
-                                                                             stiffness:kTOAnimatorRubberBandSpringStiffness
-                                                                             threshold:kTOAnimatorRubberBandSpringSettleThreshold];
+    _activeTiming = [self _rubberBandSpringFromDisplacement:(value - _pageWidth) velocity:velocity];
     _activeStartTime = now;
     _scrollView.contentOffset = (CGPoint){TOPagingViewAnimatorRoundToPixel(value, _environmentMetrics.displayScale), 0.0f};
     return YES;
+}
+
+/// Builds a critically-damped rubber-band spring around the middle slot. Centralizes the
+/// (mass, stiffness, threshold) constants so the impulse branch and the bezier-handoff path
+/// stay in sync.
+- (TOPagingViewSpringTimingParameters *)_rubberBandSpringFromDisplacement:(CGFloat)displacement
+                                                                  velocity:(CGFloat)velocity TOPAGINGVIEW_OBJC_DIRECT {
+    return [TOPagingViewSpringTimingParameters timingParametersWithRestOffset:_pageWidth
+                                                                  displacement:displacement
+                                                                      velocity:velocity
+                                                                          mass:kTOAnimatorRubberBandSpringMass
+                                                                     stiffness:kTOAnimatorRubberBandSpringStiffness
+                                                                     threshold:kTOAnimatorRubberBandSpringSettleThreshold];
 }
 
 #pragma mark - Environment -

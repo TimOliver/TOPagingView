@@ -46,7 +46,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
               currentPageView:(TOTestPageView *)currentPageView {
     TOTestPageView *pageView = [pagingView dequeueReusablePageView];
     if (self.pageIndex >= 5) { return nil; }
-    
+
     switch (type) {
     case TOPagingViewPageTypeCurrent:
         pageView.number = self.pageIndex;
@@ -176,7 +176,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     tapRecognizer.delegate = self;
     [self.pagingView addGestureRecognizer:tapRecognizer];
     [self.pagingView.scrollView.panGestureRecognizer requireGestureRecognizerToFail:tapRecognizer];
-    
+
     // Add a button to toggle page turning direction
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.tintColor = [UIColor whiteColor];
