@@ -45,7 +45,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// Must be set before calling `turnToPageInDirection:`.
 @property (nonatomic, assign) CGFloat pageWidth;
 
-/// The duration of each animation cycle in seconds (default 0.4).
+/// The duration of each animation cycle in seconds (default 0.5).
 @property (nonatomic, assign) CFTimeInterval duration;
 
 /// Whether an animation is currently in progress.
@@ -56,6 +56,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Called when the animation completes naturally (not when stopped mid-way).
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
+
+/// When YES, the moment the in-flight bezier crosses the rest position the animator hands off
+/// to a critically damped spring whose initial velocity matches the bezier. The spring continues
+/// past briefly, peaks, and decays back to rest as one continuous motion. Cleared on stop and
+/// on direction reversal — same-direction taps during settle keep the flag armed so each tap
+/// re-energises the spring rather than getting absorbed.
+@property (nonatomic, assign) BOOL rubberBandsAtRest;
 
 /// Animates toward the next page in the given direction.
 /// @param direction The edge to turn toward (UIRectEdgeLeft or UIRectEdgeRight).
@@ -69,10 +76,6 @@ NS_ASSUME_NONNULL_BEGIN
 /// were offset by one page segment. We pass that segment delta here so the
 /// animator can rebase its absolute content offset targets.
 - (void)didTransitionWithOffset:(CGFloat)offset TOPAGINGVIEW_OBJC_DIRECT;
-
-/// Called when we've detected we're in animation run and we're about to hit the outer boundary of pages.
-/// This method modifies the current velocity so it gracefully decelerates to the boundary instead.
-- (void)clampAnimationToOffset:(CGFloat)targetOffset TOPAGINGVIEW_OBJC_DIRECT;
 
 /// Returns a pointer to the animator's live state struct. The pointer's lifetime matches the animator's.
 /// Callers may cache it and read fields directly to avoid per-tick ObjC property accessors.

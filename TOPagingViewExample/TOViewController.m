@@ -14,7 +14,7 @@
 static NSString *const kTOPagingViewAccessibilityIdentifier = @"paging_view";
 static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_button";
 
-@interface TOViewController () <TOPagingViewDataSource, TOPagingViewDelegate, UIScrollViewDelegate>
+@interface TOViewController () <TOPagingViewDataSource, TOPagingViewDelegate, UIScrollViewDelegate, UIGestureRecognizerDelegate>
 
 // Current page state tracking
 @property (nonatomic, assign) NSInteger pageIndex;
@@ -45,6 +45,7 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
                pageViewForType:(TOPagingViewPageType)type
               currentPageView:(TOTestPageView *)currentPageView {
     TOTestPageView *pageView = [pagingView dequeueReusablePageView];
+    if (self.pageIndex >= 5) { return nil; }
 
     switch (type) {
     case TOPagingViewPageTypeCurrent:
@@ -119,6 +120,11 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     }
 }
 
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
+    shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+    return YES;
+}
+
 #pragma mark - UIScrollViewDelegate -
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
@@ -163,10 +169,13 @@ static NSString *const kTODirectionButtonAccessibilityIdentifier = @"direction_b
     // Force it to become first responder to receive keyboard input
     [self.pagingView becomeFirstResponder];
 
-    // Add a tap recognizer to turn pages
+    // Add a tap recognizer to turn pages. The delegate lets it recognize alongside the scroll
+    // view's pan, otherwise taps during deceleration get held up by gesture coordination.
     UITapGestureRecognizer *tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self
                                                                                     action:@selector(tapGestureRecognized:)];
+    tapRecognizer.delegate = self;
     [self.pagingView addGestureRecognizer:tapRecognizer];
+    [self.pagingView.scrollView.panGestureRecognizer requireGestureRecognizerToFail:tapRecognizer];
 
     // Add a button to toggle page turning direction
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
