@@ -164,11 +164,11 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
 
 @interface TOPagingViewSpringTimingParameters : NSObject <TOPagingViewTimingParameters>
 + (instancetype)timingParametersWithRestOffset:(CGFloat)restOffset
-                                    displacement:(CGFloat)displacement
-                                        velocity:(CGFloat)velocity
-                                            mass:(CGFloat)mass
-                                       stiffness:(CGFloat)stiffness
-                                       threshold:(CGFloat)threshold TOPAGINGVIEW_OBJC_DIRECT;
+                                  displacement:(CGFloat)displacement
+                                      velocity:(CGFloat)velocity
+                                          mass:(CGFloat)mass
+                                     stiffness:(CGFloat)stiffness
+                                     threshold:(CGFloat)threshold TOPAGINGVIEW_OBJC_DIRECT;
 /// Closed-form velocity at time t: x'(t) = exp(-β·t)·(c2 − β·(c1 + c2·t)).
 - (CGFloat)velocityAtTime:(CFTimeInterval)t TOPAGINGVIEW_OBJC_DIRECT;
 @end
@@ -184,11 +184,11 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
 @synthesize duration = _duration;
 
 + (instancetype)timingParametersWithRestOffset:(CGFloat)restOffset
-                                    displacement:(CGFloat)displacement
-                                        velocity:(CGFloat)velocity
-                                            mass:(CGFloat)mass
-                                       stiffness:(CGFloat)stiffness
-                                       threshold:(CGFloat)threshold {
+                                  displacement:(CGFloat)displacement
+                                      velocity:(CGFloat)velocity
+                                          mass:(CGFloat)mass
+                                     stiffness:(CGFloat)stiffness
+                                     threshold:(CGFloat)threshold {
     TOPagingViewSpringTimingParameters *p = [self new];
     const CGFloat beta = (CGFloat)sqrt(stiffness / mass); // critical damping (ζ = 1)
     p->_restOffset = restOffset;
@@ -283,10 +283,13 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
         return;
     }
 
-    // Stacking: same-direction tap mid-flight extends the active bezier by another page. Only
-    // valid for normal page chains while the active timing is still a bezier — rubber-band
-    // taps go through the impulse branch above instead.
-    if (_state.isAnimating && pageDirection == _state.direction && !_rubberBandsAtRest
+    // Stacking: same-direction tap mid-flight extends the active bezier by another page.
+    // Applies whether or not the rubber-band is armed — for the rubber-band-armed case it
+    // preserves the bezier's accumulated forward velocity across the boundary so a tap that
+    // arrives just as the page transitions in doesn't reset to a single-page span and visibly
+    // drop the velocity. The handoff cap downstream prevents the resulting overshoot from
+    // scaling with how stacked the bezier got.
+    if (_state.isAnimating && pageDirection == _state.direction
         && [_activeTiming isKindOfClass:[TOPagingViewBezierTimingParameters class]]) {
         TOPagingViewBezierTimingParameters *const bezier = (TOPagingViewBezierTimingParameters *)_activeTiming;
         const CFTimeInterval referenceTime = (_displayLink != nil) ? _displayLink.targetTimestamp : now;
@@ -424,13 +427,13 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
 /// (mass, stiffness, threshold) constants so the impulse branch and the bezier-handoff path
 /// stay in sync.
 - (TOPagingViewSpringTimingParameters *)_rubberBandSpringFromDisplacement:(CGFloat)displacement
-                                                                  velocity:(CGFloat)velocity TOPAGINGVIEW_OBJC_DIRECT {
+                                                                 velocity:(CGFloat)velocity TOPAGINGVIEW_OBJC_DIRECT {
     return [TOPagingViewSpringTimingParameters timingParametersWithRestOffset:_pageWidth
-                                                                  displacement:displacement
-                                                                      velocity:velocity
-                                                                          mass:kTOAnimatorRubberBandSpringMass
-                                                                     stiffness:kTOAnimatorRubberBandSpringStiffness
-                                                                     threshold:kTOAnimatorRubberBandSpringSettleThreshold];
+                                                                 displacement:displacement
+                                                                     velocity:velocity
+                                                                         mass:kTOAnimatorRubberBandSpringMass
+                                                                    stiffness:kTOAnimatorRubberBandSpringStiffness
+                                                                    threshold:kTOAnimatorRubberBandSpringSettleThreshold];
 }
 
 #pragma mark - Environment -
