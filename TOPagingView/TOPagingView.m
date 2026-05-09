@@ -153,8 +153,11 @@
     // The proxy forwards calls to an external delegate while also handling internal scroll tracking.
     scrollView.delegate = _scrollViewDelegateProxy;
 
-    // Enable scrolling by clicking and dragging with the mouse
-    // The only way to do this is via a private API. FB10593893 was filed to request this property is made public.
+    // Enable scrolling by clicking and dragging with the mouse. The only way to do this is via
+    // a private API. FB10593893 was filed to request this property be made public. The selector
+    // is assembled from fragments so the literal symbol name doesn't appear in the binary.
+    // `afterDelay:0` defers the call to the next runloop turn so it lands after `_setUp`
+    // returns and the scroll view has been fully wired into the view hierarchy.
     if (@available(iOS 14.0, *)) {
         NSArray *const selectorComponents = @[@"_", @"set", @"SupportsPointerDragScrolling:"];
         SEL selector = NSSelectorFromString([selectorComponents componentsJoinedByString:@""]);
@@ -458,8 +461,10 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (void)reloadAdjacentPages {
     // Reclaim the previous and next pages
-    TOPagingViewReclaimPageView(self, _nextPageView);     TOPagingViewSetNextPageView(self, nil);
-    TOPagingViewReclaimPageView(self, _previousPageView); _previousPageView = nil;
+    TOPagingViewReclaimPageView(self, _nextPageView);
+    TOPagingViewSetNextPageView(self, nil);
+    TOPagingViewReclaimPageView(self, _previousPageView);
+    _previousPageView = nil;
 
     // Set the flags to yes to ensure the following flow isn't blocked
     _hasNextPage = YES;
@@ -476,7 +481,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
 - (nullable UIView<TOPagingViewPage> *)_fetchAdjacentPageForType:(TOPagingViewPageType)pageType
                                                 currentPageView:(nullable UIView<TOPagingViewPage> *)currentPageView
-                                         rubberBandIfMissing:(BOOL)rubberBandIfMissing TOPAGINGVIEW_OBJC_DIRECT {
+                                            rubberBandIfMissing:(BOOL)rubberBandIfMissing TOPAGINGVIEW_OBJC_DIRECT {
     NSAssert(_dataSource != nil, @"Data source must be set before fetching pages.");
     NSAssert(pageType == TOPagingViewPageTypeNext || pageType == TOPagingViewPageTypePrevious,
              @"_fetchAdjacentPageForType: only handles Next or Previous page types.");
@@ -720,7 +725,11 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
     TOPagingViewInsertPageView(view, pageView);
     view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
     
-    // Fetch next and previous pages. If we're on the initial page when adaptive direction is enabled, skip previous for now.
+    // Fetch next and previous pages. In adaptive-direction mode the user can swipe either way
+    // off the initial page, so we don't fetch a separate previous page — the same `next` page
+    // gets repositioned on either side as the user picks a direction. Mirror `_hasNextPage`
+    // onto `_hasPreviousPage` so the swipe-left path doesn't immediately bail thinking it's
+    // run out of pages.
     [view _fetchNewNextPage];
     if (!view->_isAdaptivePageDirectionEnabled || !view->_isCurrentPageInitial) {
         [view _fetchNewPreviousPage];
@@ -981,8 +990,10 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // Zero out the adjacent pages and set the
     // next/previous flags to ensure we'll query for new pages
-    TOPagingViewSetNextPageView(self, nil); _hasNextPage = NO;
-    _previousPageView = nil; _hasPreviousPage = NO;
+    TOPagingViewSetNextPageView(self, nil);
+    _previousPageView = nil;
+    _hasNextPage = NO;
+    _hasPreviousPage = NO;
 
     // If we're not animating, we can rearrange everything statically and cancel out here
     if (!animated) {
@@ -1069,7 +1080,10 @@ static void TOPagingViewInsertPageView(TOPagingView *view, UIView<TOPagingViewPa
 static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView) {
     if (pageView == nil) { return; }
 
-    // Skip internal UIScrollView views (use class_getName to avoid NSString allocation)
+    // Skip the private subviews UIScrollView injects (scroll indicators, etc — class names
+    // start with `_`). Reclaiming one of those into the page-reuse pool would later crash when
+    // we tried to dequeue and configure it as a page. `class_getName` avoids the NSString
+    // allocation a `+description` / `NSStringFromClass` would incur on every reclaim.
     if (class_getName([pageView class])[0] == '_') { return; }
 
     // Fetch the protocol flags for this class and make any appropriate calls now
