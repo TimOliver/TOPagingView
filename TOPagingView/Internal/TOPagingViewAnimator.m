@@ -283,10 +283,13 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
         return;
     }
 
-    // Stacking: same-direction tap mid-flight extends the active bezier by another page. Only
-    // valid for normal page chains while the active timing is still a bezier — rubber-band
-    // taps go through the impulse branch above instead.
-    if (_state.isAnimating && pageDirection == _state.direction && !_rubberBandsAtRest
+    // Stacking: same-direction tap mid-flight extends the active bezier by another page.
+    // Applies whether or not the rubber-band is armed — for the rubber-band-armed case it
+    // preserves the bezier's accumulated forward velocity across the boundary so a tap that
+    // arrives just as the page transitions in doesn't reset to a single-page span and visibly
+    // drop the velocity. The handoff cap downstream prevents the resulting overshoot from
+    // scaling with how stacked the bezier got.
+    if (_state.isAnimating && pageDirection == _state.direction
         && [_activeTiming isKindOfClass:[TOPagingViewBezierTimingParameters class]]) {
         TOPagingViewBezierTimingParameters *const bezier = (TOPagingViewBezierTimingParameters *)_activeTiming;
         const CFTimeInterval referenceTime = (_displayLink != nil) ? _displayLink.targetTimestamp : now;
