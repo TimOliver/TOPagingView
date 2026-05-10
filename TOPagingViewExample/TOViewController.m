@@ -33,54 +33,11 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 
 @implementation TOViewController
 
-#pragma mark - Accessibility -
-
-- (NSArray<NSString *> *)launchArguments {
-    return NSProcessInfo.processInfo.arguments;
-}
-
-- (BOOL)launchArgumentsContainValue:(NSString *)value {
-    return [[self launchArguments] containsObject:value];
-}
-
-- (NSInteger)integerLaunchArgumentAfterValue:(NSString *)value defaultValue:(NSInteger)defaultValue {
-    NSArray<NSString *> *arguments = [self launchArguments];
-    const NSUInteger index = [arguments indexOfObject:value];
-    if (index == NSNotFound || index + 1 >= arguments.count) { return defaultValue; }
-
-    return arguments[index + 1].integerValue;
-}
-
-- (void)configureFromLaunchArguments {
-    self.pageIndex = 0;
-    self.maximumPageIndex = [self integerLaunchArgumentAfterValue:kTOLaunchArgumentMaxPage defaultValue:10];
-    self.startsWithAdaptivePageDirection = [self launchArgumentsContainValue:kTOLaunchArgumentAdaptive];
-    self.startingPageScrollDirection =
-        [self launchArgumentsContainValue:kTOLaunchArgumentRTL] ? TOPagingViewDirectionRightToLeft : TOPagingViewDirectionLeftToRight;
-}
-
-- (void)updatePagingViewAccessibilityState {
-    if (self.pagingView == nil) { return; }
-
-    const CGFloat pageWidth = CGRectGetWidth(self.pagingView.bounds) + self.pagingView.pageSpacing;
-    CGFloat offsetError = self.pagingView.scrollView.contentOffset.x - pageWidth;
-    if (fabs(offsetError) < 0.0005f) { offsetError = 0.0f; }
-
-    self.pagingView.accessibilityValue = [NSString stringWithFormat:@"page=%ld;offset=%.3f", (long)self.pageIndex, offsetError];
-}
-
-- (void)updateDirectionButtonTitle {
-    const BOOL isReversed = (self.pagingView.pageScrollDirection == TOPagingViewDirectionRightToLeft);
-    [self.button setTitle:(isReversed ? @"Left" : @"Right") forState:UIControlStateNormal];
-}
-
 #pragma mark - Paging View Data Source -
 
 - (TOTestPageView *)pagingView:(TOPagingView *)pagingView
 	               pageViewForType:(TOPagingViewPageType)type
-	              currentPageView:(TOTestPageView *)currentPageView {
-    (void)currentPageView;
-
+	              currentPageView:(__unused TOTestPageView *)currentPageView {
     NSInteger pageNumber = self.pageIndex;
     switch (type) {
     case TOPagingViewPageTypeCurrent:
@@ -248,6 +205,47 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     }
     self.pagingView.pageScrollDirection = direction;
     [self updateDirectionButtonTitle];
+}
+
+#pragma mark - Accessibility -
+
+- (NSArray<NSString *> *)launchArguments {
+    return NSProcessInfo.processInfo.arguments;
+}
+
+- (BOOL)launchArgumentsContainValue:(NSString *)value {
+    return [[self launchArguments] containsObject:value];
+}
+
+- (NSInteger)integerLaunchArgumentAfterValue:(NSString *)value defaultValue:(NSInteger)defaultValue {
+    NSArray<NSString *> *arguments = [self launchArguments];
+    const NSUInteger index = [arguments indexOfObject:value];
+    if (index == NSNotFound || index + 1 >= arguments.count) { return defaultValue; }
+
+    return arguments[index + 1].integerValue;
+}
+
+- (void)configureFromLaunchArguments {
+    self.pageIndex = 0;
+    self.maximumPageIndex = [self integerLaunchArgumentAfterValue:kTOLaunchArgumentMaxPage defaultValue:10];
+    self.startsWithAdaptivePageDirection = [self launchArgumentsContainValue:kTOLaunchArgumentAdaptive];
+    self.startingPageScrollDirection =
+        [self launchArgumentsContainValue:kTOLaunchArgumentRTL] ? TOPagingViewDirectionRightToLeft : TOPagingViewDirectionLeftToRight;
+}
+
+- (void)updatePagingViewAccessibilityState {
+    if (self.pagingView == nil) { return; }
+
+    const CGFloat pageWidth = CGRectGetWidth(self.pagingView.bounds) + self.pagingView.pageSpacing;
+    CGFloat offsetError = self.pagingView.scrollView.contentOffset.x - pageWidth;
+    if (fabs(offsetError) < 0.0005f) { offsetError = 0.0f; }
+
+    self.pagingView.accessibilityValue = [NSString stringWithFormat:@"page=%ld;offset=%.3f", (long)self.pageIndex, offsetError];
+}
+
+- (void)updateDirectionButtonTitle {
+    const BOOL isReversed = (self.pagingView.pageScrollDirection == TOPagingViewDirectionRightToLeft);
+    [self.button setTitle:(isReversed ? @"Left" : @"Right") forState:UIControlStateNormal];
 }
 
 @end
