@@ -21,6 +21,10 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		220469022FB055C90005BFA5 /* TOUnitTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 220469002FB055C90005BFA5 /* TOUnitTestPageView.m */; };
+		220469032FB055C90005BFA5 /* TOUnitTestDataSource.m in Sources */ = {isa = PBXBuildFile; fileRef = 220468FA2FB055C90005BFA5 /* TOUnitTestDataSource.m */; };
+		220469042FB055C90005BFA5 /* TOUnitTestDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 220468FC2FB055C90005BFA5 /* TOUnitTestDelegate.m */; };
+		220469052FB055C90005BFA5 /* TOUnitTestHelpers.m in Sources */ = {isa = PBXBuildFile; fileRef = 220468FE2FB055C90005BFA5 /* TOUnitTestHelpers.m */; };
 		22432FF92F75789B00A5859F /* TOPagingView+Keyboard.m in Sources */ = {isa = PBXBuildFile; fileRef = 22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */; };
 		22432FFC2F75799600A5859F /* TOPageViewProtocolCache.m in Sources */ = {isa = PBXBuildFile; fileRef = 22432FFB2F75799600A5859F /* TOPageViewProtocolCache.m */; };
 		227BEDFA27AC1867009D6B6D /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 227BEDF927AC1867009D6B6D /* CHANGELOG.md */; };
@@ -54,6 +58,14 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		220468F92FB055C90005BFA5 /* TOUnitTestDataSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOUnitTestDataSource.h; sourceTree = "<group>"; };
+		220468FA2FB055C90005BFA5 /* TOUnitTestDataSource.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOUnitTestDataSource.m; sourceTree = "<group>"; };
+		220468FB2FB055C90005BFA5 /* TOUnitTestDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOUnitTestDelegate.h; sourceTree = "<group>"; };
+		220468FC2FB055C90005BFA5 /* TOUnitTestDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOUnitTestDelegate.m; sourceTree = "<group>"; };
+		220468FD2FB055C90005BFA5 /* TOUnitTestHelpers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOUnitTestHelpers.h; sourceTree = "<group>"; };
+		220468FE2FB055C90005BFA5 /* TOUnitTestHelpers.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOUnitTestHelpers.m; sourceTree = "<group>"; };
+		220468FF2FB055C90005BFA5 /* TOUnitTestPageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOUnitTestPageView.h; sourceTree = "<group>"; };
+		220469002FB055C90005BFA5 /* TOUnitTestPageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOUnitTestPageView.m; sourceTree = "<group>"; };
 		22432FF72F75789B00A5859F /* TOPagingView+Keyboard.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "TOPagingView+Keyboard.h"; sourceTree = "<group>"; };
 		22432FF82F75789B00A5859F /* TOPagingView+Keyboard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "TOPagingView+Keyboard.m"; sourceTree = "<group>"; };
 		22432FFA2F75799600A5859F /* TOPageViewProtocolCache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPageViewProtocolCache.h; sourceTree = "<group>"; };
@@ -117,6 +129,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		220469012FB055C90005BFA5 /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+				220468F92FB055C90005BFA5 /* TOUnitTestDataSource.h */,
+				220468FA2FB055C90005BFA5 /* TOUnitTestDataSource.m */,
+				220468FB2FB055C90005BFA5 /* TOUnitTestDelegate.h */,
+				220468FC2FB055C90005BFA5 /* TOUnitTestDelegate.m */,
+				220468FD2FB055C90005BFA5 /* TOUnitTestHelpers.h */,
+				220468FE2FB055C90005BFA5 /* TOUnitTestHelpers.m */,
+				220468FF2FB055C90005BFA5 /* TOUnitTestPageView.h */,
+				220469002FB055C90005BFA5 /* TOUnitTestPageView.m */,
+			);
+			path = Helpers;
+			sourceTree = "<group>";
+		};
 		22432FF52F7501E600A5859F /* Internal */ = {
 			isa = PBXGroup;
 			children = (
@@ -180,6 +207,7 @@
 		22C31639242899AB0063F6A6 /* TOPagingViewTests */ = {
 			isa = PBXGroup;
 			children = (
+				220469012FB055C90005BFA5 /* Helpers */,
 				22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */,
 				22C3163C242899AB0063F6A6 /* Info.plist */,
 			);
@@ -377,6 +405,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				220469022FB055C90005BFA5 /* TOUnitTestPageView.m in Sources */,
+				220469032FB055C90005BFA5 /* TOUnitTestDataSource.m in Sources */,
+				220469042FB055C90005BFA5 /* TOUnitTestDelegate.m in Sources */,
+				220469052FB055C90005BFA5 /* TOUnitTestHelpers.m in Sources */,
 				22C3163B242899AB0063F6A6 /* TODynamicPageViewTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

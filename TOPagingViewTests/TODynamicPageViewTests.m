@@ -7,159 +7,11 @@
 //
 
 #import <XCTest/XCTest.h>
-#import <objc/runtime.h>
 
 #import "TOPagingView.h"
-
-#pragma mark - Test Page View
-
-@interface TOUnitTestPageView : UIView <TOPagingViewPage>
-@property (nonatomic, assign) NSInteger pageNumber;
-@property (nonatomic, assign) BOOL prepareForReuseCalled;
-@property (nonatomic, assign) NSInteger prepareForReuseCount;
-@property (nonatomic, assign) BOOL initialPage;
-@property (nonatomic, assign) TOPagingViewDirection pageDirection;
-@property (nonatomic, assign) BOOL pageDirectionWasSet;
-@end
-
-@implementation TOUnitTestPageView
-
-- (void)prepareForReuse {
-    _prepareForReuseCalled = YES;
-    _prepareForReuseCount++;
-}
-
-+ (NSString *)pageIdentifier {
-    return @"TOUnitTestPageView";
-}
-
-- (NSString *)uniqueIdentifier {
-    return [NSString stringWithFormat:@"page-%@", @(_pageNumber)];
-}
-
-- (BOOL)isInitialPage {
-    return _initialPage;
-}
-
-- (void)setPageDirection:(TOPagingViewDirection)pageDirection {
-    _pageDirection = pageDirection;
-    _pageDirectionWasSet = YES;
-}
-
-@end
-
-#pragma mark - Test Data Source
-
-@interface TOUnitTestDataSource : NSObject <TOPagingViewDataSource>
-@property (nonatomic, assign) NSInteger currentIndex;
-@property (nonatomic, assign) NSInteger minIndex;
-@property (nonatomic, assign) NSInteger maxIndex;
-@property (nonatomic, assign) NSInteger dataSourceCallCount;
-@property (nonatomic, assign) BOOL usesDequeue;
-@property (nonatomic, assign) BOOL returnsNilForCurrentPage;
-@property (nonatomic, assign) BOOL returnsCurrentPageForCurrentRequest;
-@property (nonatomic, assign) NSInteger reusedPageDequeueCount;
-@property (nonatomic, strong) NSMutableArray<NSNumber *> *requestedPageTypes;
-@end
-
-@implementation TOUnitTestDataSource
-
-- (instancetype)init {
-    self = [super init];
-    if (self) {
-        _minIndex = NSIntegerMin;
-        _maxIndex = NSIntegerMax;
-        _usesDequeue = YES;
-        _requestedPageTypes = [NSMutableArray array];
-    }
-    return self;
-}
-
-- (nullable UIView<TOPagingViewPage> *)pagingView:(TOPagingView *)pagingView
-                                   pageViewForType:(TOPagingViewPageType)type
-                                  currentPageView:(nullable TOUnitTestPageView *)currentPageView {
-    _dataSourceCallCount++;
-    [_requestedPageTypes addObject:@(type)];
-
-    if (type == TOPagingViewPageTypeCurrent && _returnsNilForCurrentPage) { return nil; }
-    if (type == TOPagingViewPageTypeCurrent && _returnsCurrentPageForCurrentRequest) { return currentPageView; }
-
-    const NSInteger referenceIndex = currentPageView ? currentPageView.pageNumber : _currentIndex;
-    NSInteger index;
-    switch (type) {
-    case TOPagingViewPageTypeCurrent:
-        index = _currentIndex;
-        break;
-    case TOPagingViewPageTypeNext:
-        index = referenceIndex + 1;
-        if (index > _maxIndex) { return nil; }
-        break;
-    case TOPagingViewPageTypePrevious:
-        index = referenceIndex - 1;
-        if (index < _minIndex) { return nil; }
-        break;
-    }
-
-    TOUnitTestPageView *pageView = nil;
-    if (_usesDequeue) {
-        pageView = [pagingView dequeueReusablePageViewForIdentifier:@"TOUnitTestPageView"];
-        if (pageView.prepareForReuseCount > 0) { _reusedPageDequeueCount++; }
-    }
-    if (pageView == nil) { pageView = [[TOUnitTestPageView alloc] initWithFrame:CGRectZero]; }
-    pageView.pageNumber = index;
-    pageView.initialPage = (type == TOPagingViewPageTypeCurrent && index == 0);
-    pageView.pageDirectionWasSet = NO;
-    return pageView;
-}
-
-@end
-
-#pragma mark - Test Delegate
-
-@interface TOUnitTestDelegate : NSObject <TOPagingViewDelegate>
-@property (nonatomic, assign) NSInteger willTurnCallCount;
-@property (nonatomic, assign) NSInteger didTurnCallCount;
-@property (nonatomic, assign) TOPagingViewPageType lastDidTurnType;
-@property (nonatomic, assign) NSInteger directionChangeCallCount;
-@property (nonatomic, assign) TOPagingViewDirection lastDirection;
-@end
-
-@implementation TOUnitTestDelegate
-
-- (void)pagingView:(TOPagingView *)pagingView willTurnToPageOfType:(TOPagingViewPageType)type {
-    _willTurnCallCount++;
-}
-
-- (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type {
-    _didTurnCallCount++;
-    _lastDidTurnType = type;
-}
-
-- (void)pagingView:(TOPagingView *)pagingView didChangeToPageDirection:(TOPagingViewDirection)direction {
-    _directionChangeCallCount++;
-    _lastDirection = direction;
-}
-
-@end
-
-#pragma mark - Test Helpers
-
-static UIView *TOCreatePrivateScrollViewSubview(void) {
-    static Class privateSubviewClass;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        privateSubviewClass = objc_getClass("_TOPrivateScrollViewSubview");
-        if (privateSubviewClass == Nil) {
-            privateSubviewClass = objc_allocateClassPair(UIView.class, "_TOPrivateScrollViewSubview", 0);
-            objc_registerClassPair(privateSubviewClass);
-        }
-    });
-    return [[privateSubviewClass alloc] initWithFrame:CGRectMake(0, 0, 10, 10)];
-}
-
-static TOUnitTestPageView *TOTestPageView(UIView<TOPagingViewPage> *pageView) {
-    return (TOUnitTestPageView *)pageView;
-}
+#import "TOUnitTestDataSource.h"
+#import "TOUnitTestDelegate.h"
+#import "TOUnitTestHelpers.h"
 
 #pragma mark - Tests
 
@@ -418,9 +270,10 @@ static TOUnitTestPageView *TOTestPageView(UIView<TOPagingViewPage> *pageView) {
     [self.pagingView layoutIfNeeded];
 
     const CGFloat pageWidth = self.pagingView.bounds.size.width + self.pagingView.pageSpacing;
+    const CGFloat pixelTolerance = 1.0f / fmax(self.pagingView.window.screen.scale, 1.0f);
     XCTAssertEqualWithAccuracy(self.pagingView.scrollView.bounds.size.width, pageWidth, 0.001);
     XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentSize.width, pageWidth * 3.0f, 0.001);
-    XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x, pageWidth, 0.001);
+    XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x, pageWidth, pixelTolerance);
 }
 
 #pragma mark - Async Page Availability
