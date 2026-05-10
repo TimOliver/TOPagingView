@@ -32,7 +32,7 @@ FOUNDATION_EXTERN void TOPagingViewHandleScrollViewDidEndDragging(TOPagingView *
 /// A lightweight proxy that intercepts UIScrollViewDelegate calls.
 /// Uses NSProxy message forwarding to automatically forward all delegate methods
 /// to the external delegate, while intercepting scrollViewDidScroll: and
-/// scrollViewWillBeginDragging: for internal state tracking.
+/// the drag begin/end callbacks for internal state tracking.
 /// This approach avoids manually implementing every UIScrollViewDelegate method.
 @interface TOScrollViewDelegateProxy : NSProxy <UIScrollViewDelegate>
 
