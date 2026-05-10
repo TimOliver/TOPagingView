@@ -287,8 +287,7 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
     // Applies whether or not the rubber-band is armed — for the rubber-band-armed case it
     // preserves the bezier's accumulated forward velocity across the boundary so a tap that
     // arrives just as the page transitions in doesn't reset to a single-page span and visibly
-    // drop the velocity. The handoff cap downstream prevents the resulting overshoot from
-    // scaling with how stacked the bezier got.
+    // drop the velocity before the spring handoff takes over.
     if (_state.isAnimating && pageDirection == _state.direction
         && [_activeTiming isKindOfClass:[TOPagingViewBezierTimingParameters class]]) {
         TOPagingViewBezierTimingParameters *const bezier = (TOPagingViewBezierTimingParameters *)_activeTiming;
@@ -300,7 +299,7 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
         _activeTiming = [TOPagingViewBezierTimingParameters timingParametersWithStartOffset:currentOffset
                                                                                   endOffset:newEnd
                                                                                    duration:segmentDuration];
-        _activeStartTime = now;
+        _activeStartTime = referenceTime;
         return;
     }
 
