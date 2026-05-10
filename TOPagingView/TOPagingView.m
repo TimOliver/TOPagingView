@@ -44,7 +44,7 @@
     /// Struct to cache the protocol state of each type of page view class used in this session.
     /// Uses NSMapTable with pointer keys to avoid NSStringFromClass allocations on lookup.
     NSMapTable<Class, TOPageViewProtocolCache *> *_pageViewProtocolFlags;
-    
+
     /// The views that are all currently in the scroll view, in specific order.
     UIView<TOPagingViewPage> * __weak _currentPageView;
     UIView<TOPagingViewPage> * __weak _nextPageView;
@@ -69,7 +69,7 @@
     CGFloat _cachedInsetLeft;  // Last value written to _scrollView.contentInset.left; used by the slot-enable short circuit.
     CGFloat _cachedInsetRight; // Last value written to _scrollView.contentInset.right; used by the slot-enable short circuit.
     CGFloat _nextPageXPosition; // Mirrors _nextPageView.frame.origin.x; maintained via TOPagingViewSetNextPageFrame.
-    
+
     /// Additional modularized components of the paging view
     TOPagingViewAnimator *_pageAnimator;                 // A real-time animator that plays an interruptible page-turning animation
     TOScrollViewDelegateProxy *_scrollViewDelegateProxy; // A proxy object that allows forwarding all UIScrollViewDelegate events to an external object
@@ -185,7 +185,7 @@
 - (void)_layoutContent TOPAGINGVIEW_OBJC_DIRECT {
     // If there are any pending previous or next page requests, fulfill them now.
     [self _requestPendingPages];
-    
+
     // Rebuild the layout metrics against (potentially) new frame size.
     [self _updateCachedLayoutMetrics];
 
@@ -200,7 +200,7 @@
         [_pageAnimator stopAnimationWithCompletion:YES];
         wasAnimating = YES;
     }
-    
+
     // Disable the observer since this code will be tweaking all of the scroll view
     _disableLayout = YES;
     {
@@ -211,7 +211,7 @@
         // Update the scroll view to the new size
         scrollView.frame = newScrollViewFrame;
         [self _updateContentSize];
-        
+
         // Update the content offset to match the amount that the width changed
         // (Only do this if there actually was an old content width, otherwise we might get a NaN error)
         if (!wasAnimating && oldContentWidth > FLT_EPSILON) {
@@ -786,7 +786,7 @@ static inline void TOPagingViewPerformInitialLayout(TOPagingView *view) {
     TOPagingViewSetCurrentPageView(view, pageView);
     TOPagingViewInsertPageView(view, pageView);
     view->_currentPageView.frame = view->_layoutMetrics.currentPageFrame;
-    
+
     // Fetch next and previous pages. In adaptive-direction mode the user can swipe either way
     // off the initial page, so we don't fetch a separate previous page — the same `next` page
     // gets repositioned on either side as the user picks a direction. Mirror `_hasNextPage`
@@ -1004,7 +1004,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     if (_delegateFlags.delegateWillTurnToPage) { [_delegate pagingView:self willTurnToPageOfType:type]; }
 
     UIScrollView *const scrollView = _scrollView;
-    
+
     // If we're not animating, set the offset to the target directly
     if (animated == NO) {
         CGFloat targetOffset = 0.0f;
@@ -1096,7 +1096,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         // Remove the previous page, now that we're done with it
         TOPagingViewReclaimPageView(strongSelf, strongSelf->_previousPageView);
         strongSelf->_previousPageView = nil;
-        
+
         // Re-enable layout and refresh adjacent pages
         strongSelf->_disableLayout = NO;
         [strongSelf fetchAdjacentPagesIfAvailable];
@@ -1176,7 +1176,7 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView) {
 static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
     // If there's no next page, exit out now, to avoid calling this on each frame tick
     if (!view->_hasNextPage) { return; }
-    
+
     // If we didn't have a previous page before, we will after this transaction
     if (!view->_hasPreviousPage) { view->_hasPreviousPage = YES; }
 
@@ -1184,7 +1184,7 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
     {
         // Reclaim the previous view
         TOPagingViewReclaimPageView(view, view->_previousPageView);
-        
+
         // Update all of the references by pushing each view back
         view->_previousPageView = view->_currentPageView;
         TOPagingViewSetCurrentPageView(view, view->_nextPageView);
@@ -1199,11 +1199,11 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
         if (view->_delegateFlags.delegateDidTurnToPage) {
             [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypeNext];
         }
-        
+
         // Offload the heavy work to a new run-loop cycle so we don't overload the current one.
         view->_needsNextPage = YES;
         [view setNeedsLayout];
-        
+
         // Move the scroll view back one segment
         const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
         const CGFloat scrollViewPageWidth = view->_layoutMetrics.pageWidth;
@@ -1213,7 +1213,7 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
         contentOffset.x += offset;
         view->_scrollView.contentOffset = contentOffset;
         [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
-        
+
         // If we're mid-drag, re-arm origin detection for the next tick but keep the committed
         // directionType so we don't re-announce the same willTurnToPage for this drag.
         if (view->_isDragging) { view->_dragInteractionState.origin = -CGFLOAT_MAX; }
@@ -1224,15 +1224,15 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
 static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) {
     // If there's no previous page, exit out now, to avoid calling this on each frame tick
     if (!view->_hasPreviousPage) { return; }
-    
+
     // If we didn't have a next page before, we will after this transaction
     if (!view->_hasNextPage) { view->_hasNextPage = YES; }
-    
+
     view->_disableLayout = YES;
     {
         // Reclaim the next view
         TOPagingViewReclaimPageView(view, view->_nextPageView);
-        
+
         // Update all of the references by pushing each view forward
         TOPagingViewSetNextPageView(view, view->_currentPageView);
         TOPagingViewSetCurrentPageView(view, view->_previousPageView);
@@ -1247,11 +1247,11 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         if (view->_delegateFlags.delegateDidTurnToPage) {
             [view->_delegate pagingView:view didTurnToPageOfType:TOPagingViewPageTypePrevious];
         }
-        
+
         // Offload the heavy work to a new run-loop cycle so we don't overload the current one.
         view->_needsPreviousPage = YES;
         [view setNeedsLayout];
-        
+
         // Move the scroll view forward one segment
         const BOOL isDirectionReversed = (view->_pageScrollDirection == TOPagingViewDirectionRightToLeft);
         const CGFloat scrollViewPageWidth = view->_layoutMetrics.pageWidth;
@@ -1261,7 +1261,7 @@ static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) 
         contentOffset.x += offset;
         view->_scrollView.contentOffset = contentOffset;
         [view->_pageAnimator didTransitionWithOffset:(contentOffset.x - previousOffsetX)];
-        
+
         // If we're mid-drag, re-arm origin detection for the next tick but keep the committed
         // directionType so we don't re-announce the same willTurnToPage for this drag.
         if (view->_isDragging) { view->_dragInteractionState.origin = -CGFLOAT_MAX; }
