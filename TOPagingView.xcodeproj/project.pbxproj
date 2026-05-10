@@ -38,6 +38,8 @@
 		22D4A7B3293F5E8A00B1C2D3 /* TOPagingViewAnimator.m in Sources */ = {isa = PBXBuildFile; fileRef = 22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */; };
 		24F0A0012F24000100000001 /* TOPagingViewUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 24F0A0042F24000100000001 /* TOPagingViewUITests.m */; };
 		2F2600012F26000100000001 /* TOScrollViewDelegateProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 2F2600032F26000100000001 /* TOScrollViewDelegateProxy.m */; };
+		2F2800012F28000100000001 /* TOScrollViewDelegateProxyTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 2F2800032F28000100000001 /* TOScrollViewDelegateProxyTests.m */; };
+		2F2800022F28000100000001 /* TOViewControllerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 2F2800042F28000100000001 /* TOViewControllerTests.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -102,6 +104,8 @@
 		2F2600052F26000100000001 /* TOPagingViewMacros.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewMacros.h; sourceTree = "<group>"; };
 		2F2600062F26000100000001 /* TOPagingViewTypesPrivate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewTypesPrivate.h; sourceTree = "<group>"; };
 		2F2600072F26000100000001 /* TOPagingViewUtilities.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingViewUtilities.h; sourceTree = "<group>"; };
+		2F2800032F28000100000001 /* TOScrollViewDelegateProxyTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOScrollViewDelegateProxyTests.m; sourceTree = "<group>"; };
+		2F2800042F28000100000001 /* TOViewControllerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOViewControllerTests.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -209,6 +213,8 @@
 			children = (
 				220469012FB055C90005BFA5 /* Helpers */,
 				22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */,
+				2F2800032F28000100000001 /* TOScrollViewDelegateProxyTests.m */,
+				2F2800042F28000100000001 /* TOViewControllerTests.m */,
 				22C3163C242899AB0063F6A6 /* Info.plist */,
 			);
 			path = TOPagingViewTests;
@@ -407,10 +413,12 @@
 			files = (
 				220469022FB055C90005BFA5 /* TOUnitTestPageView.m in Sources */,
 				220469032FB055C90005BFA5 /* TOUnitTestDataSource.m in Sources */,
-				220469042FB055C90005BFA5 /* TOUnitTestDelegate.m in Sources */,
-				220469052FB055C90005BFA5 /* TOUnitTestHelpers.m in Sources */,
-				22C3163B242899AB0063F6A6 /* TODynamicPageViewTests.m in Sources */,
-			);
+					220469042FB055C90005BFA5 /* TOUnitTestDelegate.m in Sources */,
+					220469052FB055C90005BFA5 /* TOUnitTestHelpers.m in Sources */,
+					22C3163B242899AB0063F6A6 /* TODynamicPageViewTests.m in Sources */,
+					2F2800012F28000100000001 /* TOScrollViewDelegateProxyTests.m in Sources */,
+					2F2800022F28000100000001 /* TOViewControllerTests.m in Sources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		24F0A00A2F24000100000001 /* Sources */ = {
