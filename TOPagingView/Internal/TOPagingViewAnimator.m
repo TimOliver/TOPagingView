@@ -247,7 +247,6 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
 @dynamic isAnimating, direction;
 
 - (BOOL)isAnimating { return _state.isAnimating; }
-- (UIRectEdge)direction { return _state.direction; }
 - (const TOPagingViewAnimatorState *)statePointer { return &_state; }
 
 #pragma mark - Public Methods -
@@ -303,10 +302,10 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
         return;
     }
 
-    // Reversal drops any in-flight rubber-band so a back-tap isn't resisted. A same-direction
-    // tap during a settling spring keeps the flag armed: the impulse branch above re-energises
-    // it without resetting the trajectory.
-    if (pageDirection != _state.direction) { _rubberBandsAtRest = NO; }
+    // Reversal drops any in-flight rubber-band so a back-tap isn't resisted. When starting from
+    // rest, preserve a freshly armed rubber-band flag; callers set it immediately before asking
+    // for an edge animation, and `_state.direction` may still contain a stale previous direction.
+    if (_state.isAnimating && pageDirection != _state.direction) { _rubberBandsAtRest = NO; }
     _state.direction = pageDirection;
 
     // Target the page boundary one full page past where natural decel would settle: round

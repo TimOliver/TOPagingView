@@ -121,7 +121,7 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     XCUIElement *pagingView = [self launchPagingViewWithArguments:@[]];
 
     XCUICoordinate *rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
-    for (NSInteger i = 0; i < 10; i++) {
+    for (NSInteger i = 0; i < 16; i++) {
         [rightTapCoordinate tap];
     }
 
