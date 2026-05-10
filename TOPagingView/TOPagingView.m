@@ -1030,6 +1030,14 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 }
 
 - (void)_skipToNewPageInDirection:(UIRectEdge)direction animated:(BOOL)animated TOPAGINGVIEW_OBJC_DIRECT {
+    // Request the new page view before mutating the current visible state. If the data
+    // source cannot provide one, treat the skip as a no-op and leave the pager intact.
+    UIView<TOPagingViewPage> *newPageView = [_dataSource pagingView:self
+                                                    pageViewForType:TOPagingViewPageTypeCurrent
+                                                  currentPageView:_currentPageView];
+    if (newPageView == nil) { return; }
+    if (newPageView == _currentPageView) { return; }
+
     // Stop any ongoing animations
     [_pageAnimator stopAnimationWithCompletion:NO];
 
@@ -1042,13 +1050,8 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     }
 
     // Reclaim the next and previous pages since these will always need to be regenerated
-    TOPagingViewReclaimPageView(self, _nextPageView);
-    TOPagingViewReclaimPageView(self, _previousPageView);
-
-    // Request the new page view that will become the new current page after this completes
-    UIView<TOPagingViewPage> *newPageView = [_dataSource pagingView:self
-                                                    pageViewForType:TOPagingViewPageTypeCurrent
-                                                  currentPageView:_currentPageView];
+    if (_nextPageView != newPageView) { TOPagingViewReclaimPageView(self, _nextPageView); }
+    if (_previousPageView != newPageView) { TOPagingViewReclaimPageView(self, _previousPageView); }
 
     // Zero out the adjacent pages and set the
     // next/previous flags to ensure we'll query for new pages
