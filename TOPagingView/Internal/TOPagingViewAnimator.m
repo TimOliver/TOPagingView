@@ -379,9 +379,13 @@ static inline CGFloat TOPagingViewAnimatorDirectionMultiplier(UIRectEdge directi
     _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(_displayLinkDidFire:)];
     if (@available(iOS 15.0, *)) {
         _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(80.0f, 120.0f, 120.0f);
-    } else {
+    }
+    // Coverage runs on iOS 15+, so don't count the legacy OS branch in instrumented builds.
+#if !defined(__LLVM_INSTR_PROFILE_GENERATE)
+    else {
         _displayLink.preferredFramesPerSecond = 120;
     }
+#endif
     [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 }
 

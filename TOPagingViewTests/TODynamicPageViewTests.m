@@ -9,6 +9,7 @@
 #import <XCTest/XCTest.h>
 
 #import "TOPagingView.h"
+#import "TOPagingViewAnimator.h"
 #import "TOUnitTestDataSource.h"
 #import "TOUnitTestDelegate.h"
 #import "TOUnitTestHelpers.h"
@@ -51,6 +52,24 @@
 
 @end
 
+@interface TOUnitTestDeceleratingScrollView : UIScrollView
+@property (nonatomic, assign) BOOL deceleratingForUnitTest;
+@property (nonatomic, assign) NSInteger cancelDecelerationCallCount;
+@end
+
+@implementation TOUnitTestDeceleratingScrollView
+
+- (BOOL)isDecelerating {
+    return _deceleratingForUnitTest || [super isDecelerating];
+}
+
+- (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated {
+    if (_deceleratingForUnitTest && !animated) { _cancelDecelerationCallCount++; }
+    [super setContentOffset:contentOffset animated:animated];
+}
+
+@end
+
 #pragma mark - Tests
 
 @interface TOPagingViewTests : XCTestCase
@@ -75,6 +94,36 @@
     _pagingView.dataSource = _dataSource;
     [_window addSubview:_pagingView];
     [_pagingView layoutIfNeeded];
+}
+
+- (TOUnitTestDeceleratingScrollView *)replaceScrollViewWithDeceleratingScrollViewForPagingView:(TOPagingView *)pagingView {
+    UIScrollView *originalScrollView = pagingView.scrollView;
+    TOUnitTestDeceleratingScrollView *scrollView = [[TOUnitTestDeceleratingScrollView alloc] initWithFrame:originalScrollView.frame];
+    scrollView.delegate = originalScrollView.delegate;
+    scrollView.pagingEnabled = originalScrollView.pagingEnabled;
+    scrollView.bounces = originalScrollView.bounces;
+    scrollView.alwaysBounceHorizontal = originalScrollView.alwaysBounceHorizontal;
+    scrollView.directionalLockEnabled = originalScrollView.directionalLockEnabled;
+    scrollView.keyboardDismissMode = originalScrollView.keyboardDismissMode;
+    scrollView.showsHorizontalScrollIndicator = originalScrollView.showsHorizontalScrollIndicator;
+
+    [originalScrollView removeFromSuperview];
+    [pagingView setValue:scrollView forKey:@"_scrollView"];
+    ((TOPagingViewAnimator *)[pagingView valueForKey:@"_pageAnimator"]).scrollView = scrollView;
+    [pagingView addSubview:scrollView];
+    return scrollView;
+}
+
+- (CGFloat)activeTimingValueForAnimator:(TOPagingViewAnimator *)animator atTime:(CFTimeInterval)time {
+    id timingParameters = [animator valueForKey:@"_activeTiming"];
+    SEL valueSelector = NSSelectorFromString(@"valueAtTime:");
+    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:[timingParameters methodSignatureForSelector:valueSelector]];
+    CGFloat value = 0.0f;
+    invocation.selector = valueSelector;
+    [invocation setArgument:&time atIndex:2];
+    [invocation invokeWithTarget:timingParameters];
+    [invocation getReturnValue:&value];
+    return value;
 }
 
 - (void)setUp {
@@ -312,6 +361,20 @@
     [scrollViewDelegate scrollViewDidEndDragging:self.pagingView.scrollView willDecelerate:NO];
 
     XCTAssertNil(self.pagingView.delegate);
+}
+
+- (void)testDragBeginStopsInProgressPageAnimatorAndNotifiesScrollDelegate {
+    TOUnitTestScrollViewDelegate *scrollViewDelegate = [[TOUnitTestScrollViewDelegate alloc] init];
+    self.pagingView.scrollViewDelegate = scrollViewDelegate;
+    TOPagingViewAnimator *animator = [self.pagingView valueForKey:@"_pageAnimator"];
+
+    [self.pagingView turnToRightPageAnimated:YES];
+    XCTAssertTrue(animator.isAnimating);
+
+    [(id<UIScrollViewDelegate>)self.pagingView.scrollView.delegate scrollViewWillBeginDragging:self.pagingView.scrollView];
+
+    XCTAssertFalse(animator.isAnimating);
+    XCTAssertEqual(scrollViewDelegate.didEndScrollingAnimationCallCount, 1);
 }
 
 #pragma mark - Keyboard
@@ -643,6 +706,40 @@
     XCTAssertEqual(TOTestPageView(self.pagingView.currentPageView).pageNumber, 42);
     XCTAssertEqual(TOTestPageView(self.pagingView.previousPageView).pageNumber, 41);
     XCTAssertEqual(TOTestPageView(self.pagingView.nextPageView).pageNumber, 43);
+}
+
+- (void)testCompletedPageAnimatorRebasesToActualOffsetWhenPageTransitionCommits {
+    TOPagingViewAnimator *animator = [self.pagingView valueForKey:@"_pageAnimator"];
+    animator.duration = 0.0f;
+
+    [self.pagingView turnToRightPageAnimated:YES];
+    XCTAssertTrue(animator.isAnimating);
+
+    const CGFloat pageWidth = self.pagingView.scrollView.contentSize.width / 3.0f;
+    self.pagingView.scrollView.contentOffset = CGPointMake(pageWidth + 2.0f, 0.0f);
+    [(id<UIScrollViewDelegate>)self.pagingView.scrollView.delegate scrollViewDidScroll:self.pagingView.scrollView];
+
+    const CGFloat expectedOffset = self.pagingView.scrollView.contentOffset.x;
+    XCTAssertEqual(TOTestPageView(self.pagingView.currentPageView).pageNumber, 1);
+    XCTAssertEqualWithAccuracy([self activeTimingValueForAnimator:animator atTime:0.0f], expectedOffset, 0.001f);
+
+    [self.pagingView reload];
+}
+
+- (void)testSkipForwardToNewPageCancelsDeceleratingScrollView {
+    TOUnitTestDataSource *dataSource = [[TOUnitTestDataSource alloc] init];
+    __block TOUnitTestDeceleratingScrollView *scrollView = nil;
+    [self installPagingViewWithDataSource:dataSource configure:^(TOPagingView *pagingView) {
+        scrollView = [self replaceScrollViewWithDeceleratingScrollViewForPagingView:pagingView];
+    }];
+    dataSource.currentIndex = 42;
+    scrollView.deceleratingForUnitTest = YES;
+
+    [self.pagingView skipForwardToNewPageAnimated:NO];
+    [self.pagingView layoutIfNeeded];
+
+    XCTAssertEqual(scrollView.cancelDecelerationCallCount, 1);
+    XCTAssertEqual(TOTestPageView(self.pagingView.currentPageView).pageNumber, 42);
 }
 
 - (void)testSkipBackwardToNewPageAnimatedRunsCompletionAndRefreshesAdjacentPages {
