@@ -448,7 +448,6 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     // Remove all currently visible pages from the scroll view
     for (UIView *view in _scrollView.subviews) {
         TOPagingViewReclaimPageView(self, view);
-        [view removeFromSuperview];
     }
 
     // Reset all of the active page references
@@ -483,6 +482,8 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 }
 
 - (void)reloadAdjacentPages {
+    if (_dataSource == nil || _currentPageView == nil) { return; }
+
     // Reclaim the previous and next pages
     TOPagingViewReclaimPageView(self, _nextPageView);
     TOPagingViewSetNextPageView(self, nil);
