@@ -25,8 +25,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// A basic model object to enable the protocol conformance C structs to be
-/// encoded into an Objective-C NSValue object
+/// A tiny Objective-C wrapper for storing protocol conformance flags in collections.
 @interface TOPageViewProtocolCache : NSObject
 
 @property (nonatomic, assign) TOPageViewProtocolFlags flags;

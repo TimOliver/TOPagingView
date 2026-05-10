@@ -148,7 +148,7 @@ NS_SWIFT_NAME(PagingView)
 - (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier
     NS_SWIFT_NAME(dequeueReusablePageView(for:));
 
-/// Returns all of the currently visible pages as an un-ordered set
+/// Returns all of the currently visible pages as an unordered set
 - (nullable NSSet<__kindof UIView<TOPagingViewPage> *> *)visiblePageViews;
 
 /// Returns the visible page view for the supplied unique identifier, or nil otherwise.
