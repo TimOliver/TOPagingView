@@ -1,6 +1,30 @@
 x.y.z Release Notes (yyyy-MM-dd)
 =============================================================
 
+1.5.0 Release Notes (2026-05-10)
+=============================================================
+
+## Enhancements
+
+* Rebuilt the page-turn APIs to perform a rubber-banding animation when overshooting the first or final page.
+* Replaced the pre-canned page-wall wobble animation with the new rubber-banding motion.
+
+## Fixed
+
+* Fixed stale scroll view edge insets that could keep newly available adjacent pages unreachable after async data updates.
+* Fixed page width/layout metric drift when using fractional bounds or custom page spacing.
+* Fixed `reload` behavior so active page-turn animations are stopped before page state is rebuilt.
+* Fixed unnecessary page reload work when `TOPagingView` is removed from its superview.
+* Fixed adaptive initial-page refresh so it no longer fetches or installs a separate previous page unnecessarily.
+* Fixed rapid stacked page-turn animation timing to keep animation sampling and retiming on the same frame clock.
+* Fixed reusable page pooling for manually-created page views whose reuse queue had not been created yet.
+* Fixed skip-to-new-page calls so missing or already-visible replacement pages no longer corrupt the current paging state.
+
+## Internal
+
+* Corrected the pointer-drag scrolling selector invocation to use the expected BOOL calling convention.
+* Cleaned up stale comments and removed a compiler warning.
+
 1.4.0 Release Notes (2026-03-30)
 =============================================================
 
@@ -11,7 +35,7 @@ x.y.z Release Notes (yyyy-MM-dd)
 
 ## Breaking Changes
 
-* Renamed `dynmamicPageDirection` to `adaptivePageDirection`.
+* Renamed `dynamicPageDirection` to `adaptivePageDirection`.
 * Accessing the `scrollView` delegate must now be done via `scrollViewDelegate`.
 
 1.3.0 Release Notes (2025-11-10)
