@@ -148,6 +148,13 @@ NS_SWIFT_NAME(PagingView)
 - (nullable __kindof UIView<TOPagingViewPage> *)dequeueReusablePageViewForIdentifier:(nullable NSString *)identifier
     NS_SWIFT_NAME(dequeueReusablePageView(for:));
 
+/// Permanently discards a page view: removes it from the reuse pool and the
+/// unique-identifier map, and detaches it from the scroll view, so it can be
+/// deallocated rather than recycled. Intended for one-shot pages (e.g. an
+/// inline ad) that should not reappear once dismissed. No-op if the view is
+/// nil or not tracked by this paging view.
+- (void)discardPageView:(nullable UIView<TOPagingViewPage> *)pageView;
+
 /// Returns all of the currently visible pages as an unordered set
 - (nullable NSSet<__kindof UIView<TOPagingViewPage> *> *)visiblePageViews;
 

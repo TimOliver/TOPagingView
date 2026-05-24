@@ -1172,6 +1172,27 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView) {
     [queuedPages addObject:pageView];
 }
 
+- (void)discardPageView:(UIView<TOPagingViewPage> *)pageView {
+    if (pageView == nil) { return; }
+
+    const TOPageViewProtocolFlags flags = TOPagingViewCachedProtocolFlagsForPageViewClass(self, pageView.class);
+
+    // Drop it from the on-demand unique-identifier map.
+    if (flags.protocolUniqueIdentifier) {
+        [_uniqueIdentifierPages removeObjectForKey:[(id)pageView uniqueIdentifier]];
+    }
+
+    // Drop it from the reuse pool so it can't be dequeued again.
+    NSString *const pageIdentifier = TOPagingViewIdentifierForPageViewClass(pageView.class, flags);
+    [_queuedPages[pageIdentifier] removeObject:pageView];
+
+    // Detach from the scroll view if it's somehow still attached.
+    if (pageView.superview == _scrollView) {
+        pageView.hidden = YES;
+        [pageView removeFromSuperview];
+    }
+}
+
 #pragma mark - Page Slot Rotation
 
 static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
