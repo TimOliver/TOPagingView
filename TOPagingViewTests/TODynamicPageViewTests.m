@@ -327,6 +327,96 @@
     XCTAssertEqual(TOTestPageView(self.pagingView.currentPageView).pageNumber, 1);
 }
 
+#pragma mark - Animated Turn Commit Counts
+
+/// Spins the main run loop until a page turn animation has settled. The animator
+/// runs off a CADisplayLink, so the run loop has to actually turn for frames to fire.
+- (void)waitForPageTurnAnimationToSettle {
+    XCTestExpectation *settled = [self expectationWithDescription:@"page turn animation settled"];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [settled fulfill];
+    });
+    [self waitForExpectations:@[settled] timeout:5.0];
+}
+
+// One tap turns one page, however many frames the animation needs to settle.
+// The animator drives the scroll offset frame by frame, so the hazard is frames
+// being counted as pages: an animation that lingers near the commit boundary
+// while it settles must not rack up a transition on every tick.
+- (void)testSingleAnimatedTurnCommitsExactlyOnePage {
+    const NSInteger countBefore = _testDelegate.didTurnCallCount;
+
+    [self.pagingView turnToRightPageAnimated:YES];
+    [self waitForPageTurnAnimationToSettle];
+
+    XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, 1,
+                   @"A single tap must commit exactly one page turn");
+}
+
+/// Pumps the main run loop for `interval`, so display-link frames and layout
+/// passes actually happen between simulated taps.
+- (void)pumpRunLoopForInterval:(NSTimeInterval)interval {
+    XCTestExpectation *elapsed = [self expectationWithDescription:@"run loop pumped"];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(interval * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [elapsed fulfill];
+    });
+    [self waitForExpectations:@[elapsed] timeout:interval + 3.0];
+}
+
+// The counterpart, and the reason the fix can't just be "commit less eagerly":
+// tapping again mid-flight is the point. Each tap bumps the destination by a
+// page and resets the curve so the pages keep flowing, and N taps must still
+// land exactly N pages. Taps are spaced like real ones — firing them in a single
+// run-loop turn would never let a frame render or a page refill between them.
+- (void)testStackedAnimatedTurnsCommitOnePagePerTap {
+    // The pager refills the next page on a deferred layout pass, so the window
+    // has to be live or layout never runs and the refill can't happen.
+    [_window makeKeyAndVisible];
+
+    const NSInteger countBefore = _testDelegate.didTurnCallCount;
+
+    [self.pagingView turnToRightPageAnimated:YES];
+    [self pumpRunLoopForInterval:0.1];
+    [self.pagingView turnToRightPageAnimated:YES];
+    [self pumpRunLoopForInterval:0.1];
+    [self.pagingView turnToRightPageAnimated:YES];
+    [self waitForPageTurnAnimationToSettle];
+
+    XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, 3,
+                   @"Three queued taps must land exactly three pages");
+}
+
+// The actual reported bug, and it needs a host whose pages load asynchronously —
+// an adjacent-page fetch that comes back nil arms the rubber-band spring, but
+// nothing disarms it when a later fetch succeeds. Once a page does arrive, the
+// next tap is an ordinary turn that still gets served by the armed spring, which
+// only oscillates around the rest slot instead of travelling. Every frame it
+// hovers off-centre is scored as a page turn, so one tap eats a swathe of pages.
+//
+// The turn methods' own defence (re-poll, stop the animation) only runs when the
+// page is *still* missing, so it can't catch this: by tap time the page is there.
+- (void)testTurnCommitsOnePageAfterAMissingPageLaterArrives {
+    [_window makeKeyAndVisible];
+
+    // The next page isn't available yet — this fetch returns nil and arms the bounce.
+    _dataSource.maxIndex = 0;
+    _dataSource.currentIndex = 0;
+    [self.pagingView reload];
+    [self.pagingView layoutIfNeeded];
+
+    // The page finishes loading, and the pager picks it up: _hasNextPage is YES again.
+    _dataSource.maxIndex = 10;
+    [self.pagingView fetchAdjacentPagesIfAvailable];
+    [self.pagingView layoutIfNeeded];
+
+    const NSInteger countBefore = _testDelegate.didTurnCallCount;
+    [self.pagingView turnToRightPageAnimated:YES];
+    [self waitForPageTurnAnimationToSettle];
+
+    XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, 1,
+                   @"A real turn must commit one page even if an earlier failed fetch armed the rubber band");
+}
+
 #pragma mark - Delegate Callbacks
 
 - (void)testDelegateReceivesInitialDidTurn {

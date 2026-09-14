@@ -527,6 +527,12 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
             _previousPageView = pageView;
             _previousPageView.frame = _layoutMetrics.previousPageFrame;
         }
+        // There's a real page to travel to now, so disarm the bounce. Hosts whose
+        // pages load asynchronously routinely miss a fetch and then succeed on a
+        // later one; leaving it armed hands the next ordinary turn to the spring,
+        // which only oscillates around the rest slot rather than travelling, and
+        // every frame it hovers there is scored as another page turn.
+        if (rubberBandIfMissing) { _pageAnimator.rubberBandsAtRest = NO; }
     } else if (rubberBandIfMissing) {
         // No further page in this direction. Arm the animator so any travel past the rest
         // position hands off from the bezier to the critically-damped spring instead of
