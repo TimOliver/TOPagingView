@@ -41,7 +41,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, weak, nullable) UIScrollView *scrollView;
 
 /// The width of one page segment in the scroll view (view width + page spacing).
-/// Must be set before calling `turnToPageInDirection:`.
+/// Must be set before calling `_turnToPageInDirection:`.
 @property (nonatomic, assign) CGFloat pageWidth;
 
 /// The duration of the entire queued page-turn journey in seconds (default 0.5).
@@ -58,7 +58,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// The direction we're currently turning in.
 @property (nonatomic, readonly) UIRectEdge direction;
 
-/// Called when the animation completes naturally (not when stopped mid-way).
+/// Called when motion ends naturally or is explicitly stopped with completion enabled.
+/// Drag and resize interruptions notify; reload and removal cancel without notifying.
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
 
 /// When YES, motion crossing the rest position hands off to a critically damped boundary spring
@@ -70,20 +71,20 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Animates toward the next page in the given direction.
 /// @param direction The edge to turn toward (UIRectEdgeLeft or UIRectEdgeRight).
-- (void)turnToPageInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT;
+- (void)_turnToPageInDirection:(UIRectEdge)direction TOPAGINGVIEW_OBJC_DIRECT;
 
 /// Immediately stops the current animation at its current position.
-/// @param didComplete The animation successfully completed so its completion handler should be called.
-- (void)stopAnimationWithCompletion:(BOOL)didComplete TOPAGINGVIEW_OBJC_DIRECT;
+/// @param invokeCompletion Whether to notify the caller that the motion has ended.
+- (void)_stopAnimationWithCompletion:(BOOL)invokeCompletion TOPAGINGVIEW_OBJC_DIRECT;
 
 /// Called when the paging mechanism has performed a transition and all of the pages
 /// were offset by one page segment. We pass that segment delta here so the
 /// animator can update its coordinate translation without retiming the native animation.
-- (void)didTransitionWithOffset:(CGFloat)offset TOPAGINGVIEW_OBJC_DIRECT;
+- (void)_didTransitionWithOffset:(CGFloat)offset TOPAGINGVIEW_OBJC_DIRECT;
 
 /// Returns a pointer to the animator's live state struct. The pointer's lifetime matches the animator's.
 /// Callers may cache it and read fields directly to avoid per-tick ObjC property accessors.
-- (const TOPagingViewAnimatorState *)statePointer TOPAGINGVIEW_OBJC_DIRECT NS_RETURNS_INNER_POINTER;
+- (const TOPagingViewAnimatorState *)_statePointer TOPAGINGVIEW_OBJC_DIRECT NS_RETURNS_INNER_POINTER;
 
 @end
 

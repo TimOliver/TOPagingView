@@ -25,6 +25,8 @@
 
 @class TOPagingView;
 
+NS_ASSUME_NONNULL_BEGIN
+
 FOUNDATION_EXTERN void TOPagingViewHandleScrollViewDidScroll(TOPagingView *pagingView);
 FOUNDATION_EXTERN void TOPagingViewHandleScrollViewWillBeginDragging(TOPagingView *pagingView);
 FOUNDATION_EXTERN void TOPagingViewHandleScrollViewDidEndDragging(TOPagingView *pagingView);
@@ -37,12 +39,14 @@ FOUNDATION_EXTERN void TOPagingViewHandleScrollViewDidEndDragging(TOPagingView *
 @interface TOScrollViewDelegateProxy : NSProxy <UIScrollViewDelegate>
 
 /// The parent paging view which delegate calls will be forwarded to
-@property (nonatomic, weak) TOPagingView *pagingView;
+@property (nonatomic, weak, nullable) TOPagingView *pagingView;
 
 /// The external object that has subscribed to `UIScrollViewDelegate`.
-@property (nonatomic, weak) id<UIScrollViewDelegate> externalDelegate;
+@property (nonatomic, weak, nullable) id<UIScrollViewDelegate> externalDelegate;
 
 /// Creates a new instance of this proxy class.
 - (instancetype)init;
 
 @end
+
+NS_ASSUME_NONNULL_END

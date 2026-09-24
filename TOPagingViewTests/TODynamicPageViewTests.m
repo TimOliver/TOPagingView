@@ -18,7 +18,7 @@
 #pragma mark - Test Helpers
 
 @interface TOPagingView (TOUnitTestKeyboard)
-- (void)arrowKeyPressed:(UIKeyCommand *)command;
+- (void)_arrowKeyPressed:(UIKeyCommand *)command;
 @end
 
 @interface TOUnitTestScrollViewDelegate : NSObject <UIScrollViewDelegate>
@@ -854,8 +854,8 @@
     TOUnitTestKeyboardPagingView *pagingView = [[TOUnitTestKeyboardPagingView alloc] init];
     UIKeyCommand *leftArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow
                                                          modifierFlags:0
-                                                                action:@selector(arrowKeyPressed:)];
-    [pagingView arrowKeyPressed:leftArrowCommand];
+                                                                action:@selector(_arrowKeyPressed:)];
+    [pagingView _arrowKeyPressed:leftArrowCommand];
 
     XCTAssertEqual(pagingView.leftTurnCallCount, 1);
     XCTAssertEqual(pagingView.rightTurnCallCount, 0);
@@ -863,15 +863,15 @@
 
     UIKeyCommand *rightArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow
                                                           modifierFlags:0
-                                                                 action:@selector(arrowKeyPressed:)];
-    [pagingView arrowKeyPressed:rightArrowCommand];
+                                                                 action:@selector(_arrowKeyPressed:)];
+    [pagingView _arrowKeyPressed:rightArrowCommand];
 
     XCTAssertEqual(pagingView.leftTurnCallCount, 1);
     XCTAssertEqual(pagingView.rightTurnCallCount, 1);
     XCTAssertTrue(pagingView.lastTurnWasAnimated);
 
-    UIKeyCommand *ignoredCommand = [UIKeyCommand keyCommandWithInput:@"x" modifierFlags:0 action:@selector(arrowKeyPressed:)];
-    [pagingView arrowKeyPressed:ignoredCommand];
+    UIKeyCommand *ignoredCommand = [UIKeyCommand keyCommandWithInput:@"x" modifierFlags:0 action:@selector(_arrowKeyPressed:)];
+    [pagingView _arrowKeyPressed:ignoredCommand];
 
     XCTAssertEqual(pagingView.leftTurnCallCount, 1);
     XCTAssertEqual(pagingView.rightTurnCallCount, 1);

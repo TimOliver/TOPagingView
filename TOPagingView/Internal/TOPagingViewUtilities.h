@@ -27,18 +27,6 @@
 #import "TOPagingViewTypes.h"
 #import "TOPagingViewTypesPrivate.h"
 
-/// Convert an Objective-C class pointer into an NSValue that can be stored in a dictionary.
-static inline NSValue *TOPagingViewValueForClass(Class *class) {
-    return [NSValue valueWithBytes:class objCType:@encode(Class)];
-}
-
-/// Convert an Objective-C class that was encoded to NSValue back out again.
-static inline Class TOPagingViewClassForValue(NSValue *value) {
-    Class class;
-    [value getValue:&class];
-    return class;
-}
-
 /// Convenience function for detecting when the paging view is set right-to-left.
 static inline BOOL TOPagingViewIsDirectionReversed(TOPagingViewDirection direction) {
     return (direction == TOPagingViewDirectionRightToLeft);

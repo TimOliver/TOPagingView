@@ -24,6 +24,8 @@
 
 #import "TOPagingViewTypes.h"
 
+NS_ASSUME_NONNULL_BEGIN
+
 /// Optional protocol that page views may implement.
 NS_SWIFT_NAME(PagingViewPage)
 @protocol TOPagingViewPage <NSObject>
@@ -34,18 +36,18 @@ NS_SWIFT_NAME(PagingViewPage)
 /// dequeue pre-made objects with the same identifier, or if pre-registered,
 /// create new instances automatically on request.
 ///
-/// If this property is not overridden, the page will be treated as the default
+/// If this method is not implemented, the page will be treated as the default
 /// type that will be returned whenever the identifier is nil.
+/// If implemented, return a nonnil identifier that is stable for this page class.
 + (NSString *)pageIdentifier;
 
-/// A globally unique identifier that can be used to uniquely tag this specific
-/// page objects when they are in active use. This must be finalized before the page
-/// is inserted into the paging view.
+/// Identifies this page among the paging view's active pages.
+/// This must be finalized before the page is inserted into the paging view.
+/// If implemented, return a nonnil identifier that stays unchanged until the page is reclaimed.
 - (NSString *)uniqueIdentifier;
 
-/// Called just before the page object is removed from the visible page set,
-/// and re-enqueued by the data source. Use this method to return the page to a default state.
-/// Most importantly, be sure to use this method to release memory heavy objects like images.
+/// Called by the paging view before removing a page and returning it to the reuse pool.
+/// Reset transient content and release expensive resources such as decoded images.
 - (void)prepareForReuse;
 
 /// The current page on screen is the first page in the current sequence.
@@ -59,3 +61,5 @@ NS_SWIFT_NAME(PagingViewPage)
 - (void)setPageDirection:(TOPagingViewDirection)direction;
 
 @end
+
+NS_ASSUME_NONNULL_END

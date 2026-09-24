@@ -30,5 +30,8 @@ static NSString *const kTOPagingViewDefaultIdentifier = @"TOPagingView.DefaultPa
 /// There are always 3 slots, with content insetting used to block pages on either side.
 static const CGFloat kTOPagingViewPageSlotCount = 3.0f;
 
+/// Programmatic turns commit after moving this many points away from the center slot.
+static const CGFloat kTOPagingViewAnimatedCommitMargin = 1.0;
+
 /// Animation options shared by the spring animations used during page rearrangement.
 static const UIViewAnimationOptions kTOPagingViewAnimationOptions = UIViewAnimationOptionAllowUserInteraction;

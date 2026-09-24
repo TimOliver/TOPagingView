@@ -47,7 +47,7 @@ NS_SWIFT_NAME(PagingViewDataSource)
 /// @param pagingView The paging view requesting the new page view.
 /// @param type The type of page to be displayed in its relation to the current page.
 /// @param currentPageView The current page view on screen. Use this to determine which page should come before or after it.
-/// This will be nil only on the very first load, before any pages have been displayed.
+/// This is nil when requesting the initial current page, including after each full reload.
 /// @return The newly dequeued and configured page. At any point, if it's determined that there are no more pages, return nil
 /// instead.
 - (nullable __kindof UIView<TOPagingViewPage> *)pagingView:(TOPagingView *)pagingView
@@ -73,7 +73,7 @@ NS_SWIFT_NAME(PagingViewDelegate)
 /// Called when a page turn has crossed the turning threshold and a new page has become the current one.
 /// Use this to update any state around the paging view used to control the current page.
 /// @param pagingView The calling paging view instance.
-/// @param type The type of page that was turned to (This can include initial after a reload).
+/// @param type The type of page that was turned to, including Current after initial layout or a full reload.
 - (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type;
 
 /// Called when adaptive page direction is enabled, and the user just swiped off the initial page in either

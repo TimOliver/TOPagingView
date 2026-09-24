@@ -88,25 +88,25 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
     return _state.direction;
 }
 
-- (const TOPagingViewAnimatorState *)statePointer {
+- (const TOPagingViewAnimatorState *)_statePointer {
     return &_state;
 }
 
 #pragma mark - Page Control
 
-- (void)turnToPageInDirection:(UIRectEdge)direction {
-    UIScrollView *scrollView = _scrollView;
+- (void)_turnToPageInDirection:(UIRectEdge)direction {
+    UIScrollView *const scrollView = _scrollView;
     NSAssert(_pageWidth > FLT_EPSILON, @"Page width must be positive.");
     if (!scrollView || _pageWidth <= FLT_EPSILON) {
         return;
     }
 
-    BOOL wasAnimating = _state.isAnimating;
-    BOOL wasBouncing = _state.isRubberBanding;
-    BOOL sameDirection = direction == _state.direction;
+    const BOOL wasAnimating = _state.isAnimating;
+    const BOOL wasBouncing = _state.isRubberBanding;
+    const BOOL sameDirection = direction == _state.direction;
 
-    CGFloat sign = direction == UIRectEdgeRight ? 1 : -1;
-    CGFloat seconds = _duration > FLT_EPSILON ? _duration : kTOAnimatorDefaultDuration;
+    const CGFloat sign = direction == UIRectEdgeRight ? 1 : -1;
+    const CGFloat seconds = _duration > FLT_EPSILON ? _duration : kTOAnimatorDefaultDuration;
 
     _animationTimeScale = 1;
 #if TARGET_OS_SIMULATOR
@@ -139,7 +139,7 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
     _state.direction = direction;
 
     // Retarget from the displayed position, including pixel rounding, without moving it at tap time.
-    CGFloat start = scrollView.contentOffset.x - _origin;
+    const CGFloat start = scrollView.contentOffset.x - _origin;
     CGFloat target;
     CGFloat velocity;
 
@@ -158,7 +158,7 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
         if (wasAnimating && !wasBouncing && sameDirection) {
             target = _target + sign * _pageWidth;
         } else {
-            CGFloat rest = wasBouncing ? _pageWidth : round(scrollView.contentOffset.x / _pageWidth) * _pageWidth;
+            const CGFloat rest = wasBouncing ? _pageWidth : round(scrollView.contentOffset.x / _pageWidth) * _pageWidth;
             target = rest + sign * _pageWidth - _origin;
         }
 
@@ -171,7 +171,7 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
               duration:(_duration <= FLT_EPSILON && !_rubberBandsAtRest ? 0 : seconds)];
 }
 
-- (void)stopAnimationWithCompletion:(BOOL)didComplete {
+- (void)_stopAnimationWithCompletion:(BOOL)invokeCompletion {
     if (!_state.isAnimating) {
         return;
     }
@@ -192,16 +192,16 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
     [_animationView removeFromSuperview];
     _animationView = nil;
 
-    void (^completion)(void) = _completionHandler;
+    void (^const completion)(void) = _completionHandler;
     _completionHandler = nil;
     _scrollView.pagingEnabled = _originalPagingEnabled;
 
-    if (didComplete && completion) {
+    if (invokeCompletion && completion) {
         completion();
     }
 }
 
-- (void)didTransitionWithOffset:(CGFloat)offset {
+- (void)_didTransitionWithOffset:(CGFloat)offset {
     if (!_state.isAnimating || _state.isRubberBanding) {
         return;
     }
@@ -240,7 +240,7 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
     // while Core Animation is committing this retarget.
     [_animationView removeFromSuperview];
 
-    UIView *view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 1, 1)];
+    UIView *const view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 1, 1)];
     view.alpha = 0;
     view.userInteractionEnabled = NO;
     view.accessibilityElementsHidden = YES;
@@ -254,10 +254,10 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
     }
 
     // UIKit expresses initial velocity in animation distances per second.
-    CGFloat span = target - start;
-    CGFloat normalizedVelocity = fabs(span) > FLT_EPSILON ? velocity * _animationTimeScale / span : 0;
+    const CGFloat span = target - start;
+    const CGFloat normalizedVelocity = fabs(span) > FLT_EPSILON ? velocity * _animationTimeScale / span : 0;
 
-    UISpringTimingParameters *timing =
+    UISpringTimingParameters *const timing =
         [[UISpringTimingParameters alloc] initWithDampingRatio:1 initialVelocity:CGVectorMake(normalizedVelocity, 0)];
 
     _propertyAnimator = [[UIViewPropertyAnimator alloc] initWithDuration:duration timingParameters:timing];
@@ -267,10 +267,10 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
     }];
 
     const NSUInteger generation = _generation;
-    __weak typeof(self) weakSelf = self;
+    __weak typeof(self) const weakSelf = self;
 
     [_propertyAnimator addCompletion:^(UIViewAnimatingPosition position) {
-        typeof(self) self = weakSelf;
+        typeof(self) const self = weakSelf;
 
         if (self && self->_generation == generation) {
             self->_nativeCompleted = YES;
@@ -281,7 +281,7 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
 }
 
 - (BOOL)_bounceIfNeededAtValue:(CGFloat)value TOPAGINGVIEW_OBJC_DIRECT {
-    CGFloat sign = _state.direction == UIRectEdgeRight ? 1 : -1;
+    const CGFloat sign = _state.direction == UIRectEdgeRight ? 1 : -1;
     if (_state.isRubberBanding || !_rubberBandsAtRest || sign * (value + _origin - _pageWidth) <= 0) {
         return NO;
     }
@@ -300,16 +300,16 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
 #pragma mark - Display Link
 
 - (void)_tick:(CADisplayLink *)link {
-    UIScrollView *scrollView = _scrollView;
+    UIScrollView *const scrollView = _scrollView;
     if (!scrollView) {
-        [self stopAnimationWithCompletion:NO];
+        [self _stopAnimationWithCompletion:NO];
         return;
     }
 
     const NSUInteger generation = _generation;
-    BOOL finished = _nativeCompleted;
+    const BOOL finished = _nativeCompleted;
 
-    CALayer *presentation = _animationView.layer.presentationLayer;
+    CALayer *const presentation = _animationView.layer.presentationLayer;
     CGFloat value = finished ? _target : (presentation ? presentation.position.x : _start);
 
     if (!_state.isRubberBanding) {
@@ -317,7 +317,7 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
     }
 
     // Sample the native motion for a velocity-preserving handoff at a missing page.
-    CFTimeInterval delta = link.timestamp - _lastSampleTime;
+    const CFTimeInterval delta = link.timestamp - _lastSampleTime;
 
     if (delta > 0 && presentation) {
         _velocity = (value - _lastValue) / delta;
@@ -330,9 +330,9 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
     BOOL reached = NO;
 
     do {
-        CGFloat physical = value + _origin;
-        CGFloat previous = scrollView.contentOffset.x;
-        CGFloat step = fmax(previous - _pageWidth * 0.5, fmin(previous + _pageWidth * 0.5, physical));
+        const CGFloat physical = value + _origin;
+        const CGFloat previous = scrollView.contentOffset.x;
+        const CGFloat step = fmax(previous - _pageWidth * 0.5, fmin(previous + _pageWidth * 0.5, physical));
         reached = step == physical;
 
         if ([self _bounceIfNeededAtValue:(step - _origin)]) {
@@ -347,13 +347,14 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
         if (_generation != generation) {
             return;
         }
+
         if ([self _bounceIfNeededAtValue:(scrollView.contentOffset.x - _origin)]) {
             return;
         }
     } while (!reached);
 
     if (finished) {
-        [self stopAnimationWithCompletion:YES];
+        [self _stopAnimationWithCompletion:YES];
     }
 }
 

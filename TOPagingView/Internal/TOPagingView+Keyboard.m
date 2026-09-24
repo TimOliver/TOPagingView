@@ -32,9 +32,13 @@
     static NSArray<UIKeyCommand *> *commands;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        SEL selector = @selector(arrowKeyPressed:);
-        UIKeyCommand *leftArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:0 action:selector];
-        UIKeyCommand *rightArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:0 action:selector];
+        const SEL selector = @selector(_arrowKeyPressed:);
+        UIKeyCommand *const leftArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow
+                                                                   modifierFlags:0
+                                                                          action:selector];
+        UIKeyCommand *const rightArrowCommand = [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow
+                                                                    modifierFlags:0
+                                                                           action:selector];
 
         if (@available(iOS 15.0, *)) {
             leftArrowCommand.wantsPriorityOverSystemBehavior = YES;
@@ -46,7 +50,7 @@
     return commands;
 }
 
-- (void)arrowKeyPressed:(UIKeyCommand *)command {
+- (void)_arrowKeyPressed:(UIKeyCommand *)command {
     if ([command.input isEqualToString:UIKeyInputLeftArrow]) {
         [self turnToLeftPageAnimated:YES];
     } else if ([command.input isEqualToString:UIKeyInputRightArrow]) {

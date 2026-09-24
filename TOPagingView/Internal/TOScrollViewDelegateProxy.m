@@ -88,6 +88,7 @@ typedef struct {
     if (TOScrollViewDelegateProxyIsInterceptedSelector(sel)) {
         return YES;
     }
+
     return [_externalDelegate respondsToSelector:sel];
 }
 
@@ -95,14 +96,16 @@ typedef struct {
     if (!TOScrollViewDelegateProxyIsInterceptedSelector(sel)) {
         return _externalDelegate;
     }
+
     return nil;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)sel {
-    NSMethodSignature *signature = [(NSObject *)_externalDelegate methodSignatureForSelector:sel];
+    NSMethodSignature *const signature = [(NSObject *)_externalDelegate methodSignatureForSelector:sel];
     if (signature) {
         return signature;
     }
+
     return [NSMethodSignature signatureWithObjCTypes:"v@:"];
 }
 
