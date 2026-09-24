@@ -74,6 +74,7 @@ typedef struct {
 /// helpers can read `isAnimating` / `direction` as plain loads instead of ObjC msg sends.
 typedef struct {
     BOOL isAnimating;
+    BOOL isRubberBanding; // The active timing source is a spring; its motion cannot commit page turns.
     UIRectEdge direction;
 } TOPagingViewAnimatorState;
 

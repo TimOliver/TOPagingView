@@ -51,6 +51,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Whether an animation is currently in progress.
 @property (nonatomic, readonly) BOOL isAnimating;
 
+/// Whether the active animation is an edge bounce, which cannot commit page turns.
+@property (nonatomic, readonly) BOOL isRubberBanding;
+
 /// The direction we're currently turning in.
 @property (nonatomic, readonly) UIRectEdge direction;
 
@@ -59,9 +62,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// When YES, the moment the in-flight bezier crosses the rest position the animator hands off
 /// to a critically damped spring whose initial velocity matches the bezier. The spring continues
-/// past briefly, peaks, and decays back to rest as one continuous motion. Cleared on stop and
-/// on direction reversal — same-direction taps during settle keep the flag armed so each tap
-/// re-energises the spring rather than getting absorbed.
+/// past briefly, peaks, and decays back to rest as one continuous motion. The caller updates
+/// this for the requested direction before each turn and as that direction's availability changes.
+/// Disarming leaves an existing spring to settle without committing pages; a new tap can replace it.
+/// Same-direction taps while still armed re-energise the spring. Cleared on stop.
 @property (nonatomic, assign) BOOL rubberBandsAtRest;
 
 /// Animates toward the next page in the given direction.

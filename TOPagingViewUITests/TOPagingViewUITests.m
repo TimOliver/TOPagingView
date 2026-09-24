@@ -32,8 +32,9 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 
 - (XCUIElement *)launchPagingViewWithArguments:(NSArray<NSString *> *)arguments {
     self.app.launchArguments = arguments;
-    [self.app launch];
+    // Launch into the test orientation so the first gesture doesn't race a window rotation.
     [[XCUIDevice sharedDevice] setOrientation:UIDeviceOrientationLandscapeRight];
+    [self.app launch];
 
     XCUIElement *pagingView = self.app.otherElements[kTOPagingViewAccessibilityIdentifier];
     XCTAssertTrue([pagingView waitForExistenceWithTimeout:5.0]);

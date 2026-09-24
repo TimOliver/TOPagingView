@@ -1,6 +1,17 @@
 x.y.z Release Notes (yyyy-MM-dd)
 =============================================================
 
+## Changed
+
+* Simplified page-turn and edge-bounce timing to inline state, avoiding timing-object allocations while preserving the spring motion.
+
+## Fixed
+
+* Fixed a single edge tap advancing through multiple pages when an adjacent page was missing or finished loading during an edge bounce.
+* Fixed rapid page turns queued before the first animation frame ending off-center and skipping requested transitions.
+* Fixed fractional page widths accumulating rounding errors during stacked page turns.
+* Fixed rapid turns attempting to display a page before its deferred slot refill completed.
+
 1.5.0 Release Notes (2026-05-10)
 =============================================================
 

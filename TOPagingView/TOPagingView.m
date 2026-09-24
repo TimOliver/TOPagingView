@@ -505,8 +505,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 }
 
 - (nullable UIView<TOPagingViewPage> *)_fetchAdjacentPageForType:(TOPagingViewPageType)pageType
-                                                currentPageView:(nullable UIView<TOPagingViewPage> *)currentPageView
-                                            rubberBandIfMissing:(BOOL)rubberBandIfMissing TOPAGINGVIEW_OBJC_DIRECT {
+                                                currentPageView:(nullable UIView<TOPagingViewPage> *)currentPageView TOPAGINGVIEW_OBJC_DIRECT {
     NSAssert(_dataSource != nil, @"Data source must be set before fetching pages.");
     NSAssert(pageType == TOPagingViewPageTypeNext || pageType == TOPagingViewPageTypePrevious,
              @"_fetchAdjacentPageForType: only handles Next or Previous page types.");
@@ -527,30 +526,31 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
             _previousPageView = pageView;
             _previousPageView.frame = _layoutMetrics.previousPageFrame;
         }
-        // There's a real page to travel to now, so disarm the bounce. Hosts whose
-        // pages load asynchronously routinely miss a fetch and then succeed on a
-        // later one; leaving it armed hands the next ordinary turn to the spring,
-        // which only oscillates around the rest slot rather than travelling, and
-        // every frame it hovers there is scored as another page turn.
-        if (rubberBandIfMissing) { _pageAnimator.rubberBandsAtRest = NO; }
-    } else if (rubberBandIfMissing) {
-        // No further page in this direction. Arm the animator so any travel past the rest
-        // position hands off from the bezier to the critically-damped spring instead of
-        // sailing into the next slot.
-        _pageAnimator.rubberBandsAtRest = YES;
     }
 
     if (isNext) { _hasNextPage = (pageView != nil); }
     else        { _hasPreviousPage = (pageView != nil); }
+
+    // Only availability in the active turn's direction can arm or disarm its bounce.
+    // At the adaptive initial page, the next page serves either physical direction.
+    // Idle fetches leave the animator alone; each tap supplies its own edge state.
+    if (_animatorState->isAnimating) {
+        const BOOL isAdaptiveInitialPage = _isAdaptivePageDirectionEnabled && _isCurrentPageInitial;
+        const BOOL isAnimatingNext = (_animatorState->direction == UIRectEdgeRight)
+                                    != TOPagingViewIsDirectionReversed(_pageScrollDirection);
+        if (isAdaptiveInitialPage ? isNext : (isNext == isAnimatingNext)) {
+            _pageAnimator.rubberBandsAtRest = (pageView == nil);
+        }
+    }
     return pageView;
 }
 
 - (void)_fetchNewNextPage TOPAGINGVIEW_OBJC_DIRECT {
-    [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext currentPageView:_currentPageView rubberBandIfMissing:YES];
+    [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext currentPageView:_currentPageView];
 }
 
 - (void)_fetchNewPreviousPage TOPAGINGVIEW_OBJC_DIRECT {
-    [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious currentPageView:_currentPageView rubberBandIfMissing:YES];
+    [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious currentPageView:_currentPageView];
 }
 
 - (void)_resetStalePageSlotInsetsForCurrentAvailability TOPAGINGVIEW_OBJC_DIRECT {
@@ -590,12 +590,12 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 
     // If there currently isn't a previous page, check again to see if there is one now.
     if (!isAdaptiveInitialPage && !_hasPreviousPage) {
-        [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious currentPageView:_currentPageView rubberBandIfMissing:NO];
+        [self _fetchAdjacentPageForType:TOPagingViewPageTypePrevious currentPageView:_currentPageView];
     }
 
     // If there currently isn't a next page, check again
     if (!_hasNextPage) {
-        [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext currentPageView:_currentPageView rubberBandIfMissing:NO];
+        [self _fetchAdjacentPageForType:TOPagingViewPageTypeNext currentPageView:_currentPageView];
     }
 
     // If we're on the initial page, set the previous page state to match whatever the next state is
@@ -667,35 +667,27 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 }
 
 - (void)turnToLeftPageAnimated:(BOOL)animated {
+    // A prior turn may have committed before UIKit's deferred layout refilled its slots.
+    [self _requestPendingPages];
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
     BOOL hasLeftPage = (isDirectionReversed && _hasNextPage) || (!isDirectionReversed && _hasPreviousPage);
 
     // Re-poll the data source if the requested direction has no page slot. A user tap is the
     // freshest signal that they want to advance — if the data source has finished loading the
     // page since we last asked, pick it up here rather than wait for the async refresh path.
-    // If a rubber-band animation is mid-flight and the retry resolves the page, stop it so we
-    // can redirect forward from the current visual position.
     if (!hasLeftPage) {
         [self fetchAdjacentPagesIfAvailable];
         hasLeftPage = (isDirectionReversed && _hasNextPage) || (!isDirectionReversed && _hasPreviousPage);
-        if (hasLeftPage && _pageAnimator.isAnimating) {
-            [_pageAnimator stopAnimationWithCompletion:NO];
-        }
     }
 
-    // No page in this direction: arm the animator's rubber-band so the bezier→spring handoff
-    // bumps against the edge and snaps back. Each subsequent tap re-energises the spring,
-    // giving the user immediate feedback rather than a frozen wait. Without animation we
-    // have nowhere meaningful to land, so just no-op.
-    if (!hasLeftPage) {
-        if (!animated) { return; }
-        _pageAnimator.rubberBandsAtRest = YES;
-    }
+    // Animated turns bounce at a missing edge. Without animation there is nowhere to land.
+    if (!hasLeftPage && !animated) { return; }
 
     [self _turnToPageInDirection:UIRectEdgeLeft animated:animated];
 }
 
 - (void)turnToRightPageAnimated:(BOOL)animated {
+    [self _requestPendingPages];
     const BOOL isDirectionReversed = TOPagingViewIsDirectionReversed(_pageScrollDirection);
     BOOL hasRightPage = (isDirectionReversed && _hasPreviousPage) || (!isDirectionReversed && _hasNextPage);
 
@@ -704,16 +696,9 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
     if (!hasRightPage) {
         [self fetchAdjacentPagesIfAvailable];
         hasRightPage = (isDirectionReversed && _hasPreviousPage) || (!isDirectionReversed && _hasNextPage);
-        if (hasRightPage && _pageAnimator.isAnimating) {
-            [_pageAnimator stopAnimationWithCompletion:NO];
-        }
     }
 
-    // See -turnToLeftPageAnimated: for the rationale on the rubber-band hand-off.
-    if (!hasRightPage) {
-        if (!animated) { return; }
-        _pageAnimator.rubberBandsAtRest = YES;
-    }
+    if (!hasRightPage && !animated) { return; }
 
     [self _turnToPageInDirection:UIRectEdgeRight animated:animated];
 }
@@ -843,6 +828,7 @@ static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *v
     // Commit the direction at the same moment so `metrics->isReversed` stays in sync and the
     // transition handler routes to the correct `Next`/`Previous` call on the same frame.
     const TOPagingViewAnimatorState *animatorState = view->_animatorState;
+    if (animatorState->isRubberBanding) { return; }
     const BOOL isAnimating = animatorState->isAnimating;
     const UIRectEdge animatorDirection = animatorState->direction;
     const BOOL isAnimatingLeft = isAnimating && animatorDirection == UIRectEdgeLeft;
@@ -876,6 +862,9 @@ static inline void TOPagingViewHandleAdaptivePageDirectionLayout(TOPagingView *v
 static inline void TOPagingViewHandlePageTransitions(TOPagingView *view, TOPagingViewScrollMetrics metrics) {
     // Read animator state directly from the cached struct pointer — no ObjC msg sends per tick.
     const TOPagingViewAnimatorState *animatorState = view->_animatorState;
+    // A settling edge bounce must never commit pages, even if an async refresh has
+    // made its adjacent page available since the spring started.
+    if (animatorState->isRubberBanding) { return; }
     const BOOL isAnimating = animatorState->isAnimating;
     const UIRectEdge animatorDirection = animatorState->direction;
     const BOOL isAnimatingRight = isAnimating && animatorDirection == UIRectEdgeRight;
@@ -1014,6 +1003,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 
     // If we're not animating, set the offset to the target directly
     if (animated == NO) {
+        [_pageAnimator stopAnimationWithCompletion:NO];
         CGFloat targetOffset = 0.0f;
         if (direction == UIRectEdgeRight) { targetOffset = scrollView.contentSize.width - _layoutMetrics.pageWidth; }
         scrollView.contentOffset = (CGPoint){targetOffset, 0.0f};
@@ -1032,6 +1022,9 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
     };
 
     // Animate the page turn via CADisplayLink by directly driving the scroll view content offset.
+    const BOOL hasPage = isLeftDirection ? (isDirectionReversed ? _hasNextPage : _hasPreviousPage)
+                                        : (isDirectionReversed ? _hasPreviousPage : _hasNextPage);
+    _pageAnimator.rubberBandsAtRest = !hasPage;
     _pageAnimator.pageWidth = _layoutMetrics.pageWidth;
     [_pageAnimator turnToPageInDirection:direction];
 }
@@ -1202,8 +1195,14 @@ static void TOPagingViewReclaimPageView(TOPagingView *view, UIView *pageView) {
 #pragma mark - Page Slot Rotation
 
 static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
+    // Display-link callbacks can arrive before the deferred layout pass. Refill a
+    // pending slot now rather than rotating a nil page into the current position.
+    if (view->_needsNextPage && view->_nextPageView == nil) {
+        [view _fetchNewNextPage];
+        view->_needsNextPage = NO;
+    }
     // If there's no next page, exit out now, to avoid calling this on each frame tick
-    if (!view->_hasNextPage) { return; }
+    if (!view->_hasNextPage || view->_nextPageView == nil) { return; }
 
     // If we didn't have a previous page before, we will after this transaction
     if (!view->_hasPreviousPage) { view->_hasPreviousPage = YES; }
@@ -1250,8 +1249,12 @@ static inline void TOPagingViewTransitionOverToNextPage(TOPagingView *view) {
 }
 
 static inline void TOPagingViewTransitionOverToPreviousPage(TOPagingView *view) {
+    if (view->_needsPreviousPage && view->_previousPageView == nil) {
+        [view _fetchNewPreviousPage];
+        view->_needsPreviousPage = NO;
+    }
     // If there's no previous page, exit out now, to avoid calling this on each frame tick
-    if (!view->_hasPreviousPage) { return; }
+    if (!view->_hasPreviousPage || view->_previousPageView == nil) { return; }
 
     // If we didn't have a next page before, we will after this transaction
     if (!view->_hasNextPage) { view->_hasNextPage = YES; }
