@@ -1,5 +1,10 @@
-x.y.z Release Notes (yyyy-MM-dd)
+1.6.0 Release Notes (2026-09-29)
 =============================================================
+
+## Enhancements
+
+* `currentPageView`, `nextPageView` and `previousPageView` are now vended as `__kindof`, so adopters can assign them straight to their own page class without a cast.
+* Added `discardPageView:` for permanently retiring a one-shot page. The view is dropped from the reuse pool, the unique identifier map and the scroll view, so it deallocates instead of being handed back on a later dequeue.
 
 ## Changed
 
