@@ -22,7 +22,9 @@
     [self.window makeKeyAndVisible];
 
 #if TARGET_OS_MACCATALYST
-    if (@available(iOS 13.0, *)) { self.window.windowScene.titlebar.titleVisibility = UITitlebarTitleVisibilityHidden; }
+    if (@available(iOS 13.0, *)) {
+        self.window.windowScene.titlebar.titleVisibility = UITitlebarTitleVisibilityHidden;
+    }
 #endif
 
     return YES;

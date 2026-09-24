@@ -22,8 +22,8 @@
 
 #import <UIKit/UIView.h>
 
-#import "TOPagingViewTypes.h"
 #import "TOPagingViewPage.h"
+#import "TOPagingViewTypes.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -48,10 +48,11 @@ NS_SWIFT_NAME(PagingViewDataSource)
 /// @param type The type of page to be displayed in its relation to the current page.
 /// @param currentPageView The current page view on screen. Use this to determine which page should come before or after it.
 /// This will be nil only on the very first load, before any pages have been displayed.
-/// @return The newly dequeued and configured page. At any point, if it's determined that there are no more pages, return nil instead.
+/// @return The newly dequeued and configured page. At any point, if it's determined that there are no more pages, return nil
+/// instead.
 - (nullable __kindof UIView<TOPagingViewPage> *)pagingView:(TOPagingView *)pagingView
                                            pageViewForType:(TOPagingViewPageType)type
-                                          currentPageView:(UIView<TOPagingViewPage> *_Nullable)currentPageView;
+                                           currentPageView:(UIView<TOPagingViewPage> *_Nullable)currentPageView;
 
 @end
 

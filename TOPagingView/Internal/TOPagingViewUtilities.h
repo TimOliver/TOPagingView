@@ -23,6 +23,7 @@
 #pragma once
 
 #import <Foundation/Foundation.h>
+
 #import "TOPagingViewTypes.h"
 #import "TOPagingViewTypesPrivate.h"
 
@@ -45,10 +46,7 @@ static inline BOOL TOPagingViewIsDirectionReversed(TOPagingViewDirection directi
 
 /// Convenience function to reset dragging state once we've fired the previous delegate call.
 static inline TOPagingViewDraggingState TOPagingViewDraggingStateReset(void) {
-    return (TOPagingViewDraggingState){
-        .origin = -CGFLOAT_MAX,
-        .directionType = TOPagingViewPageTypeCurrent
-    };
+    return (TOPagingViewDraggingState){.origin = -CGFLOAT_MAX, .directionType = TOPagingViewPageTypeCurrent};
 }
 
 /// Returns whether a dragging state is still holding its reset sentinel (no origin captured yet).

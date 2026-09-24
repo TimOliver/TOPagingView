@@ -21,8 +21,9 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #import <CoreFoundation/CoreFoundation.h>
-#import <UIKit/UIGeometry.h>
 #import <Foundation/Foundation.h>
+#import <UIKit/UIGeometry.h>
+
 #import "TOPagingViewMacros.h"
 #import "TOPagingViewTypesPrivate.h"
 

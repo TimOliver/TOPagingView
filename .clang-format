@@ -4,8 +4,7 @@
 
 BasedOnStyle: LLVM
 
-# Language specific settings
-Language: ObjC
+# Apply the same style to Objective-C sources and plain C declarations in headers.
 
 # Indentation
 IndentWidth: 4
@@ -22,9 +21,9 @@ ReferenceAlignment: Right
 
 # Braces
 BreakBeforeBraces: Attach
-AllowShortBlocksOnASingleLine: Always
-AllowShortFunctionsOnASingleLine: All
-AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 
 # Method and function formatting

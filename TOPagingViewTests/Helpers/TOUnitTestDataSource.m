@@ -26,8 +26,12 @@
     _dataSourceCallCount++;
     [_requestedPageTypes addObject:@(type)];
 
-    if (type == TOPagingViewPageTypeCurrent && _returnsNilForCurrentPage) { return nil; }
-    if (type == TOPagingViewPageTypeCurrent && _returnsCurrentPageForCurrentRequest) { return currentPageView; }
+    if (type == TOPagingViewPageTypeCurrent && _returnsNilForCurrentPage) {
+        return nil;
+    }
+    if (type == TOPagingViewPageTypeCurrent && _returnsCurrentPageForCurrentRequest) {
+        return currentPageView;
+    }
 
     const NSInteger referenceIndex = currentPageView ? currentPageView.pageNumber : _currentIndex;
     NSInteger index;
@@ -37,20 +41,28 @@
         break;
     case TOPagingViewPageTypeNext:
         index = referenceIndex + 1;
-        if (index > _maxIndex) { return nil; }
+        if (index > _maxIndex) {
+            return nil;
+        }
         break;
     case TOPagingViewPageTypePrevious:
         index = referenceIndex - 1;
-        if (index < _minIndex) { return nil; }
+        if (index < _minIndex) {
+            return nil;
+        }
         break;
     }
 
     TOUnitTestPageView *pageView = nil;
     if (_usesDequeue) {
         pageView = [pagingView dequeueReusablePageViewForIdentifier:@"TOUnitTestPageView"];
-        if (pageView.prepareForReuseCount > 0) { _reusedPageDequeueCount++; }
+        if (pageView.prepareForReuseCount > 0) {
+            _reusedPageDequeueCount++;
+        }
     }
-    if (pageView == nil) { pageView = [[TOUnitTestPageView alloc] initWithFrame:CGRectZero]; }
+    if (pageView == nil) {
+        pageView = [[TOUnitTestPageView alloc] initWithFrame:CGRectZero];
+    }
     pageView.pageNumber = index;
     pageView.initialPage = (type == TOPagingViewPageTypeCurrent && index == 0);
     pageView.pageDirectionWasSet = NO;

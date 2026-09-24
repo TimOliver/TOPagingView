@@ -41,8 +41,8 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 #pragma mark - Paging View Data Source -
 
 - (TOTestPageView *)pagingView:(TOPagingView *)pagingView
-	               pageViewForType:(TOPagingViewPageType)type
-	              currentPageView:(__unused TOTestPageView *)currentPageView {
+               pageViewForType:(TOPagingViewPageType)type
+               currentPageView:(__unused TOTestPageView *)currentPageView {
     NSInteger pageNumber = self.pageIndex;
     switch (type) {
     case TOPagingViewPageTypeCurrent:
@@ -56,7 +56,9 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
         break;
     }
 
-    if (labs(pageNumber) > self.maximumPageIndex) { return nil; }
+    if (labs(pageNumber) > self.maximumPageIndex) {
+        return nil;
+    }
 
     // Dequeue a fresh page view and configure it.
     TOTestPageView *pageView = [pagingView dequeueReusablePageView];
@@ -80,8 +82,12 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     // view can be safely updated to match this view. This is called before the data source requests the next page
     // in order to update the state that will reflect what the data source needs to generate.
 
-    if (type == TOPagingViewPageTypeNext) { _pageIndex++; }
-    if (type == TOPagingViewPageTypePrevious) { _pageIndex--; }
+    if (type == TOPagingViewPageTypeNext) {
+        _pageIndex++;
+    }
+    if (type == TOPagingViewPageTypePrevious) {
+        _pageIndex--;
+    }
 
     [self updatePagingViewAccessibilityState];
     NSLog(@"Paging view did turn to: %@ at page %ld", [self stringForType:type], (long)self.pageIndex);
@@ -92,7 +98,8 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     // has determined the user has committed to a new page direction. It is only called once per interaction.
     [self updateDirectionButtonTitle];
 
-    NSLog(@"Paging view did change reading direction to: %@", (direction == TOPagingViewDirectionRightToLeft) ? @"Left" : @"Right");
+    NSLog(@"Paging view did change reading direction to: %@",
+          (direction == TOPagingViewDirectionRightToLeft) ? @"Left" : @"Right");
 }
 
 - (NSString *)stringForType:(TOPagingViewPageType)type {
@@ -122,7 +129,9 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 }
 
 - (void)startTurnForDragHandoffTest:(UILongPressGestureRecognizer *)recognizer {
-    if (recognizer.state != UIGestureRecognizerStateBegan) { return; }
+    if (recognizer.state != UIGestureRecognizerStateBegan) {
+        return;
+    }
     self.peakOffsetError = 0;
     self.pendingHandoffTestTurn = YES;
     [self.pagingView turnToNextPageAnimated:YES];
@@ -254,7 +263,9 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 - (NSInteger)integerLaunchArgumentAfterValue:(NSString *)value defaultValue:(NSInteger)defaultValue {
     NSArray<NSString *> *arguments = [self launchArguments];
     const NSUInteger index = [arguments indexOfObject:value];
-    if (index == NSNotFound || index + 1 >= arguments.count) { return defaultValue; }
+    if (index == NSNotFound || index + 1 >= arguments.count) {
+        return defaultValue;
+    }
 
     return arguments[index + 1].integerValue;
 }
@@ -263,21 +274,27 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     self.pageIndex = 0;
     self.maximumPageIndex = [self integerLaunchArgumentAfterValue:kTOLaunchArgumentMaxPage defaultValue:10];
     self.startsWithAdaptivePageDirection = [self launchArgumentsContainValue:kTOLaunchArgumentAdaptive];
-    self.startingPageScrollDirection =
-        [self launchArgumentsContainValue:kTOLaunchArgumentRTL] ? TOPagingViewDirectionRightToLeft : TOPagingViewDirectionLeftToRight;
+    self.startingPageScrollDirection = [self launchArgumentsContainValue:kTOLaunchArgumentRTL] ? TOPagingViewDirectionRightToLeft
+                                                                                               : TOPagingViewDirectionLeftToRight;
 }
 
 - (void)updatePagingViewAccessibilityState {
-    if (self.pagingView == nil) { return; }
+    if (self.pagingView == nil) {
+        return;
+    }
 
     const CGFloat pageWidth = CGRectGetWidth(self.pagingView.bounds) + self.pagingView.pageSpacing;
     CGFloat offsetError = self.pagingView.scrollView.contentOffset.x - pageWidth;
-    if (fabs(offsetError) < 0.0005f) { offsetError = 0.0f; }
+    if (fabs(offsetError) < 0.0005f) {
+        offsetError = 0.0f;
+    }
 
     self.peakOffsetError = MAX(self.peakOffsetError, fabs(offsetError));
-    self.pagingView.accessibilityValue =
-        [NSString stringWithFormat:@"page=%ld;offset=%.3f;peak=%.3f;handoff=%.3f",
-                                   (long)self.pageIndex, offsetError, self.peakOffsetError, self.handoffOffsetError];
+    self.pagingView.accessibilityValue = [NSString stringWithFormat:@"page=%ld;offset=%.3f;peak=%.3f;handoff=%.3f",
+                                                                    (long)self.pageIndex,
+                                                                    offsetError,
+                                                                    self.peakOffsetError,
+                                                                    self.handoffOffsetError];
 }
 
 - (void)updateDirectionButtonTitle {

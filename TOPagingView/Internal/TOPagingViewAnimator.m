@@ -97,7 +97,9 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
 - (void)turnToPageInDirection:(UIRectEdge)direction {
     UIScrollView *scrollView = _scrollView;
     NSAssert(_pageWidth > FLT_EPSILON, @"Page width must be positive.");
-    if (!scrollView || _pageWidth <= FLT_EPSILON) { return; }
+    if (!scrollView || _pageWidth <= FLT_EPSILON) {
+        return;
+    }
 
     BOOL wasAnimating = _state.isAnimating;
     BOOL wasBouncing = _state.isRubberBanding;
@@ -170,7 +172,9 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
 }
 
 - (void)stopAnimationWithCompletion:(BOOL)didComplete {
-    if (!_state.isAnimating) { return; }
+    if (!_state.isAnimating) {
+        return;
+    }
 
     _generation++;
     _state.isAnimating = NO;
@@ -198,7 +202,9 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
 }
 
 - (void)didTransitionWithOffset:(CGFloat)offset {
-    if (!_state.isAnimating || _state.isRubberBanding) { return; }
+    if (!_state.isAnimating || _state.isRubberBanding) {
+        return;
+    }
 
     // Recenter the carousel without restarting or rewriting the native animation.
     _origin += offset;
@@ -243,7 +249,9 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
     _animationView = view;
     [_scrollView addSubview:view];
 
-    if (duration <= FLT_EPSILON) { return; }
+    if (duration <= FLT_EPSILON) {
+        return;
+    }
 
     // UIKit expresses initial velocity in animation distances per second.
     CGFloat span = target - start;
@@ -274,7 +282,9 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
 
 - (BOOL)_bounceIfNeededAtValue:(CGFloat)value TOPAGINGVIEW_OBJC_DIRECT {
     CGFloat sign = _state.direction == UIRectEdgeRight ? 1 : -1;
-    if (_state.isRubberBanding || !_rubberBandsAtRest || sign * (value + _origin - _pageWidth) <= 0) { return NO; }
+    if (_state.isRubberBanding || !_rubberBandsAtRest || sign * (value + _origin - _pageWidth) <= 0) {
+        return NO;
+    }
 
     // Set this before writing the offset so a bounce cannot commit another page.
     _state.isRubberBanding = YES;
@@ -334,8 +344,12 @@ static const CGFloat kTOAnimatorInitialVelocity = 2.15;
         // cannot prevent forward progress with very small or fractional page widths.
         scrollView.contentOffset = CGPointMake(reached && !finished ? round(step * _scale) / _scale : step, 0);
 
-        if (_generation != generation) { return; }
-        if ([self _bounceIfNeededAtValue:(scrollView.contentOffset.x - _origin)]) { return; }
+        if (_generation != generation) {
+            return;
+        }
+        if ([self _bounceIfNeededAtValue:(scrollView.contentOffset.x - _origin)]) {
+            return;
+        }
     } while (!reached);
 
     if (finished) {

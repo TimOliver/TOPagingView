@@ -24,6 +24,7 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIView.h>
+
 #import "TOPagingViewTypes.h"
 
 /// A struct to cache which methods the current delegate implements.
@@ -68,7 +69,7 @@ typedef struct {
 /// helpers can read `isAnimating` / `direction` as plain loads instead of ObjC msg sends.
 typedef struct {
     BOOL isAnimating;
-    BOOL isRubberBanding; // An edge bounce cannot commit page turns.
+    BOOL isRubberBanding;  // An edge bounce cannot commit page turns.
     UIRectEdge direction;
 } TOPagingViewAnimatorState;
 

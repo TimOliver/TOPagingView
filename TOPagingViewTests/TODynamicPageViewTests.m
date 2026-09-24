@@ -6,8 +6,8 @@
 //  Copyright © 2020 Tim Oliver. All rights reserved.
 //
 
-#import <XCTest/XCTest.h>
 #import <QuartzCore/QuartzCore.h>
+#import <XCTest/XCTest.h>
 
 #import "TOPagingView.h"
 #import "TOPagingViewAnimator.h"
@@ -65,7 +65,9 @@
 }
 
 - (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated {
-    if (_deceleratingForUnitTest && !animated) { _cancelDecelerationCallCount++; }
+    if (_deceleratingForUnitTest && !animated) {
+        _cancelDecelerationCallCount++;
+    }
     [super setContentOffset:contentOffset animated:animated];
 }
 
@@ -83,7 +85,7 @@
 @implementation TOPagingViewTests
 
 - (void)installPagingViewWithDataSource:(TOUnitTestDataSource *)dataSource
-                              configure:(void (^ _Nullable)(TOPagingView *pagingView))configure {
+                              configure:(void (^_Nullable)(TOPagingView *pagingView))configure {
     [_pagingView removeFromSuperview];
 
     _dataSource = dataSource;
@@ -91,7 +93,9 @@
     _pagingView = [[TOPagingView alloc] initWithFrame:_window.bounds];
     _pagingView.delegate = _testDelegate;
     [_pagingView registerPageViewClass:TOUnitTestPageView.class];
-    if (configure) { configure(_pagingView); }
+    if (configure) {
+        configure(_pagingView);
+    }
     _pagingView.dataSource = _dataSource;
     [_window addSubview:_pagingView];
     [_pagingView layoutIfNeeded];
@@ -99,7 +103,8 @@
 
 - (TOUnitTestDeceleratingScrollView *)replaceScrollViewWithDeceleratingScrollViewForPagingView:(TOPagingView *)pagingView {
     UIScrollView *originalScrollView = pagingView.scrollView;
-    TOUnitTestDeceleratingScrollView *scrollView = [[TOUnitTestDeceleratingScrollView alloc] initWithFrame:originalScrollView.frame];
+    TOUnitTestDeceleratingScrollView *scrollView =
+        [[TOUnitTestDeceleratingScrollView alloc] initWithFrame:originalScrollView.frame];
     scrollView.delegate = originalScrollView.delegate;
     scrollView.pagingEnabled = originalScrollView.pagingEnabled;
     scrollView.bounces = originalScrollView.bounces;
@@ -338,8 +343,7 @@
     [self.pagingView turnToRightPageAnimated:YES];
     [self waitForPageTurnAnimationToSettle];
 
-    XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, 1,
-                   @"A single tap must commit exactly one page turn");
+    XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, 1, @"A single tap must commit exactly one page turn");
 }
 
 /// Pumps the main run loop for `interval`, so display-link frames and layout
@@ -371,8 +375,7 @@
     [self.pagingView turnToRightPageAnimated:YES];
     [self waitForPageTurnAnimationToSettle];
 
-    XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, 3,
-                   @"Three queued taps must land exactly three pages");
+    XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, 3, @"Three queued taps must land exactly three pages");
 }
 
 - (void)testEachTapRestartsOneDurationForAllQueuedPages {
@@ -391,10 +394,15 @@
             for (NSInteger tap = 0; tap < turns; tap++) {
                 const CGFloat offset = self.pagingView.scrollView.contentOffset.x;
                 lastTapTime = CACurrentMediaTime();
-                if (tapLeft.boolValue) { [self.pagingView turnToLeftPageAnimated:YES]; }
-                else { [self.pagingView turnToRightPageAnimated:YES]; }
+                if (tapLeft.boolValue) {
+                    [self.pagingView turnToLeftPageAnimated:YES];
+                } else {
+                    [self.pagingView turnToRightPageAnimated:YES];
+                }
                 XCTAssertEqual(self.pagingView.scrollView.contentOffset.x, offset, @"Retargeting must not jump the page");
-                if (tap + 1 < turns && interval > 0) { [self pumpRunLoopForInterval:interval]; }
+                if (tap + 1 < turns && interval > 0) {
+                    [self pumpRunLoopForInterval:interval];
+                }
             }
 
             XCTestExpectation *completed = [self expectationWithDescription:@"The entire queued journey completed"];
@@ -402,7 +410,9 @@
             void (^originalCompletion)(void) = animator.completionHandler;
             animator.completionHandler = ^{
                 completionTime = CACurrentMediaTime();
-                if (originalCompletion) { originalCompletion(); }
+                if (originalCompletion) {
+                    originalCompletion();
+                }
                 [completed fulfill];
             };
             [self waitForExpectations:@[completed] timeout:2.0];
@@ -414,7 +424,8 @@
             XCTAssertLessThanOrEqual(elapsed, animator.duration + 0.15);
             XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, turns);
             XCTAssertEqual(TOTestPageView(self.pagingView.currentPageView).pageNumber, tapLeft.boolValue ? -turns : turns);
-            XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x, self.pagingView.scrollView.bounds.size.width, 0.5);
+            XCTAssertEqualWithAccuracy(
+                self.pagingView.scrollView.contentOffset.x, self.pagingView.scrollView.bounds.size.width, 0.5);
             XCTAssertFalse(animator.isAnimating);
             XCTAssertTrue(self.pagingView.scrollView.pagingEnabled);
         }
@@ -441,7 +452,8 @@
     [self.pagingView turnToRightPageAnimated:YES];
     [self waitForPageTurnAnimationToSettle];
 
-    XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, 1,
+    XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore,
+                   1,
                    @"A real turn must commit one page even if an earlier failed fetch armed the rubber band");
 }
 
@@ -452,7 +464,9 @@
     NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:2.0];
     // XCTest's predicate polling can miss the entire sub-second spring animation.
     while (deadline.timeIntervalSinceNow > 0.0) {
-        if (animator.isRubberBanding) { return; }
+        if (animator.isRubberBanding) {
+            return;
+        }
         [[NSRunLoop mainRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
     }
     XCTFail(@"The edge tap did not start a bounce");
@@ -462,8 +476,7 @@
     [self waitForPageTurnAnimationToSettle];
     XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, expectedTurns);
     XCTAssertEqual(TOTestPageView(self.pagingView.currentPageView).pageNumber, page);
-    XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x,
-                               self.pagingView.scrollView.bounds.size.width, 0.5);
+    XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x, self.pagingView.scrollView.bounds.size.width, 0.5);
     XCTAssertFalse(((TOPagingViewAnimator *)[self.pagingView valueForKey:@"_pageAnimator"]).isAnimating);
     XCTAssertTrue(self.pagingView.scrollView.pagingEnabled);
 }
@@ -471,8 +484,8 @@
 - (void)testSingleTurnAwayFromEitherBookBoundaryCommitsOnePageInBothDirections {
     [_window makeKeyAndVisible];
     for (NSNumber *reversed in @[@NO, @YES]) {
-        self.pagingView.pageScrollDirection = reversed.boolValue ? TOPagingViewDirectionRightToLeft
-                                                                 : TOPagingViewDirectionLeftToRight;
+        self.pagingView.pageScrollDirection =
+            reversed.boolValue ? TOPagingViewDirectionRightToLeft : TOPagingViewDirectionLeftToRight;
         for (NSNumber *fromLastPage in @[@NO, @YES]) {
             _dataSource.minIndex = 0;
             _dataSource.maxIndex = 10;
@@ -481,8 +494,11 @@
             [self.pagingView layoutIfNeeded];
             const NSInteger before = _testDelegate.didTurnCallCount;
 
-            if (fromLastPage.boolValue) { [self.pagingView turnToPreviousPageAnimated:YES]; }
-            else { [self.pagingView turnToNextPageAnimated:YES]; }
+            if (fromLastPage.boolValue) {
+                [self.pagingView turnToPreviousPageAnimated:YES];
+            } else {
+                [self.pagingView turnToNextPageAnimated:YES];
+            }
 
             [self assertSettledOnPage:fromLastPage.boolValue ? 9 : 1 turnsSince:before expectedTurns:1];
         }
@@ -502,8 +518,11 @@
         _dataSource.maxIndex = 10;
         [self.pagingView fetchAdjacentPagesIfAvailable];
         const NSInteger before = _testDelegate.didTurnCallCount;
-        if (tapLeft.boolValue) { [self.pagingView turnToLeftPageAnimated:YES]; }
-        else { [self.pagingView turnToRightPageAnimated:YES]; }
+        if (tapLeft.boolValue) {
+            [self.pagingView turnToLeftPageAnimated:YES];
+        } else {
+            [self.pagingView turnToRightPageAnimated:YES];
+        }
 
         [self assertSettledOnPage:1 turnsSince:before expectedTurns:1];
         XCTAssertEqual(self.pagingView.pageScrollDirection,
@@ -514,8 +533,8 @@
 - (void)testPagesArrivingDuringBounceDoNotCommitUntilAnotherTap {
     [_window makeKeyAndVisible];
     for (NSNumber *reversed in @[@NO, @YES]) {
-        self.pagingView.pageScrollDirection = reversed.boolValue ? TOPagingViewDirectionRightToLeft
-                                                                 : TOPagingViewDirectionLeftToRight;
+        self.pagingView.pageScrollDirection =
+            reversed.boolValue ? TOPagingViewDirectionRightToLeft : TOPagingViewDirectionLeftToRight;
         for (NSNumber *reloadAdjacent in @[@NO, @YES]) {
             _dataSource.minIndex = 0;
             _dataSource.maxIndex = 0;
@@ -526,8 +545,11 @@
             [self.pagingView turnToNextPageAnimated:YES];
             [self waitForEdgeBounceToStart];
             _dataSource.maxIndex = 10;
-            if (reloadAdjacent.boolValue) { [self.pagingView reloadAdjacentPages]; }
-            else { [self.pagingView fetchAdjacentPagesIfAvailable]; }
+            if (reloadAdjacent.boolValue) {
+                [self.pagingView reloadAdjacentPages];
+            } else {
+                [self.pagingView fetchAdjacentPagesIfAvailable];
+            }
 
             [self assertSettledOnPage:0 turnsSince:before expectedTurns:0];
             [self.pagingView turnToNextPageAnimated:YES];
@@ -546,16 +568,24 @@
             [self.pagingView layoutIfNeeded];
             const NSInteger before = _testDelegate.didTurnCallCount;
 
-            if (tapLeft.boolValue) { [self.pagingView turnToLeftPageAnimated:YES]; }
-            else { [self.pagingView turnToRightPageAnimated:YES]; }
+            if (tapLeft.boolValue) {
+                [self.pagingView turnToLeftPageAnimated:YES];
+            } else {
+                [self.pagingView turnToRightPageAnimated:YES];
+            }
             [self waitForEdgeBounceToStart];
             _dataSource.minIndex = -10;
             _dataSource.maxIndex = 10;
-            if (refreshBeforeTap.boolValue) { [self.pagingView fetchAdjacentPagesIfAvailable]; }
+            if (refreshBeforeTap.boolValue) {
+                [self.pagingView fetchAdjacentPagesIfAvailable];
+            }
             XCTAssertEqual(_testDelegate.didTurnCallCount, before);
 
-            if (tapLeft.boolValue) { [self.pagingView turnToLeftPageAnimated:YES]; }
-            else { [self.pagingView turnToRightPageAnimated:YES]; }
+            if (tapLeft.boolValue) {
+                [self.pagingView turnToLeftPageAnimated:YES];
+            } else {
+                [self.pagingView turnToRightPageAnimated:YES];
+            }
             [self assertSettledOnPage:tapLeft.boolValue ? -1 : 1 turnsSince:before expectedTurns:1];
         }
     }
@@ -624,15 +654,22 @@
         [self.pagingView reload];
         const NSInteger before = _testDelegate.didTurnCallCount;
         const NSInteger completionsBefore = scrollDelegate.didEndScrollingAnimationCallCount;
-        if (tapLeft.boolValue) { [self.pagingView turnToLeftPageAnimated:YES]; }
-        else { [self.pagingView turnToRightPageAnimated:YES]; }
+        if (tapLeft.boolValue) {
+            [self.pagingView turnToLeftPageAnimated:YES];
+        } else {
+            [self.pagingView turnToRightPageAnimated:YES];
+        }
         [self waitForEdgeBounceToStart];
 
         const CGFloat offset = self.pagingView.scrollView.contentOffset.x;
         for (NSInteger tap = 0; tap < 8; tap++) {
-            if (tapLeft.boolValue) { [self.pagingView turnToLeftPageAnimated:YES]; }
-            else { [self.pagingView turnToRightPageAnimated:YES]; }
-            XCTAssertEqual(self.pagingView.scrollView.contentOffset.x, offset,
+            if (tapLeft.boolValue) {
+                [self.pagingView turnToLeftPageAnimated:YES];
+            } else {
+                [self.pagingView turnToRightPageAnimated:YES];
+            }
+            XCTAssertEqual(self.pagingView.scrollView.contentOffset.x,
+                           offset,
                            @"Re-energizing the spring must not jump its visible position");
         }
         [self assertSettledOnPage:0 turnsSince:before expectedTurns:0];
@@ -651,7 +688,9 @@
 
     [self.pagingView turnToRightPageAnimated:YES];
     [self waitForEdgeBounceToStart];
-    for (NSInteger tap = 0; tap < 4; tap++) { [self.pagingView turnToRightPageAnimated:YES]; }
+    for (NSInteger tap = 0; tap < 4; tap++) {
+        [self.pagingView turnToRightPageAnimated:YES];
+    }
     [self assertSettledOnPage:0 turnsSince:before expectedTurns:0];
 }
 
@@ -677,14 +716,16 @@
     self.pagingView.frame = CGRectMake(0, 0, 744.5, 768);
     self.pagingView.pageSpacing = 0.5;
     for (NSNumber *reversed in @[@NO, @YES]) {
-        self.pagingView.pageScrollDirection = reversed.boolValue ? TOPagingViewDirectionRightToLeft
-                                                                 : TOPagingViewDirectionLeftToRight;
+        self.pagingView.pageScrollDirection =
+            reversed.boolValue ? TOPagingViewDirectionRightToLeft : TOPagingViewDirectionLeftToRight;
         [self.pagingView reload];
         [self.pagingView layoutIfNeeded];
         const NSInteger before = _testDelegate.didTurnCallCount;
 
         // Queue the entire burst before the display link has delivered its first timestamp.
-        for (NSInteger tap = 0; tap < 8; tap++) { [self.pagingView turnToNextPageAnimated:YES]; }
+        for (NSInteger tap = 0; tap < 8; tap++) {
+            [self.pagingView turnToNextPageAnimated:YES];
+        }
 
         [self assertSettledOnPage:8 turnsSince:before expectedTurns:8];
     }
@@ -695,13 +736,15 @@
     self.pagingView.frame = CGRectMake(0, 0, 744.5, 768);
     self.pagingView.pageSpacing = 80.25;
     for (NSNumber *reversed in @[@NO, @YES]) {
-        self.pagingView.pageScrollDirection = reversed.boolValue ? TOPagingViewDirectionRightToLeft
-                                                                 : TOPagingViewDirectionLeftToRight;
+        self.pagingView.pageScrollDirection =
+            reversed.boolValue ? TOPagingViewDirectionRightToLeft : TOPagingViewDirectionLeftToRight;
         [self.pagingView reload];
         [self.pagingView layoutIfNeeded];
         const NSInteger before = _testDelegate.didTurnCallCount;
 
-        for (NSInteger tap = 0; tap < 6; tap++) { [self.pagingView turnToNextPageAnimated:YES]; }
+        for (NSInteger tap = 0; tap < 6; tap++) {
+            [self.pagingView turnToNextPageAnimated:YES];
+        }
 
         [self assertSettledOnPage:6 turnsSince:before expectedTurns:6];
     }
@@ -709,32 +752,34 @@
 
 - (void)testConsecutiveTurnsRefillSlotsBeforeDeferredLayout {
     for (NSNumber *reversed in @[@NO, @YES]) {
-        self.pagingView.pageScrollDirection = reversed.boolValue ? TOPagingViewDirectionRightToLeft
-                                                                 : TOPagingViewDirectionLeftToRight;
+        self.pagingView.pageScrollDirection =
+            reversed.boolValue ? TOPagingViewDirectionRightToLeft : TOPagingViewDirectionLeftToRight;
         _dataSource.minIndex = 0;
         _dataSource.maxIndex = 10;
         [self.pagingView reload];
         [self.pagingView layoutIfNeeded];
         const NSInteger before = _testDelegate.didTurnCallCount;
 
-        for (NSInteger tap = 0; tap < 12; tap++) { [self.pagingView turnToNextPageAnimated:NO]; }
+        for (NSInteger tap = 0; tap < 12; tap++) {
+            [self.pagingView turnToNextPageAnimated:NO];
+        }
         XCTAssertEqual(TOTestPageView(self.pagingView.currentPageView).pageNumber, 10);
         XCTAssertEqual(_testDelegate.didTurnCallCount - before, 10);
-        XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x,
-                                   self.pagingView.scrollView.bounds.size.width, 0.5);
+        XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x, self.pagingView.scrollView.bounds.size.width, 0.5);
 
-        for (NSInteger tap = 0; tap < 12; tap++) { [self.pagingView turnToPreviousPageAnimated:NO]; }
+        for (NSInteger tap = 0; tap < 12; tap++) {
+            [self.pagingView turnToPreviousPageAnimated:NO];
+        }
         XCTAssertEqual(TOTestPageView(self.pagingView.currentPageView).pageNumber, 0);
         XCTAssertEqual(_testDelegate.didTurnCallCount - before, 20);
-        XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x,
-                                   self.pagingView.scrollView.bounds.size.width, 0.5);
+        XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x, self.pagingView.scrollView.bounds.size.width, 0.5);
     }
 }
 
 - (void)testScrollCallbacksRefillSlotsBeforeDeferredLayout {
     for (NSNumber *reversed in @[@NO, @YES]) {
-        self.pagingView.pageScrollDirection = reversed.boolValue ? TOPagingViewDirectionRightToLeft
-                                                                 : TOPagingViewDirectionLeftToRight;
+        self.pagingView.pageScrollDirection =
+            reversed.boolValue ? TOPagingViewDirectionRightToLeft : TOPagingViewDirectionLeftToRight;
         [self.pagingView reload];
         [self.pagingView layoutIfNeeded];
         const CGFloat width = self.pagingView.scrollView.bounds.size.width;
@@ -825,9 +870,7 @@
     XCTAssertEqual(pagingView.rightTurnCallCount, 1);
     XCTAssertTrue(pagingView.lastTurnWasAnimated);
 
-    UIKeyCommand *ignoredCommand = [UIKeyCommand keyCommandWithInput:@"x"
-                                                       modifierFlags:0
-                                                              action:@selector(arrowKeyPressed:)];
+    UIKeyCommand *ignoredCommand = [UIKeyCommand keyCommandWithInput:@"x" modifierFlags:0 action:@selector(arrowKeyPressed:)];
     [pagingView arrowKeyPressed:ignoredCommand];
 
     XCTAssertEqual(pagingView.leftTurnCallCount, 1);
@@ -878,9 +921,10 @@
 
 - (void)testReloadAdjacentPagesSkipsPreviousFetchInAdaptiveInitialMode {
     TOUnitTestDataSource *dataSource = [[TOUnitTestDataSource alloc] init];
-    [self installPagingViewWithDataSource:dataSource configure:^(TOPagingView *pagingView) {
-        pagingView.isAdaptivePageDirectionEnabled = YES;
-    }];
+    [self installPagingViewWithDataSource:dataSource
+                                configure:^(TOPagingView *pagingView) {
+                                    pagingView.isAdaptivePageDirectionEnabled = YES;
+                                }];
     [dataSource.requestedPageTypes removeAllObjects];
 
     [self.pagingView reloadAdjacentPages];
@@ -916,9 +960,10 @@
 
 - (void)testPendingPreviousPageRequestIsClearedOnAdaptiveInitialPage {
     TOUnitTestDataSource *dataSource = [[TOUnitTestDataSource alloc] init];
-    [self installPagingViewWithDataSource:dataSource configure:^(TOPagingView *pagingView) {
-        pagingView.isAdaptivePageDirectionEnabled = YES;
-    }];
+    [self installPagingViewWithDataSource:dataSource
+                                configure:^(TOPagingView *pagingView) {
+                                    pagingView.isAdaptivePageDirectionEnabled = YES;
+                                }];
     [self.pagingView setValue:@(YES) forKey:@"needsPreviousPage"];
 
     [self.pagingView setNeedsLayout];
@@ -978,9 +1023,7 @@
     self.pagingView.frame = CGRectMake(0.0f, 0.0f, 414.0f, 812.0f);
     [self.pagingView layoutIfNeeded];
 
-    XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x,
-                               self.pagingView.scrollView.bounds.size.width,
-                               0.5);
+    XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x, self.pagingView.scrollView.bounds.size.width, 0.5);
 }
 
 #pragma mark - Async Page Availability
@@ -1035,9 +1078,10 @@
 
 - (void)testAdaptiveInitialLayoutRequestsOnlyCurrentAndNextPages {
     TOUnitTestDataSource *dataSource = [[TOUnitTestDataSource alloc] init];
-    [self installPagingViewWithDataSource:dataSource configure:^(TOPagingView *pagingView) {
-        pagingView.isAdaptivePageDirectionEnabled = YES;
-    }];
+    [self installPagingViewWithDataSource:dataSource
+                                configure:^(TOPagingView *pagingView) {
+                                    pagingView.isAdaptivePageDirectionEnabled = YES;
+                                }];
 
     XCTAssertEqualObjects(dataSource.requestedPageTypes, (@[@(TOPagingViewPageTypeCurrent), @(TOPagingViewPageTypeNext)]));
     XCTAssertNotNil(self.pagingView.currentPageView);
@@ -1047,9 +1091,10 @@
 
 - (void)testFetchAdjacentPagesInAdaptiveInitialModeKeepsPreviousMirroredToNext {
     TOUnitTestDataSource *dataSource = [[TOUnitTestDataSource alloc] init];
-    [self installPagingViewWithDataSource:dataSource configure:^(TOPagingView *pagingView) {
-        pagingView.isAdaptivePageDirectionEnabled = YES;
-    }];
+    [self installPagingViewWithDataSource:dataSource
+                                configure:^(TOPagingView *pagingView) {
+                                    pagingView.isAdaptivePageDirectionEnabled = YES;
+                                }];
     [dataSource.requestedPageTypes removeAllObjects];
 
     [self.pagingView fetchAdjacentPagesIfAvailable];
@@ -1061,10 +1106,11 @@
 
 - (void)testAdaptiveInitialLayoutCanCommitBackToLeftToRightDirection {
     TOUnitTestDataSource *dataSource = [[TOUnitTestDataSource alloc] init];
-    [self installPagingViewWithDataSource:dataSource configure:^(TOPagingView *pagingView) {
-        pagingView.pageScrollDirection = TOPagingViewDirectionRightToLeft;
-        pagingView.isAdaptivePageDirectionEnabled = YES;
-    }];
+    [self installPagingViewWithDataSource:dataSource
+                                configure:^(TOPagingView *pagingView) {
+                                    pagingView.pageScrollDirection = TOPagingViewDirectionRightToLeft;
+                                    pagingView.isAdaptivePageDirectionEnabled = YES;
+                                }];
     _testDelegate.directionChangeCallCount = 0;
 
     const CGFloat pageWidth = self.pagingView.scrollView.bounds.size.width;
@@ -1157,9 +1203,10 @@
 - (void)testSkipForwardToNewPageCancelsDeceleratingScrollView {
     TOUnitTestDataSource *dataSource = [[TOUnitTestDataSource alloc] init];
     __block TOUnitTestDeceleratingScrollView *scrollView = nil;
-    [self installPagingViewWithDataSource:dataSource configure:^(TOPagingView *pagingView) {
-        scrollView = [self replaceScrollViewWithDeceleratingScrollViewForPagingView:pagingView];
-    }];
+    [self installPagingViewWithDataSource:dataSource
+                                configure:^(TOPagingView *pagingView) {
+                                    scrollView = [self replaceScrollViewWithDeceleratingScrollViewForPagingView:pagingView];
+                                }];
     dataSource.currentIndex = 42;
     scrollView.deceleratingForUnitTest = YES;
 

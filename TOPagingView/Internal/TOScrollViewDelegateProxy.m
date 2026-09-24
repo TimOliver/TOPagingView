@@ -24,9 +24,8 @@
 
 /// The delegate selectors we intercept to notify the paging view of scroll events.
 static inline BOOL TOScrollViewDelegateProxyIsInterceptedSelector(SEL sel) {
-    return sel == @selector(scrollViewDidScroll:)
-        || sel == @selector(scrollViewWillBeginDragging:)
-        || sel == @selector(scrollViewDidEndDragging:willDecelerate:);
+    return sel == @selector(scrollViewDidScroll:) || sel == @selector(scrollViewWillBeginDragging:) ||
+           sel == @selector(scrollViewDidEndDragging:willDecelerate:);
 }
 
 /// Cached respondsToSelector results for the intercepted methods. Refreshed whenever
@@ -50,8 +49,7 @@ typedef struct {
 
 - (void)setExternalDelegate:(id<UIScrollViewDelegate>)externalDelegate {
     _externalDelegate = externalDelegate;
-    _externalDelegateFlags.externalRespondsToDidScroll =
-        [externalDelegate respondsToSelector:@selector(scrollViewDidScroll:)];
+    _externalDelegateFlags.externalRespondsToDidScroll = [externalDelegate respondsToSelector:@selector(scrollViewDidScroll:)];
     _externalDelegateFlags.externalRespondsToWillBeginDragging =
         [externalDelegate respondsToSelector:@selector(scrollViewWillBeginDragging:)];
     _externalDelegateFlags.externalRespondsToDidEndDragging =
@@ -87,23 +85,31 @@ typedef struct {
 #pragma mark - NSProxy Message Forwarding
 
 - (BOOL)respondsToSelector:(SEL)sel {
-    if (TOScrollViewDelegateProxyIsInterceptedSelector(sel)) { return YES; }
+    if (TOScrollViewDelegateProxyIsInterceptedSelector(sel)) {
+        return YES;
+    }
     return [_externalDelegate respondsToSelector:sel];
 }
 
 - (id)forwardingTargetForSelector:(SEL)sel {
-    if (!TOScrollViewDelegateProxyIsInterceptedSelector(sel)) { return _externalDelegate; }
+    if (!TOScrollViewDelegateProxyIsInterceptedSelector(sel)) {
+        return _externalDelegate;
+    }
     return nil;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)sel {
     NSMethodSignature *signature = [(NSObject *)_externalDelegate methodSignatureForSelector:sel];
-    if (signature) { return signature; }
+    if (signature) {
+        return signature;
+    }
     return [NSMethodSignature signatureWithObjCTypes:"v@:"];
 }
 
 - (void)forwardInvocation:(NSInvocation *)invocation {
-    if ([_externalDelegate respondsToSelector:invocation.selector]) { [invocation invokeWithTarget:_externalDelegate]; }
+    if ([_externalDelegate respondsToSelector:invocation.selector]) {
+        [invocation invokeWithTarget:_externalDelegate];
+    }
 }
 
 @end

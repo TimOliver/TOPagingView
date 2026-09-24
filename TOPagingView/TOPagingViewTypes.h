@@ -24,8 +24,8 @@
 
 /// An enumeration of directions in which the scroll view may display pages.
 typedef NS_ENUM(NSInteger, TOPagingViewDirection) {
-    TOPagingViewDirectionLeftToRight = 0, // Western style page ordering
-    TOPagingViewDirectionRightToLeft = 1  // Eastern style page ordering
+    TOPagingViewDirectionLeftToRight = 0,  // Western style page ordering
+    TOPagingViewDirectionRightToLeft = 1   // Eastern style page ordering
 } NS_SWIFT_NAME(PagingViewDirection);
 
 /// An enumeration denoting the kind of page being requested by the data source.
