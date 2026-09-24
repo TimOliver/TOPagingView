@@ -442,7 +442,7 @@ static inline TOPageViewProtocolFlags TOPagingViewCachedProtocolFlagsForPageView
 #pragma mark - External Page Control
 
 - (void)reload {
-    // Stop any active display-link animation before tearing down the scroll view state.
+    // Stop any active page animation before tearing down the scroll view state.
     [_pageAnimator stopAnimationWithCompletion:NO];
 
     // Remove all currently visible pages from the scroll view
@@ -978,7 +978,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
 #pragma mark - Animated Page Turning
 
 /// Forwards UIScrollViewDelegate.scrollViewDidEndScrollingAnimation: to the external delegate,
-/// if one is set and implements it. Used by both the display-link animator completion and the
+/// if one is set and implements it. Used by both the page animator completion and the
 /// spring-back completion from a skip transition.
 - (void)_notifyExternalDelegateDidEndScrollingAnimation TOPAGINGVIEW_OBJC_DIRECT {
     id<UIScrollViewDelegate> scrollViewDelegate = _scrollViewDelegateProxy.externalDelegate;
@@ -1021,7 +1021,7 @@ static inline void TOPagingViewSetPageSlotEnabled(TOPagingView *view, BOOL enabl
         [strongSelf _notifyExternalDelegateDidEndScrollingAnimation];
     };
 
-    // Animate the page turn via CADisplayLink by directly driving the scroll view content offset.
+    // Animate the page turn with a native spring, sampled into the scroll view's content offset.
     const BOOL hasPage = isLeftDirection ? (isDirectionReversed ? _hasNextPage : _hasPreviousPage)
                                         : (isDirectionReversed ? _hasPreviousPage : _hasNextPage);
     _pageAnimator.rubberBandsAtRest = !hasPage;

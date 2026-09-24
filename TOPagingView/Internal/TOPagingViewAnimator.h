@@ -30,12 +30,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// Drives content offset animations for TOPagingView using CADisplayLink.
-///
-/// The animator stores absolute `contentOffset.x` values and writes them
-/// directly into the scroll view each frame. When TOPagingView recenters the
-/// scroll view during page transitions, the animator is rebased by one page
-/// segment so the motion remains continuous.
+/// Drives page turns and edge bounces with UIViewPropertyAnimator spring timing.
+/// A transparent carrier view provides the native animated position. A display link
+/// applies that position to the scroll view while a separate coordinate translation
+/// keeps page-slot recycling independent of the animation.
 @interface TOPagingViewAnimator : NSObject
 
 /// The scroll view whose content offset will be animated.
@@ -45,7 +43,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Must be set before calling `turnToPageInDirection:`.
 @property (nonatomic, assign) CGFloat pageWidth;
 
-/// The duration of each animation cycle in seconds (default 0.5).
+/// The duration of the entire queued page-turn journey in seconds (default 0.5).
+/// Each tap restarts this duration from the current position to the extended destination.
+/// Crossing a missing edge starts a new spring back to the boundary with the current velocity.
 @property (nonatomic, assign) CFTimeInterval duration;
 
 /// Whether an animation is currently in progress.
@@ -60,9 +60,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// Called when the animation completes naturally (not when stopped mid-way).
 @property (nonatomic, copy, nullable) void (^completionHandler)(void);
 
-/// When YES, the moment the in-flight bezier crosses the rest position the animator hands off
-/// to a critically damped spring whose initial velocity matches the bezier. The spring continues
-/// past briefly, peaks, and decays back to rest as one continuous motion. The caller updates
+/// When YES, motion crossing the rest position hands off to a critically damped boundary spring
+/// with matching velocity. The spring continues past briefly, peaks, and returns to rest. The caller updates
 /// this for the requested direction before each turn and as that direction's availability changes.
 /// Disarming leaves an existing spring to settle without committing pages; a new tap can replace it.
 /// Same-direction taps while still armed re-energise the spring. Cleared on stop.
@@ -78,7 +77,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Called when the paging mechanism has performed a transition and all of the pages
 /// were offset by one page segment. We pass that segment delta here so the
-/// animator can rebase its absolute content offset targets.
+/// animator can update its coordinate translation without retiming the native animation.
 - (void)didTransitionWithOffset:(CGFloat)offset TOPAGINGVIEW_OBJC_DIRECT;
 
 /// Returns a pointer to the animator's live state struct. The pointer's lifetime matches the animator's.

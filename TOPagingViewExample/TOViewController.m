@@ -19,6 +19,11 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 
 @interface TOViewController () <TOPagingViewDataSource, TOPagingViewDelegate, UIScrollViewDelegate, UIGestureRecognizerDelegate>
 
+// Persist transient motion for UI automation, which waits for native animations to finish.
+@property (nonatomic, assign) CGFloat peakOffsetError;
+@property (nonatomic, assign) CGFloat handoffOffsetError;
+@property (nonatomic, assign) BOOL pendingHandoffTestTurn;
+
 // Current page state tracking
 @property (nonatomic, assign) NSInteger pageIndex;
 @property (nonatomic, assign) NSInteger maximumPageIndex;
@@ -105,6 +110,7 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 #pragma mark - Gesture Recognizer -
 
 - (void)tapGestureRecognized:(UITapGestureRecognizer *)recognizer {
+    self.peakOffsetError = 0;
     CGPoint tapPoint = [recognizer locationInView:self.view];
     CGFloat halfBoundWidth = CGRectGetWidth(self.view.bounds) / 2.0f;
 
@@ -113,6 +119,13 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     } else {
         [self.pagingView turnToRightPageAnimated:YES];
     }
+}
+
+- (void)startTurnForDragHandoffTest:(UILongPressGestureRecognizer *)recognizer {
+    if (recognizer.state != UIGestureRecognizerStateBegan) { return; }
+    self.peakOffsetError = 0;
+    self.pendingHandoffTestTurn = YES;
+    [self.pagingView turnToNextPageAnimated:YES];
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
@@ -128,6 +141,16 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
     [self updatePagingViewAccessibilityState];
+}
+
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
+    if (self.pendingHandoffTestTurn) {
+        // The proxy stops the animation before forwarding this event. If it had
+        // already completed naturally, the offset would be centered here.
+        self.handoffOffsetError = fabs(scrollView.contentOffset.x - scrollView.bounds.size.width);
+        self.pendingHandoffTestTurn = NO;
+        [self updatePagingViewAccessibilityState];
+    }
 }
 
 #pragma mark - View Controller Lifecycle -
@@ -172,6 +195,17 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     tapRecognizer.delegate = self;
     [self.pagingView addGestureRecognizer:tapRecognizer];
     [self.pagingView.scrollView.panGestureRecognizer requireGestureRecognizerToFail:tapRecognizer];
+
+    // Start the turn while XCTest is holding a finger down, then interrupt it as
+    // that same gesture starts dragging. Separate actions wait for UIKit to settle.
+    if ([self launchArgumentsContainValue:@"--topaging-test-drag-handoff"]) {
+        UILongPressGestureRecognizer *press =
+            [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(startTurnForDragHandoffTest:)];
+        press.minimumPressDuration = 0.01;
+        press.cancelsTouchesInView = NO;
+        press.delegate = self;
+        [self.pagingView addGestureRecognizer:press];
+    }
 
     // Add a button to toggle page turning direction
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -240,7 +274,10 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     CGFloat offsetError = self.pagingView.scrollView.contentOffset.x - pageWidth;
     if (fabs(offsetError) < 0.0005f) { offsetError = 0.0f; }
 
-    self.pagingView.accessibilityValue = [NSString stringWithFormat:@"page=%ld;offset=%.3f", (long)self.pageIndex, offsetError];
+    self.peakOffsetError = MAX(self.peakOffsetError, fabs(offsetError));
+    self.pagingView.accessibilityValue =
+        [NSString stringWithFormat:@"page=%ld;offset=%.3f;peak=%.3f;handoff=%.3f",
+                                   (long)self.pageIndex, offsetError, self.peakOffsetError, self.handoffOffsetError];
 }
 
 - (void)updateDirectionButtonTitle {

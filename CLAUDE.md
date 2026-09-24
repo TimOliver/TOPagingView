@@ -13,7 +13,7 @@ TOPagingView is an Objective-C iOS library for horizontal paged scrolling with a
 - `TOPagingView/TOPagingView.m` - Core implementation (~1215 lines): layout, transitions, recycling
 - `TOPagingView/TOPagingViewTypes.h` - Public enums (direction, page type)
 - `TOPagingView/TOPagingViewPage.h` - Optional protocol for page views
-- `TOPagingView/Internal/TOPagingViewAnimator.h/.m` - CADisplayLink-driven 120fps page turn animation
+- `TOPagingView/Internal/TOPagingViewAnimator.h/.m` - Native spring page turns with a display-link adapter for slot recycling
 - `TOPagingView/Internal/TOScrollViewDelegateProxy.h/.m` - NSProxy that intercepts scroll events
 - `TOPagingView/Internal/TOPagingView+Keyboard.h/.m` - Arrow key support (category)
 - `TOPagingView/Internal/TOPageViewProtocolCache.h/.m` - Caches which protocol methods each page class implements
@@ -23,7 +23,7 @@ TOPagingView is an Objective-C iOS library for horizontal paged scrolling with a
 - `TOPagingView/Internal/TOPagingViewUtilities.h` - Inline utility functions
 
 **Internal components:**
-- **Animator** (`TOPagingViewAnimator`): CADisplayLink at 120fps, cubic bezier easing, velocity-aware clamping, animation stacking for rapid taps, handles page rebasing mid-animation
+- **Animator** (`TOPagingViewAnimator`): UIViewPropertyAnimator supplies spring timing through a transparent carrier view. A CADisplayLink samples its presentation position at up to 120Hz and applies it to the scroll view. Slot recycling changes a coordinate translation without retiming the spring. Each tap restarts the duration for the entire queued distance; missing pages hand the current velocity to a boundary spring.
 - **Delegate Proxy** (`TOScrollViewDelegateProxy`): NSProxy subclass that intercepts `scrollViewDidScroll:` and `scrollViewWillBeginDragging:` while forwarding all other `UIScrollViewDelegate` methods
 - **Protocol Cache**: NSMapTable with pointer-based keys to avoid NSStringFromClass allocations; caches which optional `TOPagingViewPage` methods each page view class responds to
 

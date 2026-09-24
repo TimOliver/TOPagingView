@@ -7,6 +7,7 @@
 //
 
 #import <XCTest/XCTest.h>
+#import <QuartzCore/QuartzCore.h>
 
 #import "TOPagingView.h"
 #import "TOPagingViewAnimator.h"
@@ -372,6 +373,52 @@
 
     XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, 3,
                    @"Three queued taps must land exactly three pages");
+}
+
+- (void)testEachTapRestartsOneDurationForAllQueuedPages {
+    [_window makeKeyAndVisible];
+    TOPagingViewAnimator *animator = [self.pagingView valueForKey:@"_pageAnimator"];
+    for (NSNumber *tapLeft in @[@NO, @YES]) {
+        // One page, queued bursts, and mid-flight taps all share one duration after the final tap.
+        // The large burst also crosses multiple recycled slots within a single animation frame.
+        for (NSArray<NSNumber *> *scenario in @[@[@1, @0.0], @[@3, @0.0], @[@3, @0.15], @[@100, @0.0]]) {
+            [self.pagingView reload];
+            [self.pagingView layoutIfNeeded];
+            const NSInteger turns = scenario[0].integerValue;
+            const NSTimeInterval interval = scenario[1].doubleValue;
+            const NSInteger countBefore = _testDelegate.didTurnCallCount;
+            CFTimeInterval lastTapTime = 0;
+            for (NSInteger tap = 0; tap < turns; tap++) {
+                const CGFloat offset = self.pagingView.scrollView.contentOffset.x;
+                lastTapTime = CACurrentMediaTime();
+                if (tapLeft.boolValue) { [self.pagingView turnToLeftPageAnimated:YES]; }
+                else { [self.pagingView turnToRightPageAnimated:YES]; }
+                XCTAssertEqual(self.pagingView.scrollView.contentOffset.x, offset, @"Retargeting must not jump the page");
+                if (tap + 1 < turns && interval > 0) { [self pumpRunLoopForInterval:interval]; }
+            }
+
+            XCTestExpectation *completed = [self expectationWithDescription:@"The entire queued journey completed"];
+            __block CFTimeInterval completionTime = 0;
+            void (^originalCompletion)(void) = animator.completionHandler;
+            animator.completionHandler = ^{
+                completionTime = CACurrentMediaTime();
+                if (originalCompletion) { originalCompletion(); }
+                [completed fulfill];
+            };
+            [self waitForExpectations:@[completed] timeout:2.0];
+
+            // Allow frame scheduling tolerance while rejecting both the original deadline
+            // and a separate animation duration for each queued page.
+            const CFTimeInterval elapsed = completionTime - lastTapTime;
+            XCTAssertGreaterThanOrEqual(elapsed, animator.duration - 0.04);
+            XCTAssertLessThanOrEqual(elapsed, animator.duration + 0.15);
+            XCTAssertEqual(_testDelegate.didTurnCallCount - countBefore, turns);
+            XCTAssertEqual(TOTestPageView(self.pagingView.currentPageView).pageNumber, tapLeft.boolValue ? -turns : turns);
+            XCTAssertEqualWithAccuracy(self.pagingView.scrollView.contentOffset.x, self.pagingView.scrollView.bounds.size.width, 0.5);
+            XCTAssertFalse(animator.isAnimating);
+            XCTAssertTrue(self.pagingView.scrollView.pagingEnabled);
+        }
+    }
 }
 
 // A missing page becomes available before the tap. Keep both edges unavailable

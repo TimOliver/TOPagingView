@@ -64,17 +64,11 @@ typedef struct {
     CGRect rightPageFrame;
 } TOPagingViewLayoutMetrics;
 
-/// Cached device and motion metrics during a single animator session.
-typedef struct {
-    CGFloat displayScale;
-    CGFloat animationDragCoefficient;
-} TOPagingViewAnimatorEnvironmentMetrics;
-
 /// Live animator state exposed to the paging view as a pointer so the per-tick layout
 /// helpers can read `isAnimating` / `direction` as plain loads instead of ObjC msg sends.
 typedef struct {
     BOOL isAnimating;
-    BOOL isRubberBanding; // The active timing source is a spring; its motion cannot commit page turns.
+    BOOL isRubberBanding; // An edge bounce cannot commit page turns.
     UIRectEdge direction;
 } TOPagingViewAnimatorState;
 

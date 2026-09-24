@@ -54,6 +54,8 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 
     NSInteger page = NSNotFound;
     CGFloat offset = CGFLOAT_MAX;
+    CGFloat peak = 0;
+    CGFloat handoff = 0;
 
     for (NSString *component in components) {
         NSArray<NSString *> *parts = [component componentsSeparatedByString:@"="];
@@ -65,11 +67,15 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
             page = stringValue.integerValue;
         } else if ([key isEqualToString:@"offset"]) {
             offset = (CGFloat)stringValue.doubleValue;
+        } else if ([key isEqualToString:@"peak"]) {
+            peak = (CGFloat)stringValue.doubleValue;
+        } else if ([key isEqualToString:@"handoff"]) {
+            handoff = (CGFloat)stringValue.doubleValue;
         }
     }
 
     if (page == NSNotFound || offset == CGFLOAT_MAX) { return nil; }
-    return @{@"page": @(page), @"offset": @(offset)};
+    return @{@"page": @(page), @"offset": @(offset), @"peak": @(peak), @"handoff": @(handoff)};
 }
 
 - (BOOL)waitForPagingView:(XCUIElement *)pagingView
@@ -84,24 +90,6 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
             const NSInteger currentPage = state[@"page"].integerValue;
             const CGFloat offset = state[@"offset"].doubleValue;
             if (currentPage == page && fabs(offset) <= maxOffsetError) { return YES; }
-        }
-
-        [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
-    }
-
-    return NO;
-}
-
-- (BOOL)waitForPagingView:(XCUIElement *)pagingView
-      toExceedOffsetError:(CGFloat)minimumOffsetError
-                  timeout:(NSTimeInterval)timeout {
-    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:timeout];
-
-    while (deadline.timeIntervalSinceNow > 0.0) {
-        NSDictionary<NSString *, NSNumber *> *state = [self pagingStateForElement:pagingView];
-        if (state != nil) {
-            const CGFloat offset = state[@"offset"].doubleValue;
-            if (fabs(offset) >= minimumOffsetError) { return YES; }
         }
 
         [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
@@ -132,16 +120,13 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 }
 
 - (void)testDraggingMidAnimationCancelsProgrammaticTurnAndHandsOffToPaging {
-    XCUIElement *pagingView = [self launchPagingViewWithArguments:@[]];
+    XCUIElement *pagingView = [self launchPagingViewWithArguments:@[@"--topaging-test-drag-handoff"]];
+    XCUICoordinate *start = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.35, 0.5)];
+    XCUICoordinate *end = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.95, 0.5)];
+    [start pressForDuration:0.15 thenDragToCoordinate:end];
 
-    XCUICoordinate *rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
-    [rightTapCoordinate tap];
-
-    XCTAssertTrue([self waitForPagingView:pagingView toExceedOffsetError:20.0f timeout:1.0],
-                  @"Paging view never moved far enough off center. State was %@",
-                  pagingView.value);
-
-    [self dragPagingView:pagingView fromNormalizedPoint:CGVectorMake(0.35, 0.5) toNormalizedPoint:CGVectorMake(0.95, 0.5)];
+    XCTAssertGreaterThan([self pagingStateForElement:pagingView][@"handoff"].doubleValue, 20.0,
+                         @"The drag must interrupt an unfinished turn away from center. State was %@", pagingView.value);
 
     XCTAssertTrue([self waitForPagingView:pagingView toReachPage:0 maxOffsetError:0.5f timeout:5.0],
                   @"Final paging state after drag handoff was %@",
@@ -174,9 +159,9 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     XCUICoordinate *rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
     [rightTapCoordinate tap];
 
-    XCTAssertTrue([self waitForPagingView:pagingView toExceedOffsetError:1.0f timeout:1.0],
-                  @"Paging view never rubber-banded away from center. State was %@",
-                  pagingView.value);
+    XCTAssertGreaterThan([self pagingStateForElement:pagingView][@"peak"].doubleValue, 1.0,
+                         @"Paging view never rubber-banded away from center. State was %@",
+                         pagingView.value);
     XCTAssertTrue([self waitForPagingView:pagingView toReachPage:0 maxOffsetError:0.5f timeout:5.0],
                   @"Final paging state after rubber-band was %@",
                   pagingView.value);

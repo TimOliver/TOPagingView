@@ -3,7 +3,7 @@ x.y.z Release Notes (yyyy-MM-dd)
 
 ## Changed
 
-* Simplified page-turn and edge-bounce timing to inline state, avoiding timing-object allocations while preserving the spring motion.
+* Replaced custom page-turn and edge-bounce curves with UIViewPropertyAnimator springs. Each tap restarts one duration for the entire queued journey; reaching a missing page preserves velocity into a boundary bounce.
 
 ## Fixed
 
