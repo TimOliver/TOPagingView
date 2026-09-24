@@ -33,7 +33,7 @@
 		22C31626242899AA0063F6A6 /* TOViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31625242899AA0063F6A6 /* TOViewController.m */; };
 		22C3162E242899AB0063F6A6 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 22C3162C242899AB0063F6A6 /* LaunchScreen.storyboard */; };
 		22C31631242899AB0063F6A6 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C31630242899AB0063F6A6 /* main.m */; };
-		22C3163B242899AB0063F6A6 /* TODynamicPageViewTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */; };
+		22C3163B242899AB0063F6A6 /* TOPagingViewTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3163A242899AB0063F6A6 /* TOPagingViewTests.m */; };
 		22C3167F242A40F80063F6A6 /* TOPagingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 22C3167E242A40F80063F6A6 /* TOPagingView.m */; };
 		22D4A7B3293F5E8A00B1C2D3 /* TOPagingViewAnimator.m in Sources */ = {isa = PBXBuildFile; fileRef = 22D4A7B2293F5E8A00B1C2D3 /* TOPagingViewAnimator.m */; };
 		24F0A0012F24000100000001 /* TOPagingViewUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 24F0A0042F24000100000001 /* TOPagingViewUITests.m */; };
@@ -88,7 +88,7 @@
 		22C3162F242899AB0063F6A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		22C31630242899AB0063F6A6 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		22C31636242899AB0063F6A6 /* TOPagingViewTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TOPagingViewTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TODynamicPageViewTests.m; sourceTree = "<group>"; };
+		22C3163A242899AB0063F6A6 /* TOPagingViewTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingViewTests.m; sourceTree = "<group>"; };
 		22C3163C242899AB0063F6A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		22C3167D242A40F80063F6A6 /* TOPagingView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOPagingView.h; sourceTree = "<group>"; };
 		22C3167E242A40F80063F6A6 /* TOPagingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOPagingView.m; sourceTree = "<group>"; };
@@ -212,7 +212,7 @@
 			isa = PBXGroup;
 			children = (
 				220469012FB055C90005BFA5 /* Helpers */,
-				22C3163A242899AB0063F6A6 /* TODynamicPageViewTests.m */,
+				22C3163A242899AB0063F6A6 /* TOPagingViewTests.m */,
 				2F2800032F28000100000001 /* TOScrollViewDelegateProxyTests.m */,
 				2F2800042F28000100000001 /* TOViewControllerTests.m */,
 				22C3163C242899AB0063F6A6 /* Info.plist */,
@@ -275,7 +275,7 @@
 				22C31638242899AB0063F6A6 /* PBXTargetDependency */,
 			);
 			name = TOPagingViewTests;
-			productName = TODynamicPageViewTests;
+			productName = TOPagingViewTests;
 			productReference = 22C31636242899AB0063F6A6 /* TOPagingViewTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
@@ -415,7 +415,7 @@
 				220469032FB055C90005BFA5 /* TOUnitTestDataSource.m in Sources */,
 					220469042FB055C90005BFA5 /* TOUnitTestDelegate.m in Sources */,
 					220469052FB055C90005BFA5 /* TOUnitTestHelpers.m in Sources */,
-					22C3163B242899AB0063F6A6 /* TODynamicPageViewTests.m in Sources */,
+					22C3163B242899AB0063F6A6 /* TOPagingViewTests.m in Sources */,
 					2F2800012F28000100000001 /* TOScrollViewDelegateProxyTests.m in Sources */,
 					2F2800022F28000100000001 /* TOViewControllerTests.m in Sources */,
 				);

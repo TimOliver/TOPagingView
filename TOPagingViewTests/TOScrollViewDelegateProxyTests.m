@@ -68,7 +68,7 @@
 }
 
 - (void)testInterceptedScrollCallbacksNotifyPagingViewAndExternalDelegate {
-    UIScrollView *scrollView = self.pagingView.scrollView;
+    UIScrollView *const scrollView = self.pagingView.scrollView;
 
     [self.proxy scrollViewWillBeginDragging:scrollView];
     [self.proxy scrollViewDidScroll:scrollView];
@@ -81,7 +81,7 @@
 }
 
 - (void)testProxyRespondsAndForwardsNonInterceptedDelegateMessages {
-    SEL zoomSelector = @selector(scrollViewDidZoom:);
+    const SEL zoomSelector = @selector(scrollViewDidZoom:);
 
     XCTAssertTrue([self.proxy respondsToSelector:@selector(scrollViewDidScroll:)]);
     XCTAssertTrue([self.proxy respondsToSelector:zoomSelector]);
@@ -94,9 +94,9 @@
 }
 
 - (void)testProxyIgnoresUnimplementedForwardedInvocations {
-    SEL selector = @selector(scrollViewDidZoom:);
-    NSMethodSignature *signature = [self.proxy methodSignatureForSelector:selector];
-    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+    const SEL selector = @selector(scrollViewDidZoom:);
+    NSMethodSignature *const signature = [self.proxy methodSignatureForSelector:selector];
+    NSInvocation *const invocation = [NSInvocation invocationWithMethodSignature:signature];
     invocation.selector = selector;
 
     self.proxy.externalDelegate = nil;

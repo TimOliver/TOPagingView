@@ -9,6 +9,8 @@
 
 #import "TOPagingView.h"
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface TOUnitTestDelegate : NSObject <TOPagingViewDelegate>
 @property (nonatomic, assign) NSInteger willTurnCallCount;
 @property (nonatomic, assign) NSInteger didTurnCallCount;
@@ -16,3 +18,5 @@
 @property (nonatomic, assign) NSInteger directionChangeCallCount;
 @property (nonatomic, assign) TOPagingViewDirection lastDirection;
 @end
+
+NS_ASSUME_NONNULL_END

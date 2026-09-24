@@ -9,5 +9,9 @@
 
 #import "TOUnitTestPageView.h"
 
+NS_ASSUME_NONNULL_BEGIN
+
 UIView *TOCreatePrivateScrollViewSubview(void);
-TOUnitTestPageView *TOTestPageView(UIView<TOPagingViewPage> *pageView);
+TOUnitTestPageView *_Nullable TOTestPageView(UIView<TOPagingViewPage> *_Nullable pageView);
+
+NS_ASSUME_NONNULL_END

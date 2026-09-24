@@ -30,28 +30,28 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     [super tearDown];
 }
 
-- (XCUIElement *)launchPagingViewWithArguments:(NSArray<NSString *> *)arguments {
+- (XCUIElement *)_launchPagingViewWithArguments:(NSArray<NSString *> *)arguments {
     self.app.launchArguments = arguments;
     // Launch into the test orientation so the first gesture doesn't race a window rotation.
     [[XCUIDevice sharedDevice] setOrientation:UIDeviceOrientationLandscapeRight];
     [self.app launch];
 
-    XCUIElement *pagingView = self.app.otherElements[kTOPagingViewAccessibilityIdentifier];
+    XCUIElement *const pagingView = self.app.otherElements[kTOPagingViewAccessibilityIdentifier];
     XCTAssertTrue([pagingView waitForExistenceWithTimeout:5.0]);
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:0 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:0 maxOffsetError:0.5f timeout:5.0],
                   @"Initial paging state was %@",
                   pagingView.value);
     return pagingView;
 }
 
-- (nullable NSDictionary<NSString *, NSNumber *> *)pagingStateForElement:(XCUIElement *)pagingView {
-    id rawValue = pagingView.value;
+- (nullable NSDictionary<NSString *, NSNumber *> *)_pagingStateForElement:(XCUIElement *)pagingView {
+    id const rawValue = pagingView.value;
     if (![rawValue isKindOfClass:NSString.class]) {
         return nil;
     }
 
-    NSString *value = (NSString *)rawValue;
-    NSArray<NSString *> *components = [value componentsSeparatedByString:@";"];
+    NSString *const value = (NSString *)rawValue;
+    NSArray<NSString *> *const components = [value componentsSeparatedByString:@";"];
     if (components.count < 2) {
         return nil;
     }
@@ -61,14 +61,14 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     CGFloat peak = 0;
     CGFloat handoff = 0;
 
-    for (NSString *component in components) {
-        NSArray<NSString *> *parts = [component componentsSeparatedByString:@"="];
+    for (NSString *const component in components) {
+        NSArray<NSString *> *const parts = [component componentsSeparatedByString:@"="];
         if (parts.count != 2) {
             continue;
         }
 
-        NSString *key = parts.firstObject;
-        NSString *stringValue = parts.lastObject;
+        NSString *const key = parts.firstObject;
+        NSString *const stringValue = parts.lastObject;
         if ([key isEqualToString:@"page"]) {
             page = stringValue.integerValue;
         } else if ([key isEqualToString:@"offset"]) {
@@ -83,17 +83,18 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     if (page == NSNotFound || offset == CGFLOAT_MAX) {
         return nil;
     }
+
     return @{@"page": @(page), @"offset": @(offset), @"peak": @(peak), @"handoff": @(handoff)};
 }
 
-- (BOOL)waitForPagingView:(XCUIElement *)pagingView
-              toReachPage:(NSInteger)page
-           maxOffsetError:(CGFloat)maxOffsetError
-                  timeout:(NSTimeInterval)timeout {
-    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:timeout];
+- (BOOL)_waitForPagingView:(XCUIElement *)pagingView
+               toReachPage:(NSInteger)page
+            maxOffsetError:(CGFloat)maxOffsetError
+                   timeout:(NSTimeInterval)timeout {
+    NSDate *const deadline = [NSDate dateWithTimeIntervalSinceNow:timeout];
 
     while (deadline.timeIntervalSinceNow > 0.0) {
-        NSDictionary<NSString *, NSNumber *> *state = [self pagingStateForElement:pagingView];
+        NSDictionary<NSString *, NSNumber *> *const state = [self _pagingStateForElement:pagingView];
         if (state != nil) {
             const NSInteger currentPage = state[@"page"].integerValue;
             const CGFloat offset = state[@"offset"].doubleValue;
@@ -108,119 +109,119 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     return NO;
 }
 
-- (void)dragPagingView:(XCUIElement *)pagingView fromNormalizedPoint:(CGVector)startPoint toNormalizedPoint:(CGVector)endPoint {
-    XCUICoordinate *dragStart = [pagingView coordinateWithNormalizedOffset:startPoint];
-    XCUICoordinate *dragEnd = [pagingView coordinateWithNormalizedOffset:endPoint];
+- (void)_dragPagingView:(XCUIElement *)pagingView fromNormalizedPoint:(CGVector)startPoint toNormalizedPoint:(CGVector)endPoint {
+    XCUICoordinate *const dragStart = [pagingView coordinateWithNormalizedOffset:startPoint];
+    XCUICoordinate *const dragEnd = [pagingView coordinateWithNormalizedOffset:endPoint];
     [dragStart pressForDuration:0.05 thenDragToCoordinate:dragEnd];
 }
 
-- (void)testRapidRightTapsLandOnExpectedPageInLandscape {
-    XCUIElement *pagingView = [self launchPagingViewWithArguments:@[]];
+- (void)testRepeatedRightTapsStopAtBookBoundaryInLandscape {
+    XCUIElement *const pagingView = [self _launchPagingViewWithArguments:@[]];
 
-    XCUICoordinate *rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
+    XCUICoordinate *const rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
     for (NSInteger i = 0; i < 16; i++) {
         [rightTapCoordinate tap];
     }
 
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:10 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:10 maxOffsetError:0.5f timeout:5.0],
                   @"Final paging state was %@",
                   pagingView.value);
 }
 
 - (void)testDraggingMidAnimationCancelsProgrammaticTurnAndHandsOffToPaging {
-    XCUIElement *pagingView = [self launchPagingViewWithArguments:@[@"--topaging-test-drag-handoff"]];
-    XCUICoordinate *start = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.35, 0.5)];
-    XCUICoordinate *end = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.95, 0.5)];
+    XCUIElement *const pagingView = [self _launchPagingViewWithArguments:@[@"--topaging-test-drag-handoff"]];
+    XCUICoordinate *const start = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.35, 0.5)];
+    XCUICoordinate *const end = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.95, 0.5)];
     [start pressForDuration:0.15 thenDragToCoordinate:end];
 
-    XCTAssertGreaterThan([self pagingStateForElement:pagingView][@"handoff"].doubleValue,
+    XCTAssertGreaterThan([self _pagingStateForElement:pagingView][@"handoff"].doubleValue,
                          20.0,
                          @"The drag must interrupt an unfinished turn away from center. State was %@",
                          pagingView.value);
 
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:0 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:0 maxOffsetError:0.5f timeout:5.0],
                   @"Final paging state after drag handoff was %@",
                   pagingView.value);
 }
 
 - (void)testUserSwipeLeftTurnsToNextPageAndSettles {
-    XCUIElement *pagingView = [self launchPagingViewWithArguments:@[]];
+    XCUIElement *const pagingView = [self _launchPagingViewWithArguments:@[]];
 
-    [self dragPagingView:pagingView fromNormalizedPoint:CGVectorMake(0.85, 0.5) toNormalizedPoint:CGVectorMake(0.15, 0.5)];
+    [self _dragPagingView:pagingView fromNormalizedPoint:CGVectorMake(0.85, 0.5) toNormalizedPoint:CGVectorMake(0.15, 0.5)];
 
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:1 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:1 maxOffsetError:0.5f timeout:5.0],
                   @"Final paging state after left swipe was %@",
                   pagingView.value);
 }
 
 - (void)testUserSwipeRightTurnsToPreviousPageAndSettles {
-    XCUIElement *pagingView = [self launchPagingViewWithArguments:@[]];
+    XCUIElement *const pagingView = [self _launchPagingViewWithArguments:@[]];
 
-    [self dragPagingView:pagingView fromNormalizedPoint:CGVectorMake(0.15, 0.5) toNormalizedPoint:CGVectorMake(0.85, 0.5)];
+    [self _dragPagingView:pagingView fromNormalizedPoint:CGVectorMake(0.15, 0.5) toNormalizedPoint:CGVectorMake(0.85, 0.5)];
 
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:-1 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:-1 maxOffsetError:0.5f timeout:5.0],
                   @"Final paging state after right swipe was %@",
                   pagingView.value);
 }
 
 - (void)testRightEdgeRubberBandSnapsBackToCurrentPage {
-    XCUIElement *pagingView = [self launchPagingViewWithArguments:@[kTOLaunchArgumentMaxPage, @"0"]];
+    XCUIElement *const pagingView = [self _launchPagingViewWithArguments:@[kTOLaunchArgumentMaxPage, @"0"]];
 
-    XCUICoordinate *rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
+    XCUICoordinate *const rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
     [rightTapCoordinate tap];
 
-    XCTAssertGreaterThan([self pagingStateForElement:pagingView][@"peak"].doubleValue,
+    XCTAssertGreaterThan([self _pagingStateForElement:pagingView][@"peak"].doubleValue,
                          1.0,
                          @"Paging view never rubber-banded away from center. State was %@",
                          pagingView.value);
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:0 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:0 maxOffsetError:0.5f timeout:5.0],
                   @"Final paging state after rubber-band was %@",
                   pagingView.value);
 }
 
 - (void)testAdaptiveInitialRightSwipeCommitsToLeftDirection {
-    XCUIElement *pagingView = [self launchPagingViewWithArguments:@[kTOLaunchArgumentAdaptive]];
+    XCUIElement *const pagingView = [self _launchPagingViewWithArguments:@[kTOLaunchArgumentAdaptive]];
 
-    [self dragPagingView:pagingView fromNormalizedPoint:CGVectorMake(0.15, 0.5) toNormalizedPoint:CGVectorMake(0.85, 0.5)];
+    [self _dragPagingView:pagingView fromNormalizedPoint:CGVectorMake(0.15, 0.5) toNormalizedPoint:CGVectorMake(0.85, 0.5)];
 
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:1 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:1 maxOffsetError:0.5f timeout:5.0],
                   @"Final paging state after adaptive right swipe was %@",
                   pagingView.value);
     XCTAssertEqualObjects(self.app.buttons[kTODirectionButtonAccessibilityIdentifier].label, @"Left");
 }
 
 - (void)testDirectionToggleMakesRightTapTurnToPreviousPage {
-    XCUIElement *pagingView = [self launchPagingViewWithArguments:@[]];
-    XCUIElement *directionButton = self.app.buttons[kTODirectionButtonAccessibilityIdentifier];
+    XCUIElement *const pagingView = [self _launchPagingViewWithArguments:@[]];
+    XCUIElement *const directionButton = self.app.buttons[kTODirectionButtonAccessibilityIdentifier];
     XCTAssertTrue([directionButton waitForExistenceWithTimeout:5.0]);
 
     [directionButton tap];
     XCTAssertEqualObjects(directionButton.label, @"Left");
 
-    XCUICoordinate *rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
+    XCUICoordinate *const rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
     [rightTapCoordinate tap];
 
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:-1 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:-1 maxOffsetError:0.5f timeout:5.0],
                   @"Final paging state after RTL right tap was %@",
                   pagingView.value);
 }
 
 - (void)testRotationKeepsCurrentPageCentered {
-    XCUIElement *pagingView = [self launchPagingViewWithArguments:@[]];
+    XCUIElement *const pagingView = [self _launchPagingViewWithArguments:@[]];
 
-    XCUICoordinate *rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
+    XCUICoordinate *const rightTapCoordinate = [pagingView coordinateWithNormalizedOffset:CGVectorMake(0.9, 0.5)];
     [rightTapCoordinate tap];
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:1 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:1 maxOffsetError:0.5f timeout:5.0],
                   @"Paging view did not reach page 1 before rotation. State was %@",
                   pagingView.value);
 
     [[XCUIDevice sharedDevice] setOrientation:UIDeviceOrientationPortrait];
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:1 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:1 maxOffsetError:0.5f timeout:5.0],
                   @"Paging view did not stay centered after portrait rotation. State was %@",
                   pagingView.value);
 
     [[XCUIDevice sharedDevice] setOrientation:UIDeviceOrientationLandscapeRight];
-    XCTAssertTrue([self waitForPagingView:pagingView toReachPage:1 maxOffsetError:0.5f timeout:5.0],
+    XCTAssertTrue([self _waitForPagingView:pagingView toReachPage:1 maxOffsetError:0.5f timeout:5.0],
                   @"Paging view did not stay centered after landscape rotation. State was %@",
                   pagingView.value);
 }

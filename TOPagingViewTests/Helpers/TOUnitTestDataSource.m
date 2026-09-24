@@ -17,6 +17,7 @@
         _usesDequeue = YES;
         _requestedPageTypes = [NSMutableArray array];
     }
+
     return self;
 }
 
@@ -29,6 +30,7 @@
     if (type == TOPagingViewPageTypeCurrent && _returnsNilForCurrentPage) {
         return nil;
     }
+
     if (type == TOPagingViewPageTypeCurrent && _returnsCurrentPageForCurrentRequest) {
         return currentPageView;
     }
@@ -44,12 +46,14 @@
         if (index > _maxIndex) {
             return nil;
         }
+
         break;
     case TOPagingViewPageTypePrevious:
         index = referenceIndex - 1;
         if (index < _minIndex) {
             return nil;
         }
+
         break;
     }
 
