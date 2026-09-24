@@ -41,7 +41,7 @@
 
     // Private API. Don't actually use this.
     if (@available(iOS 13.0, *)) {
-        CGFloat cornerRadius = [[[UIScreen mainScreen] valueForKey:@"_displayCornerRadius"] floatValue];
+        const CGFloat cornerRadius = [[[UIScreen mainScreen] valueForKey:@"_displayCornerRadius"] floatValue];
         self.layer.cornerRadius = cornerRadius;
         self.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -56,7 +56,7 @@
 #pragma mark - TOPagingViewPage
 
 - (BOOL)isInitialPage {
-    return [self.numberLabel.text isEqualToString:@"0"];
+    return _number == 0;
 }
 
 - (void)setPageDirection:(TOPagingViewDirection)direction {

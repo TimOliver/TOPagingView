@@ -11,9 +11,9 @@
 #import "TOViewController.h"
 
 @interface TOViewController (TOUnitTests)
-- (NSString *)stringForType:(TOPagingViewPageType)type;
-- (void)tapGestureRecognized:(UITapGestureRecognizer *)recognizer;
-- (void)buttonTapped;
+- (nullable NSString *)_stringForType:(TOPagingViewPageType)type;
+- (void)_tapGestureRecognized:(UITapGestureRecognizer *)recognizer;
+- (void)_directionButtonTapped;
 @end
 
 @interface TOUnitTestViewControllerPagingView : TOPagingView
@@ -48,7 +48,7 @@
 @interface TOViewControllerTests : XCTestCase
 @property (nonatomic, strong) TOViewController *viewController;
 @property (nonatomic, strong) TOUnitTestViewControllerPagingView *pagingView;
-@property (nonatomic, strong) UIButton *button;
+@property (nonatomic, strong) UIButton *directionButton;
 @end
 
 @implementation TOViewControllerTests
@@ -58,35 +58,35 @@
     _viewController = [[TOViewController alloc] init];
     _viewController.view = [[UIView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, 400.0f, 300.0f)];
     _pagingView = [[TOUnitTestViewControllerPagingView alloc] initWithFrame:_viewController.view.bounds];
-    _button = [UIButton buttonWithType:UIButtonTypeSystem];
+    _directionButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [_viewController setValue:_pagingView forKey:@"pagingView"];
-    [_viewController setValue:_button forKey:@"button"];
+    [_viewController setValue:_directionButton forKey:@"directionButton"];
 }
 
 - (void)tearDown {
-    _button = nil;
+    _directionButton = nil;
     _pagingView = nil;
     _viewController = nil;
     [super tearDown];
 }
 
 - (void)testStringForTypeReturnsExpectedLabels {
-    XCTAssertEqualObjects([self.viewController stringForType:TOPagingViewPageTypeCurrent], @"Current");
-    XCTAssertEqualObjects([self.viewController stringForType:TOPagingViewPageTypeNext], @"Next");
-    XCTAssertEqualObjects([self.viewController stringForType:TOPagingViewPageTypePrevious], @"Previous");
-    XCTAssertNil([self.viewController stringForType:(TOPagingViewPageType)NSIntegerMax]);
+    XCTAssertEqualObjects([self.viewController _stringForType:TOPagingViewPageTypeCurrent], @"Current");
+    XCTAssertEqualObjects([self.viewController _stringForType:TOPagingViewPageTypeNext], @"Next");
+    XCTAssertEqualObjects([self.viewController _stringForType:TOPagingViewPageTypePrevious], @"Previous");
+    XCTAssertNil([self.viewController _stringForType:(TOPagingViewPageType)NSIntegerMax]);
 }
 
 - (void)testTapGestureTurnsLeftAndRightPages {
-    TOUnitTestTapGestureRecognizer *recognizer = [[TOUnitTestTapGestureRecognizer alloc] init];
+    TOUnitTestTapGestureRecognizer *const recognizer = [[TOUnitTestTapGestureRecognizer alloc] init];
 
     recognizer.testLocation = CGPointMake(100.0f, 150.0f);
-    [self.viewController tapGestureRecognized:recognizer];
+    [self.viewController _tapGestureRecognized:recognizer];
     XCTAssertEqual(self.pagingView.leftTurnCallCount, 1);
     XCTAssertEqual(self.pagingView.rightTurnCallCount, 0);
 
     recognizer.testLocation = CGPointMake(300.0f, 150.0f);
-    [self.viewController tapGestureRecognized:recognizer];
+    [self.viewController _tapGestureRecognized:recognizer];
     XCTAssertEqual(self.pagingView.leftTurnCallCount, 1);
     XCTAssertEqual(self.pagingView.rightTurnCallCount, 1);
 }
@@ -94,13 +94,13 @@
 - (void)testButtonTappedTogglesPageDirectionAndButtonTitle {
     self.pagingView.pageScrollDirection = TOPagingViewDirectionLeftToRight;
 
-    [self.viewController buttonTapped];
+    [self.viewController _directionButtonTapped];
     XCTAssertEqual(self.pagingView.pageScrollDirection, TOPagingViewDirectionRightToLeft);
-    XCTAssertEqualObjects([self.button titleForState:UIControlStateNormal], @"Left");
+    XCTAssertEqualObjects([self.directionButton titleForState:UIControlStateNormal], @"Left");
 
-    [self.viewController buttonTapped];
+    [self.viewController _directionButtonTapped];
     XCTAssertEqual(self.pagingView.pageScrollDirection, TOPagingViewDirectionLeftToRight);
-    XCTAssertEqualObjects([self.button titleForState:UIControlStateNormal], @"Right");
+    XCTAssertEqualObjects([self.directionButton titleForState:UIControlStateNormal], @"Right");
 }
 
 @end

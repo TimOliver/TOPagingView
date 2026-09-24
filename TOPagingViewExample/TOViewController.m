@@ -32,7 +32,7 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 
 // UI
 @property (nonatomic, strong) TOPagingView *pagingView;
-@property (nonatomic, strong) UIButton *button;
+@property (nonatomic, strong) UIButton *directionButton;
 
 @end
 
@@ -40,9 +40,9 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 
 #pragma mark - Paging View Data Source -
 
-- (TOTestPageView *)pagingView:(TOPagingView *)pagingView
-               pageViewForType:(TOPagingViewPageType)type
-               currentPageView:(__unused TOTestPageView *)currentPageView {
+- (nullable TOTestPageView *)pagingView:(TOPagingView *)pagingView
+                        pageViewForType:(TOPagingViewPageType)type
+                        currentPageView:(nullable TOTestPageView *)currentPageView {
     NSInteger pageNumber = self.pageIndex;
     switch (type) {
     case TOPagingViewPageTypeCurrent:
@@ -61,7 +61,7 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     }
 
     // Dequeue a fresh page view and configure it.
-    TOTestPageView *pageView = [pagingView dequeueReusablePageView];
+    TOTestPageView *const pageView = [pagingView dequeueReusablePageView];
     pageView.number = pageNumber;
     return pageView;
 }
@@ -69,19 +69,12 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 #pragma mark - Paging View Delegate -
 
 - (void)pagingView:(TOPagingView *)pagingView willTurnToPageOfType:(TOPagingViewPageType)type {
-    // This delegate event is called quite liberally every time the user causes an action that
-    // 'might' result in a page turn transaction occurring. This is useful as a catch to check the current
-    // state of incoming data, and perform any new pre-loads that may have occurred in the meantime.
-
-    NSLog(@"Paging view will turn to: %@", [self stringForType:type]);
+    // The attempted turn may hit a boundary. Use this callback to start loading adjacent content.
+    NSLog(@"Paging view will turn to: %@", [self _stringForType:type]);
 }
 
 - (void)pagingView:(TOPagingView *)pagingView didTurnToPageOfType:(TOPagingViewPageType)type {
-    // This delegate event is called once it has been confirmed that the pages have crossed over the threshold
-    // and a new page just officially became the "current" page. This is where any UI or state attached to this
-    // view can be safely updated to match this view. This is called before the data source requests the next page
-    // in order to update the state that will reflect what the data source needs to generate.
-
+    // Update the index before the data source is asked to supply the next adjacent page.
     if (type == TOPagingViewPageTypeNext) {
         _pageIndex++;
     }
@@ -89,20 +82,20 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
         _pageIndex--;
     }
 
-    [self updatePagingViewAccessibilityState];
-    NSLog(@"Paging view did turn to: %@ at page %ld", [self stringForType:type], (long)self.pageIndex);
+    [self _updatePagingViewAccessibilityState];
+    NSLog(@"Paging view did turn to: %@ at page %ld", [self _stringForType:type], (long)self.pageIndex);
 }
 
 - (void)pagingView:(TOPagingView *)pagingView didChangeToPageDirection:(TOPagingViewDirection)direction {
     // This delegate is called when adaptive page direction detection is enabled and the scroll view
     // has determined the user has committed to a new page direction. It is only called once per interaction.
-    [self updateDirectionButtonTitle];
+    [self _updateDirectionButtonTitle];
 
     NSLog(@"Paging view did change reading direction to: %@",
           (direction == TOPagingViewDirectionRightToLeft) ? @"Left" : @"Right");
 }
 
-- (NSString *)stringForType:(TOPagingViewPageType)type {
+- (nullable NSString *)_stringForType:(TOPagingViewPageType)type {
     switch (type) {
     case TOPagingViewPageTypeCurrent:
         return @"Current";
@@ -111,15 +104,16 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     case TOPagingViewPageTypePrevious:
         return @"Previous";
     }
+
     return nil;
 }
 
 #pragma mark - Gesture Recognizer -
 
-- (void)tapGestureRecognized:(UITapGestureRecognizer *)recognizer {
+- (void)_tapGestureRecognized:(UITapGestureRecognizer *)recognizer {
     self.peakOffsetError = 0;
-    CGPoint tapPoint = [recognizer locationInView:self.view];
-    CGFloat halfBoundWidth = CGRectGetWidth(self.view.bounds) / 2.0f;
+    const CGPoint tapPoint = [recognizer locationInView:self.view];
+    const CGFloat halfBoundWidth = CGRectGetWidth(self.view.bounds) / 2.0f;
 
     if (tapPoint.x < halfBoundWidth) {
         [self.pagingView turnToLeftPageAnimated:YES];
@@ -128,10 +122,11 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     }
 }
 
-- (void)startTurnForDragHandoffTest:(UILongPressGestureRecognizer *)recognizer {
+- (void)_startTurnForDragHandoffTest:(UILongPressGestureRecognizer *)recognizer {
     if (recognizer.state != UIGestureRecognizerStateBegan) {
         return;
     }
+
     self.peakOffsetError = 0;
     self.pendingHandoffTestTurn = YES;
     [self.pagingView turnToNextPageAnimated:YES];
@@ -145,11 +140,11 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 #pragma mark - UIScrollViewDelegate -
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    [self updatePagingViewAccessibilityState];
+    [self _updatePagingViewAccessibilityState];
 }
 
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
-    [self updatePagingViewAccessibilityState];
+    [self _updatePagingViewAccessibilityState];
 }
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
@@ -158,7 +153,7 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
         // already completed naturally, the offset would be centered here.
         self.handoffOffsetError = fabs(scrollView.contentOffset.x - scrollView.bounds.size.width);
         self.pendingHandoffTestTurn = NO;
-        [self updatePagingViewAccessibilityState];
+        [self _updatePagingViewAccessibilityState];
     }
 }
 
@@ -176,11 +171,26 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     [super viewDidLoad];
 
     // State tracking
-    [self configureFromLaunchArguments];
+    [self _configureFromLaunchArguments];
 
     // View Controller Config
     self.view.backgroundColor = [UIColor blackColor];
 
+    [self _setUpPagingView];
+    [self _setUpGestures];
+    [self _setUpDirectionButton];
+
+    [self _updatePagingViewAccessibilityState];
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self _updatePagingViewAccessibilityState];
+}
+
+#pragma mark - View Setup
+
+- (void)_setUpPagingView {
     // Paging view set-up and configuration
     self.pagingView = [[TOPagingView alloc] initWithFrame:self.view.bounds];
     self.pagingView.isAdaptivePageDirectionEnabled = self.startsWithAdaptivePageDirection;
@@ -196,50 +206,47 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
 
     // Force it to become first responder to receive keyboard input
     [self.pagingView becomeFirstResponder];
+}
 
+- (void)_setUpGestures {
     // Add a tap recognizer to turn pages. The delegate lets it recognize alongside the scroll
     // view's pan, otherwise taps during deceleration get held up by gesture coordination.
-    UITapGestureRecognizer *tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self
-                                                                                    action:@selector(tapGestureRecognized:)];
+    UITapGestureRecognizer *const tapRecognizer =
+        [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_tapGestureRecognized:)];
     tapRecognizer.delegate = self;
     [self.pagingView addGestureRecognizer:tapRecognizer];
     [self.pagingView.scrollView.panGestureRecognizer requireGestureRecognizerToFail:tapRecognizer];
 
     // Start the turn while XCTest is holding a finger down, then interrupt it as
     // that same gesture starts dragging. Separate actions wait for UIKit to settle.
-    if ([self launchArgumentsContainValue:@"--topaging-test-drag-handoff"]) {
-        UILongPressGestureRecognizer *press =
-            [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(startTurnForDragHandoffTest:)];
+    if ([self _launchArgumentsContainValue:@"--topaging-test-drag-handoff"]) {
+        UILongPressGestureRecognizer *const press =
+            [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(_startTurnForDragHandoffTest:)];
         press.minimumPressDuration = 0.01;
         press.cancelsTouchesInView = NO;
         press.delegate = self;
         [self.pagingView addGestureRecognizer:press];
     }
+}
 
+- (void)_setUpDirectionButton {
     // Add a button to toggle page turning direction
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-    button.tintColor = [UIColor whiteColor];
-    [button setTitle:@"Right" forState:UIControlStateNormal];
-    [button addTarget:self action:@selector(buttonTapped) forControlEvents:UIControlEventTouchUpInside];
-    button.titleLabel.font = [UIFont systemFontOfSize:22];
-    button.frame = CGRectMake(0.0f, 0.0f, 100.0f, 50.0f);
-    button.center = (CGPoint){CGRectGetMidX(self.pagingView.frame), CGRectGetHeight(self.pagingView.frame) - 50};
-    button.autoresizingMask =
+    UIButton *const directionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    directionButton.tintColor = [UIColor whiteColor];
+    [directionButton setTitle:@"Right" forState:UIControlStateNormal];
+    [directionButton addTarget:self action:@selector(_directionButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    directionButton.titleLabel.font = [UIFont systemFontOfSize:22];
+    directionButton.frame = CGRectMake(0.0f, 0.0f, 100.0f, 50.0f);
+    directionButton.center = (CGPoint){CGRectGetMidX(self.pagingView.frame), CGRectGetHeight(self.pagingView.frame) - 50};
+    directionButton.autoresizingMask =
         UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin;
-    button.accessibilityIdentifier = kTODirectionButtonAccessibilityIdentifier;
-    [self.view addSubview:button];
-    self.button = button;
-    [self updateDirectionButtonTitle];
-
-    [self updatePagingViewAccessibilityState];
+    directionButton.accessibilityIdentifier = kTODirectionButtonAccessibilityIdentifier;
+    [self.view addSubview:directionButton];
+    self.directionButton = directionButton;
+    [self _updateDirectionButtonTitle];
 }
 
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    [self updatePagingViewAccessibilityState];
-}
-
-- (void)buttonTapped {
+- (void)_directionButtonTapped {
     TOPagingViewDirection direction = self.pagingView.pageScrollDirection;
     if (direction == TOPagingViewDirectionLeftToRight) {
         direction = TOPagingViewDirectionRightToLeft;
@@ -247,21 +254,21 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
         direction = TOPagingViewDirectionLeftToRight;
     }
     self.pagingView.pageScrollDirection = direction;
-    [self updateDirectionButtonTitle];
+    [self _updateDirectionButtonTitle];
 }
 
-#pragma mark - Accessibility -
+#pragma mark - UI Test Configuration
 
-- (NSArray<NSString *> *)launchArguments {
+- (NSArray<NSString *> *)_launchArguments {
     return NSProcessInfo.processInfo.arguments;
 }
 
-- (BOOL)launchArgumentsContainValue:(NSString *)value {
-    return [[self launchArguments] containsObject:value];
+- (BOOL)_launchArgumentsContainValue:(NSString *)value {
+    return [[self _launchArguments] containsObject:value];
 }
 
-- (NSInteger)integerLaunchArgumentAfterValue:(NSString *)value defaultValue:(NSInteger)defaultValue {
-    NSArray<NSString *> *arguments = [self launchArguments];
+- (NSInteger)_integerLaunchArgumentAfterValue:(NSString *)value defaultValue:(NSInteger)defaultValue {
+    NSArray<NSString *> *const arguments = [self _launchArguments];
     const NSUInteger index = [arguments indexOfObject:value];
     if (index == NSNotFound || index + 1 >= arguments.count) {
         return defaultValue;
@@ -270,15 +277,18 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
     return arguments[index + 1].integerValue;
 }
 
-- (void)configureFromLaunchArguments {
+- (void)_configureFromLaunchArguments {
     self.pageIndex = 0;
-    self.maximumPageIndex = [self integerLaunchArgumentAfterValue:kTOLaunchArgumentMaxPage defaultValue:10];
-    self.startsWithAdaptivePageDirection = [self launchArgumentsContainValue:kTOLaunchArgumentAdaptive];
-    self.startingPageScrollDirection = [self launchArgumentsContainValue:kTOLaunchArgumentRTL] ? TOPagingViewDirectionRightToLeft
-                                                                                               : TOPagingViewDirectionLeftToRight;
+    self.maximumPageIndex = [self _integerLaunchArgumentAfterValue:kTOLaunchArgumentMaxPage defaultValue:10];
+    self.startsWithAdaptivePageDirection = [self _launchArgumentsContainValue:kTOLaunchArgumentAdaptive];
+    self.startingPageScrollDirection = [self _launchArgumentsContainValue:kTOLaunchArgumentRTL]
+                                           ? TOPagingViewDirectionRightToLeft
+                                           : TOPagingViewDirectionLeftToRight;
 }
 
-- (void)updatePagingViewAccessibilityState {
+#pragma mark - Accessibility
+
+- (void)_updatePagingViewAccessibilityState {
     if (self.pagingView == nil) {
         return;
     }
@@ -297,9 +307,9 @@ static NSString *const kTOLaunchArgumentMaxPage = @"--topaging-max-page";
                                                                     self.handoffOffsetError];
 }
 
-- (void)updateDirectionButtonTitle {
+- (void)_updateDirectionButtonTitle {
     const BOOL isReversed = (self.pagingView.pageScrollDirection == TOPagingViewDirectionRightToLeft);
-    [self.button setTitle:(isReversed ? @"Left" : @"Right") forState:UIControlStateNormal];
+    [self.directionButton setTitle:(isReversed ? @"Left" : @"Right") forState:UIControlStateNormal];
 }
 
 @end
