@@ -21,6 +21,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		279250032F25000100000001 /* TOSceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 279250022F25000100000001 /* TOSceneDelegate.m */; };
 		220469022FB055C90005BFA5 /* TOUnitTestPageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 220469002FB055C90005BFA5 /* TOUnitTestPageView.m */; };
 		220469032FB055C90005BFA5 /* TOUnitTestDataSource.m in Sources */ = {isa = PBXBuildFile; fileRef = 220468FA2FB055C90005BFA5 /* TOUnitTestDataSource.m */; };
 		220469042FB055C90005BFA5 /* TOUnitTestDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 220468FC2FB055C90005BFA5 /* TOUnitTestDelegate.m */; };
@@ -60,6 +61,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		279250012F25000100000001 /* TOSceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOSceneDelegate.h; sourceTree = "<group>"; };
+		279250022F25000100000001 /* TOSceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOSceneDelegate.m; sourceTree = "<group>"; };
 		220468F92FB055C90005BFA5 /* TOUnitTestDataSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOUnitTestDataSource.h; sourceTree = "<group>"; };
 		220468FA2FB055C90005BFA5 /* TOUnitTestDataSource.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TOUnitTestDataSource.m; sourceTree = "<group>"; };
 		220468FB2FB055C90005BFA5 /* TOUnitTestDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TOUnitTestDelegate.h; sourceTree = "<group>"; };
@@ -197,6 +200,8 @@
 			children = (
 				22C3161E242899AA0063F6A6 /* TOAppDelegate.h */,
 				22C3161F242899AA0063F6A6 /* TOAppDelegate.m */,
+				279250012F25000100000001 /* TOSceneDelegate.h */,
+				279250022F25000100000001 /* TOSceneDelegate.m */,
 				22C31624242899AA0063F6A6 /* TOViewController.h */,
 				22C31625242899AA0063F6A6 /* TOViewController.m */,
 				22ADED22242B2ADD004A7854 /* TOTestPageView.h */,
@@ -397,6 +402,7 @@
 			files = (
 				22C31626242899AA0063F6A6 /* TOViewController.m in Sources */,
 				22C31620242899AA0063F6A6 /* TOAppDelegate.m in Sources */,
+				279250032F25000100000001 /* TOSceneDelegate.m in Sources */,
 				22432FF92F75789B00A5859F /* TOPagingView+Keyboard.m in Sources */,
 				22ADED24242B2ADD004A7854 /* TOTestPageView.m in Sources */,
 				22432FFC2F75799600A5859F /* TOPageViewProtocolCache.m in Sources */,
@@ -413,12 +419,12 @@
 			files = (
 				220469022FB055C90005BFA5 /* TOUnitTestPageView.m in Sources */,
 				220469032FB055C90005BFA5 /* TOUnitTestDataSource.m in Sources */,
-					220469042FB055C90005BFA5 /* TOUnitTestDelegate.m in Sources */,
-					220469052FB055C90005BFA5 /* TOUnitTestHelpers.m in Sources */,
-					22C3163B242899AB0063F6A6 /* TOPagingViewTests.m in Sources */,
-					2F2800012F28000100000001 /* TOScrollViewDelegateProxyTests.m in Sources */,
-					2F2800022F28000100000001 /* TOViewControllerTests.m in Sources */,
-				);
+				220469042FB055C90005BFA5 /* TOUnitTestDelegate.m in Sources */,
+				220469052FB055C90005BFA5 /* TOUnitTestHelpers.m in Sources */,
+				22C3163B242899AB0063F6A6 /* TOPagingViewTests.m in Sources */,
+				2F2800012F28000100000001 /* TOScrollViewDelegateProxyTests.m in Sources */,
+				2F2800022F28000100000001 /* TOViewControllerTests.m in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		24F0A00A2F24000100000001 /* Sources */ = {
@@ -525,7 +531,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -581,7 +587,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -600,7 +606,7 @@
 					"$(SRCROOT)",
 				);
 				INFOPLIST_FILE = TOPagingViewExample/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -622,7 +628,7 @@
 					"$(SRCROOT)",
 				);
 				INFOPLIST_FILE = TOPagingViewExample/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -640,7 +646,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = TOPagingViewTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -659,7 +665,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = TOPagingViewTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -677,7 +683,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = TOPagingViewUITests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TOPagingViewUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -690,7 +696,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = TOPagingViewUITests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.TOPagingViewUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
